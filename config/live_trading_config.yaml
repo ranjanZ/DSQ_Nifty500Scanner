@@ -20,7 +20,7 @@ live_trading:
   price_update_interval: 5          # seconds (for real-time price checks)
   
   # Strategy selection
-  strategy_type: "RSI_W_Pattern"    # Strategy to use
+  strategy_type: "Volume_Price_Strategy"    # Strategy to use
   strategy_params:
     rsi_period: 14
     oversold: 30

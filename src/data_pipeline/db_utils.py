@@ -3,6 +3,7 @@ from psycopg2 import sql
 import pandas as pd
 import os
 from psycopg2.extras import execute_values
+from datetime import datetime as dt
 
 # Connection parameters for the default PostgreSQL database
 DEFAULT_DB_NAME = "postgres"  # Default database that always exists
@@ -387,6 +388,14 @@ def get_table_content(db_name, table_name, schema_name="public",start_date=None,
         schema_name (str): The name of the schema (default is 'public').
     """
     # Connect to the database
+
+    if start_date and isinstance(start_date, dt):
+        start_date = start_date.strftime('%Y-%m-%d %H:%M:%S')
+    if end_date and isinstance(end_date, dt):
+        end_date = end_date.strftime('%Y-%m-%d %H:%M:%S')
+
+
+
     try:
         conn = psycopg2.connect(
             dbname=db_name,

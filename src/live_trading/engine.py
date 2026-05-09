@@ -17,8 +17,10 @@ import traceback
 import pandas as pd
 
 from src.utils.fyers.fyers_broker import fyers_API
-from src.strategy.rsi_w_strategy import RSIWPatternStrategy
-from src.strategy.market_scanner import MarketScanner
+#from src.strategy.rsi_w_strategy import RSIWPatternStrategy as SwingStrategy
+from src.strategy.madam_strategy import SupportResistanceStrategy as SwingStrategy
+
+from src.strategy.market_scanner_old import MarketScanner
 from src.live_trading.state_manager import StateManager, PositionState, OrderState
 from src.live_trading.broker_sync import BrokerSync
 from src.data_pipeline.db_utils import get_table_content
@@ -146,14 +148,16 @@ class LiveTradingEngine:
     
     def _create_strategy(self) -> object:
         """Create trading strategy"""
-        strategy_type = self.trading_config.get('strategy_type', 'RSI_W_Pattern')
+        strategy_type = self.trading_config.get('strategy_type', '')
         strategy_params = self.trading_config.get('strategy_params', {})
         
-        if strategy_type == "RSI_W_Pattern":
-            return RSIWPatternStrategy(params=strategy_params)
-        else:
-            raise ValueError(f"Unknown strategy type: {strategy_type}")
-    
+        # if strategy_type == "RSI_W_Pattern":
+        #     return RSIWPatternStrategy(params=strategy_params)
+        # else:
+        #     raise ValueError(f"Unknown strategy type: {strategy_type}")
+        return SwingStrategy(params=strategy_params)
+
+
     def _recover_session(self) -> bool:
         """Recover from previous session"""
         try:
@@ -392,8 +396,11 @@ class LiveTradingEngine:
                 if strategy is None:
                     continue
                 
-                signal_df = strategy.generate_signals(df)
                 
+
+                signal_df = strategy.generate_signals(df)
+                print(signal_df,strategy.name)
+
                 if signal_df is None or signal_df.empty:
                     continue
                 

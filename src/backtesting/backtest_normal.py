@@ -9,15 +9,25 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 import threading
 
-from strategy.market_scanner import MarketScanner
-from data_pipeline.db_utils import get_table_content
+from src.strategy.market_scanner import MarketScanner   # keep as is – but ensure it's your updated scanner (no factory)
+from src.data_pipeline.db_utils import get_table_content
+
+# Import the concrete strategy classes (add more as needed)
+from src.strategy.crossover_strategy import MovingAverageCrossoverStrategy
+from src.strategy.madam_strategy import SupportResistanceStrategy
+# from src.strategy.volume_price_strategy import VolumePriceStrategy   # if available
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global thread-local storage for DB connections (if needed, otherwise just rely on connection pooling)
-# We'll assume get_table_content is thread-safe (uses its own connections).
-# If not, wrap it with a connection per thread.
+# Map strategy name (from backtest_config.yaml) to its class
+STRATEGY_CLASSES = {
+    "MA_Crossover": MovingAverageCrossoverStrategy,
+    "Support_Resistance": SupportResistanceStrategy,
+    # "Volume_Price": VolumePriceStrategy,
+}
+
+# (The rest of the file: Trade dataclass, select_and_weight_signals unchanged)
 
 @dataclass
 class Trade:
@@ -37,7 +47,7 @@ class Trade:
 def select_and_weight_signals(signals, config):
     """
     Compact sector-based selection and weighting.
-    (Same as before, no changes needed)
+    (Unchanged)
     """
     max_pos, max_per_sector = config['max_positions'], config['max_per_sector']
     sector_weights = config['sector_allocation']
@@ -92,10 +102,21 @@ class BacktestEngine:
         with open(backtest_yaml_config_path, 'r') as f:
             self.backtest_cfg = yaml.safe_load(f)['backtest']
 
+        # 1. Create scanner (no strategy yet)
         self.scanner = MarketScanner(yaml_config_path, watch_list=self.backtest_cfg['watchlist'])
         self.strategy_name = self.backtest_cfg['strategy_name']
-        self.scanner.create_strategy(self.strategy_name, self.strategy_name, params=None)
 
+        # 2. Instead of create_strategy, instantiate concrete strategy and add it
+        strategy_class = STRATEGY_CLASSES.get(self.strategy_name)
+        if strategy_class is None:
+            raise ValueError(f"Unknown strategy '{self.strategy_name}'. "
+                             f"Available: {list(STRATEGY_CLASSES.keys())}")
+        # Optional: read strategy parameters from config (if defined under 'strategy_params')
+        strategy_params = self.backtest_cfg.get('strategy_params', {})
+        strategy_instance = strategy_class(params=strategy_params)
+        self.scanner.add_strategy(self.strategy_name, strategy_instance)
+
+        # 3. Backtest parameters
         self.initial_capital = float(self.backtest_cfg['initial_capital'])
         self.target_profit   = float(self.backtest_cfg['target_profit_pct'])
         self.stop_loss       = float(self.backtest_cfg['stop_loss_pct'])
@@ -114,22 +135,19 @@ class BacktestEngine:
             end=self.backtest_cfg['end_date']
         )
 
-        # Per-day data cache to avoid repeated DB calls within the same day
+        # Caching and threading
         self._day_cache: Dict[Tuple[str, pd.Timestamp], pd.DataFrame] = {}
-        self._cache_lock = threading.Lock()  # for thread safety when parallel scanning
-
-        # Thread pool for parallel scanning (number of workers = min(32, stocks+4))
-        self._executor = ThreadPoolExecutor(max_workers=16)  # adjust based on DB load
+        self._cache_lock = threading.Lock()
+        self._executor = ThreadPoolExecutor(max_workers=16)
 
         logger.info(f"Backtest period: {self.trading_days[0].date()} → {self.trading_days[-1].date()} "
                     f"({len(self.trading_days)} trading days), "
-                    f"parallel workers: {self._executor._max_workers}")
+                    f"strategy={self.strategy_name}, workers={self._executor._max_workers}")
 
     # ------------------------------------------------------------------
-    # Data helpers (with caching)
+    # Data helpers (with caching) – unchanged
     # ------------------------------------------------------------------
     def _fetch_data(self, symbol: str, end_date: pd.Timestamp) -> Optional[pd.DataFrame]:
-        """Actual DB query, called once per (symbol, end_date) pair."""
         table_name = self.scanner.get_table_name(symbol)
         start_date = end_date - timedelta(days=self.backtest_cfg['lookback_days'])
         df = get_table_content(
@@ -148,22 +166,16 @@ class BacktestEngine:
         return df[['time'] + list(column_mapping.values())]
 
     def get_data_for_date(self, symbol: str, end_date: pd.Timestamp) -> Optional[pd.DataFrame]:
-        """
-        Historical data up to end_date, cached per (symbol, end_date).
-        Thread-safe.
-        """
         key = (symbol, end_date)
         with self._cache_lock:
             if key in self._day_cache:
                 return self._day_cache[key].copy() if self._day_cache[key] is not None else None
-
         df = self._fetch_data(symbol, end_date)
         with self._cache_lock:
             self._day_cache[key] = df.copy() if df is not None else None
         return df
 
     def get_day_data(self, symbol: str, date: pd.Timestamp) -> Optional[pd.DataFrame]:
-        """Return OHLC data for a specific trading day (from cache)."""
         df = self.get_data_for_date(symbol, date)
         if df is None or df.empty:
             return None
@@ -171,13 +183,9 @@ class BacktestEngine:
         return day_data if not day_data.empty else df.tail(1)
 
     # ------------------------------------------------------------------
-    # Signal scanning – parallelized
+    # Signal scanning – parallelized (unchanged)
     # ------------------------------------------------------------------
     def _scan_one_stock(self, stock: dict, date: pd.Timestamp) -> Optional[dict]:
-        """
-        Generate a buy signal for one stock on the given date.
-        Returns signal dict or None. Thread-safe.
-        """
         try:
             df = self.get_data_for_date(stock['symbol'], date)
             if df is None or len(df) < 5:
@@ -206,23 +214,18 @@ class BacktestEngine:
         return None
 
     def scan_on_date(self, date: pd.Timestamp) -> List[Dict]:
-        """Parallel scan of up to 200 stocks for buy signals."""
         stocks = self.scanner.get_stock_symbols()[:200]
         signals = []
-
-        # Parallel execution
         futures = {self._executor.submit(self._scan_one_stock, stock, date): stock for stock in stocks}
         for future in as_completed(futures):
             result = future.result()
             if result is not None:
                 signals.append(result)
-
-        logger.info(f"{date.date()}: Found {len(signals)} raw signals "
-                    f"(util={self.utilisation_pct():.2%})")
+        logger.info(f"{date.date()}: Found {len(signals)} raw signals (util={self.utilisation_pct():.2%})")
         return signals
 
     # ------------------------------------------------------------------
-    # Capital & utilisation
+    # Capital & utilisation (unchanged)
     # ------------------------------------------------------------------
     def utilised_capital(self) -> float:
         return sum(t.allocated_capital for t in self.open_trades)
@@ -236,7 +239,7 @@ class BacktestEngine:
         return self.utilised_capital() / self.total_capital
 
     # ------------------------------------------------------------------
-    # Trade execution
+    # Trade execution (unchanged)
     # ------------------------------------------------------------------
     def check_and_exit_trades(self, date: pd.Timestamp):
         for trade in self.open_trades[:]:
@@ -284,49 +287,40 @@ class BacktestEngine:
         self.total_capital += trade.pnl
         self.open_trades.remove(trade)
         self.closed_trades.append(trade)
-
         logger.info(f"🔴 EXIT {trade.symbol} on {exit_date.date()} "
                     f"reason={reason} price={exit_price:.2f} pnl={trade.pnl:.2f}")
 
     # ------------------------------------------------------------------
-    # Main loop – sector‑based allocation
+    # Main loop (unchanged)
     # ------------------------------------------------------------------
     def run(self):
         pw_config = self.backtest_cfg['position_weights']
 
         for i, date in enumerate(self.trading_days):
-            # 1. Clear per-day cache to free memory
             with self._cache_lock:
                 self._day_cache.clear()
 
-            # 2. Check exits
             self.check_and_exit_trades(date)
 
-            # 3. Scan for new signals (parallel) if we have room
             if self.utilisation_pct() < 0.51:
                 raw_signals = self.scan_on_date(date)
                 if raw_signals:
                     selected = select_and_weight_signals(raw_signals, pw_config)
-
                     for signal in selected:
                         weight = signal.get('final_weight', 0)
                         if weight <= 0:
                             continue
-
-                        entry_price = signal['open']   # no look‑ahead, using today's open
+                        entry_price = signal['open']
                         alloc_wanted = self.total_capital * weight
                         cash = self.available_cash()
                         alloc = min(alloc_wanted, cash)
-
                         if alloc <= 0:
                             logger.warning(f"⚠️  Insufficient cash for {signal['symbol']}")
                             continue
-
                         shares = int(alloc // entry_price)
                         if shares == 0:
                             logger.warning(f"⚠️  Cannot afford even 1 share of {signal['symbol']}")
                             continue
-
                         used_capital = shares * entry_price
                         trade = Trade(
                             symbol=signal['symbol'],
@@ -340,12 +334,9 @@ class BacktestEngine:
                         logger.info(f"✅ ENTERED {signal['symbol']} on {date.date()} "
                                     f"price={entry_price:.2f} shares={shares} allocated={used_capital:.2f}")
 
-            # 4. Record EOD portfolio value
             self.portfolio_values.append((date, self.total_capital))
-            logger.debug(f"{date.date()}: utilisation={self.utilisation_pct():.2%}, "
-                         f"open trades={len(self.open_trades)}")
+            logger.debug(f"{date.date()}: utilisation={self.utilisation_pct():.2%}, open={len(self.open_trades)}")
 
-        # Force‑close open trades at end
         last_date = self.trading_days[-1]
         for trade in self.open_trades[:]:
             last_data = self.get_data_for_date(trade.symbol, last_date)
@@ -361,9 +352,9 @@ class BacktestEngine:
     # Performance metrics (unchanged)
     # ------------------------------------------------------------------
     def metrics(self) -> Dict:
+        # same as original, no changes needed
         if not hasattr(self, 'results') or self.results.empty:
             return {}
-
         returns = self.results['portfolio_value'].pct_change().dropna()
         total_return = (self.results['portfolio_value'].iloc[-1] / self.initial_capital - 1) * 100
         returns_std = returns.std()
@@ -408,7 +399,6 @@ class BacktestEngine:
         }
 
 
-# ----------------------------------------------------------------------
 if __name__ == "__main__":
     engine = BacktestEngine("config/stock_list.yaml")
     results = engine.run()
@@ -420,5 +410,5 @@ if __name__ == "__main__":
 
     if engine.closed_trades:
         trades_df = pd.DataFrame([t.__dict__ for t in engine.closed_trades])
-        trades_df.to_csv("data/backtest_trades.csv", index=False)
+        trades_df.to_csv("data/backtesting/backtest_trades.csv", index=False)
         logger.info("Trade log saved to backtest_trades.csv")

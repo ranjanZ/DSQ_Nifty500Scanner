@@ -2,7 +2,7 @@ backtest:
   start_date: "2026-01-01"          # start of backtesting period
   end_date: "2026-02-04"            # end of backtesting period
   initial_capital: 100000
-  strategy_name: "Volume_Price_Strategy"   # strategy to scan with
+  strategy_name: "Support_Resistance"   # strategy to scan with
   target_profit_pct: 0.08           # 8%
   stop_loss_pct: 0.04               # 4%
   max_holding_days: 7
@@ -40,4 +40,4 @@ backtest:
 
   # days of historical data used for signal generation
   lookback_days: 100
-  watchlist: ["nifty_top_500"]
+  watchlist: ["nifty_top_5"]

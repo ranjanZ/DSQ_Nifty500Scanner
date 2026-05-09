@@ -10,8 +10,21 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.strategy.market_scanner import MarketScanner
 from src.data_pipeline.db_utils import get_table_content
 
+# Import the concrete strategy classes (add more as needed)
+from src.strategy.crossover_strategy import MovingAverageCrossoverStrategy
+from src.strategy.madam_strategy import SupportResistanceStrategy
+# from src.strategy.volume_price_strategy import VolumePriceStrategy   # if you have one
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Map strategy names (from backtest_config.yaml) to their class
+STRATEGY_CLASSES = {
+    "MA_Crossover": MovingAverageCrossoverStrategy,
+    "Support_Resistance": SupportResistanceStrategy,
+    # "Volume_Price": VolumePriceStrategy,
+}
+
 
 @dataclass
 class Trade:
@@ -83,9 +96,23 @@ class BacktestEngine:
         with open(backtest_yaml_config_path, 'r') as f:
             self.backtest_cfg = yaml.safe_load(f)['backtest']
 
-        self.scanner = MarketScanner(yaml_config_path, watch_list=self.backtest_cfg['watchlist'])
+        # Create scanner with required watchlist and number of backtest days
+        self.scanner = MarketScanner(
+            yaml_config_path,
+            watch_list=self.backtest_cfg['watchlist'],
+            num_back_days=self.backtest_cfg['lookback_days']  # ensure enough historical data
+        )
         self.strategy_name = self.backtest_cfg['strategy_name']
-        self.scanner.create_strategy(self.strategy_name, self.strategy_name, params=None)
+
+        # --- Instantiate and add the strategy directly (no factory) ---
+        strategy_class = STRATEGY_CLASSES.get(self.strategy_name)
+        if strategy_class is None:
+            raise ValueError(f"Unknown strategy '{self.strategy_name}'. "
+                             f"Available: {list(STRATEGY_CLASSES.keys())}")
+        # Optionally read params from config (if defined)
+        strategy_params = self.backtest_cfg.get('strategy_params', {})
+        strategy_instance = strategy_class(params=strategy_params)
+        self.scanner.add_strategy(self.strategy_name, strategy_instance)
 
         self.initial_capital = float(self.backtest_cfg['initial_capital'])
         self.target_profit   = float(self.backtest_cfg['target_profit_pct'])
@@ -115,7 +142,7 @@ class BacktestEngine:
         in one batch per stock. Stores in self.data_dict {symbol: DataFrame}.
         """
         logger.info("Loading historical data for all stocks ...")
-        stocks = self.scanner.get_stock_symbols()[:200]
+        stocks = self.scanner.get_stock_symbols()  # uses the watchlist from config
         self.data_dict = {}
         self.stock_meta = {}
 
@@ -152,14 +179,13 @@ class BacktestEngine:
         logger.info("Precomputing signals (parallel per symbol using threads) ...")
         self.signals_by_date: Dict[pd.Timestamp, List[dict]] = {d: [] for d in self.trading_days}
 
-        # Define the worker inside the method – threads can access `self` directly
         def process_symbol(symbol):
             df = self.data_dict.get(symbol)
             if df is None or len(df) < 5:
                 return []
             meta = self.stock_meta[symbol]
             results = []
-            strategy = self.scanner.strategies[self.strategy_name]
+            strategy = self.scanner.strategies[self.strategy_name]  # already added
             for date in self.trading_days:
                 mask = df['time'] <= date
                 historical = df[mask]
@@ -169,13 +195,9 @@ class BacktestEngine:
                     signals_df = strategy.generate_signals(historical)
 
                     last_5 = signals_df.iloc[-5:]
-                    # if any(last_5['signal'] != 0):
-                    #     latest = last_5[last_5['signal'] != 0].iloc[-1]
-                    # else:
-                    #     latest = last_5.iloc[-1]
+                    latest = last_5.iloc[-1]   # latest row (may have signal 0)
 
-                    latest = last_5.iloc[-1]
-
+                    # Buy signal only if numeric signal == 1
                     if latest['signal'] == 1:
                         results.append((
                             date,
@@ -193,7 +215,6 @@ class BacktestEngine:
             return results
 
         symbols = list(self.data_dict.keys())
-        # Use a thread pool – no pickling issues, still good parallelism for I/O and CPU
         with ThreadPoolExecutor(max_workers=8) as pool:
             futures = {pool.submit(process_symbol, sym): sym for sym in symbols}
             for future in as_completed(futures):
@@ -265,7 +286,7 @@ class BacktestEngine:
         return self.results
 
     # ------------------------------------------------------------------
-    # Helpers
+    # Helpers (unchanged)
     # ------------------------------------------------------------------
     def get_day_data(self, symbol, date):
         """Return OHLC data for a specific day."""
@@ -324,14 +345,13 @@ class BacktestEngine:
         logger.info(f"🔴 EXIT {trade.symbol} on {exit_date.date()} "
                     f"reason={reason} price={exit_price:.2f} pnl={trade.pnl:.2f}")
 
-
-    # ------------------------------------------------------------------
-    # Capital & metrics (unchanged)
-    # ------------------------------------------------------------------
+    # Capital & metrics
     def utilised_capital(self):
         return sum(t.allocated_capital for t in self.open_trades)
+
     def available_cash(self):
         return self.total_capital - self.utilised_capital()
+
     def utilisation_pct(self):
         return self.utilised_capital() / self.total_capital if self.total_capital else 0.0
 

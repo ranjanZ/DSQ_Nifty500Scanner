@@ -12,9 +12,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 # Now import
-from utils.fyers.fyers_broker import *
-from data_pipeline.db_utils import delete_old_data
-from  data_pipeline.db_utils import crate_table_spot_data
+from src.utils.fyers.fyers_broker import *
+from src.data_pipeline.db_utils import delete_old_data
+from  src.data_pipeline.db_utils import crate_table_spot_data
 
 
 # Set up logging
