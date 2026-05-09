@@ -27,7 +27,7 @@ def example_simple_live_trading():
     logger.info("EXAMPLE 1: Simple Live Trading")
     logger.info("="*80)
     
-    from src.backtesting.live_trader import LiveTrader
+    from src.backtesting.live.live_trader import LiveTrader
     
     # Initialize trader
     trader = LiveTrader(config_path="config/live_trading_config.yaml")
@@ -52,7 +52,7 @@ def example_realtime_data():
     logger.info("EXAMPLE 2: Real-time Data Streaming")
     logger.info("="*80)
     
-    from src.backtesting.realtime_data import MockRealtimeDataHandler
+    from src.backtesting.live.realtime_data import MockRealtimeDataHandler
     import time
     
     # Create data handler (using mock for testing)
@@ -102,7 +102,7 @@ def example_order_management():
     logger.info("EXAMPLE 3: Order Management")
     logger.info("="*80)
     
-    from src.backtesting.order_manager import OrderManager
+    from src.backtesting.live.order_manager import OrderManager
     
     manager = OrderManager()
     
@@ -164,7 +164,7 @@ def example_portfolio_management():
     logger.info("EXAMPLE 4: Portfolio Management")
     logger.info("="*80)
     
-    from src.backtesting.live_trader import PortfolioManager, Position
+    from src.backtesting.live.live_trader import PortfolioManager, Position
     import pytz
     from datetime import datetime
     
@@ -228,7 +228,7 @@ def example_market_hours():
     logger.info("EXAMPLE 5: Market Hours Scheduling")
     logger.info("="*80)
     
-    from src.backtesting.live_trader import LiveTrader
+    from src.backtesting.live.live_trader import LiveTrader
     
     trader = LiveTrader(config_path="config/live_trading_config.yaml")
     

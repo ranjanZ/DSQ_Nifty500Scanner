@@ -14,9 +14,9 @@ from unittest.mock import Mock, patch
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.backtesting.live_trader import LiveTrader, PortfolioManager, Position
-from src.backtesting.realtime_data import MockRealtimeDataHandler
-from src.backtesting.order_manager import OrderManager, OrderType, OrderSide
+from src.backtesting.live.live_trader import LiveTrader, PortfolioManager, Position
+from src.backtesting.live.realtime_data import MockRealtimeDataHandler
+from src.backtesting.live.order_manager import OrderManager, OrderType, OrderSide
 from src.strategy.rsi_w_strategy import RSIWPatternStrategy
 import pandas as pd
 import numpy as np

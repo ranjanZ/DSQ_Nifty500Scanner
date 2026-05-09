@@ -4,7 +4,7 @@ import sys, os, time
 import pandas as pd
 from fyers_apiv3 import fyersModel
 from fyers_apiv3.FyersWebsocket import data_ws
-from .fyers_auth import access_token, client_id, fyers
+from src.utils.fyers.fyers_auth import access_token, client_id, fyers
 import pytz
 import random
 import datetime
@@ -72,6 +72,7 @@ class fyers_API:
             response = self.fyers.orderbook()          # ← corrected method name
             # The response typically has a key 'orderBook' containing the list
             order_list = response.get("orderBook", response.get("orders", []))
+            print(f"Raw order response: {response}")  # Debug print to check structure
             orders = {}
             for order in order_list:
                 order_id = order.get("id") or order.get("orderId")
@@ -160,3 +161,4 @@ if __name__ == "__main__":
     symbol_list = ["NSE:NIFTY50-INDEX", "NSE:NIFTY2581424550CE", "NSE:NIFTY2581424500PE", "NSE:NIFTY2581423600PE"]
     fyers_API().get_his_candle_data(symbol=symbol_list[0], fromdate='2023-10-10', todate='2023-10-15', interval="1")
     fyers_API().get_funds()
+    fyers_API().get_orders()
