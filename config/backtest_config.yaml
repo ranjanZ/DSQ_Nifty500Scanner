@@ -1,0 +1,43 @@
+backtest:
+  start_date: "2026-01-01"          # start of backtesting period
+  end_date: "2026-02-04"            # end of backtesting period
+  initial_capital: 100000
+  strategy_name: "Volume_Price_Strategy"   # strategy to scan with
+  target_profit_pct: 0.08           # 8%
+  stop_loss_pct: 0.04               # 4%
+  max_holding_days: 7
+  # capital allocation weights for top-ranked buy signals (must sum to 1.0)
+  # top 1 gets 50%, top 2 gets 30%, top 3 gets 20%
+  position_weights:
+    method: "sector_based"
+    max_positions: 7
+    max_per_sector: 1
+    # Weights proportional to sector size (total = ~500 stocks)
+    sector_allocation:
+      "Financial Services": 0.6
+      "Capital Goods": 0.3
+      "Healthcare": 0.3
+      "Automobile and Auto Components": 0
+      "Information Technology": 0
+      "Fast Moving Consumer Goods": 0
+      "Consumer Services": 0
+      "Chemicals": 0
+      "Oil Gas & Consumable Fuels": 0
+      "Consumer Durables": 0
+      "Power": 0
+      "Metals & Mining": 0
+      "Services": 0
+      "Construction": 0
+      "Construction Materials": 0
+      "Realty": 0
+      "Telecommunication": 0
+      "Textiles": 0
+      "Diversified": 0
+      "Media Entertainment & Publication": 0
+      "Energy": 0
+      "Forest Materials": 0
+
+
+  # days of historical data used for signal generation
+  lookback_days: 100
+  watchlist: ["nifty_top_500"]

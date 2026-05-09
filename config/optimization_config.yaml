@@ -1,0 +1,25 @@
+yaml_config: "config/stock_list.yaml"
+backtest_config: "config/backtest_config.yaml"
+objective_metric: "sharpe"
+force_reload: false
+output_dir: "optimization_results"
+method: "bayesian"
+trials: 50
+checkpoint_interval: 5
+
+param_ranges:
+  target_profit_pct:
+    low: 0.03
+    high: 0.15
+    type: float
+  stop_loss_pct:
+    low: 0.02
+    high: 0.08
+    type: float
+  max_holding_days:
+    low: 3
+    high: 15
+    type: int
+
+param_constraints:
+  - "target_profit_pct > stop_loss_pct"
