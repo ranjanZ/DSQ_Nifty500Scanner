@@ -1,0 +1,12 @@
+pyTelegramBotAPI
+pyyaml
+pandas
+psycopg2
+fyers_apiv3
+pyotp
+scipy
+mplfinance
+tqdm
+pytz
+optuna
+matplotlib
