@@ -34,15 +34,9 @@ class BrokerSync:
     def get_broker_positions(self) -> Dict[str, Any]:
         """Get positions from broker"""
         try:
-            # Note: This is placeholder - actual implementation depends on Fyers API
-            # In production, you would call: self.broker.get_positions()
             logger.debug("Fetching positions from broker")
-            
-            positions = {}
-            # positions = self.broker.get_positions()
-            
+            positions = self.broker.get_positions()
             return positions
-        
         except Exception as e:
             logger.error(f"Error getting broker positions: {e}")
             return {}
@@ -51,12 +45,8 @@ class BrokerSync:
         """Get orders from broker"""
         try:
             logger.debug("Fetching orders from broker")
-            
-            orders = {}
-            # orders = self.broker.get_orders()
-            
+            orders = self.broker.get_orders()
             return orders
-        
         except Exception as e:
             logger.error(f"Error getting broker orders: {e}")
             return {}
@@ -188,7 +178,26 @@ class BrokerSync:
         except Exception as e:
             logger.error(f"Error syncing orders: {e}")
             return False, {'error': str(e)}
-    
+    def sync_account_balance(self) -> Dict[str, Any]:
+        """
+        Fetch latest account balance from broker and return it.
+        The balance is not stored persistently; it can be saved in the state manager
+        if needed, or cached in self._balance for later use.
+        """
+        try:
+            balance = self.broker.get_funds()
+            if balance:
+                # Cache the balance inside the instance for quick access
+                self._balance = balance
+                logger.info(f"Account balance synced: Equity Available={balance.get('equity_available', 0)}")
+                return {"success": True, "balance": balance}
+            return {"success": False, "error": "No balance data returned"}
+        except Exception as e:
+            logger.error(f"Error syncing account balance: {e}")
+            return {"success": False, "error": str(e)}
+
+
+
     def full_sync(self) -> Dict[str, Any]:
         """
         Perform full synchronization with broker
@@ -215,6 +224,10 @@ class BrokerSync:
             ord_success, ord_changes = self.sync_orders()
             result['orders'] = ord_changes
             result['success'] = result['success'] and ord_success
+            balance_result = self.sync_account_balance()
+            result['balance'] = balance_result
+            result['success'] = result['success'] and balance_result.get('success', True)
+
             
             logger.info(f"Full sync completed: {'SUCCESS' if result['success'] else 'FAILED'}")
             return result
@@ -274,18 +287,99 @@ class BrokerSync:
             session_summary = self.state_manager.get_session_summary()
             broker_positions = self.get_broker_positions()
             broker_orders = self.get_broker_orders()
-            
+
+            # session_summary fields are already integers, not lists
+            local_positions_count = session_summary.get('open_positions', 0)
+            local_orders_count = session_summary.get('total_orders', 0)
+
+            # Optionally fetch balance and include it
+            balance = self.broker.get_funds()
+
             status = {
                 'timestamp': datetime.now(self.tz).isoformat(),
-                'local_positions': len(session_summary.get('open_positions', 0)),
+                'local_positions': local_positions_count,
                 'broker_positions': len(broker_positions),
-                'local_orders': session_summary.get('total_orders', 0),
+                'local_orders': local_orders_count,
                 'broker_orders': len(broker_orders),
-                'synced': len(session_summary.get('open_positions', 0)) == len(broker_positions)
+                'balance': balance,
+                'synced': local_positions_count == len(broker_positions)
             }
-            
             return status
-        
         except Exception as e:
             logger.error(f"Error getting sync status: {e}")
             return {'error': str(e), 'synced': False}
+    
+
+# ----------------------------------------------------------------------
+# Direct execution block for testing / manual sync
+# ----------------------------------------------------------------------
+if __name__ == "__main__":
+    # Set up logging so we can see what's happening
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger("BrokerSync")
+    
+    print("=" * 60)
+    print("Starting Broker Synchronization Test")
+    print("=" * 60)
+    
+    # Initialise with actual broker connection (no mock)
+    # The fyers_API() will use credentials from your environment/config.
+    # Make sure your FYERS_APP_ID, FYERS_SECRET, FYERS_REDIRECT_URI, 
+    # and access token are set correctly in your environment or .env file.
+    sync = BrokerSync()
+    
+    # 1. Show current status before sync
+    print("\n>>> Current Sync Status (before sync):")
+    status_before = sync.get_sync_status()
+    for k, v in status_before.items():
+        print(f"  {k}: {v}")
+    
+    # 2. Perform full synchronization
+    print("\n>>> Performing Full Sync...")
+    result = sync.full_sync()
+    print("Sync Result:")
+    print(f"  Success: {result.get('success')}")
+    print(f"  Timestamp: {result.get('timestamp')}")
+    if 'error' in result:
+        print(f"  Error: {result['error']}")
+    else:
+        print("  Position changes:")
+        pos = result.get('positions', {})
+        for change_type, symbols in pos.items():
+            if symbols:
+                print(f"    {change_type}: {symbols}")
+        print("  Order changes:")
+        ord = result.get('orders', {})
+        for change_type, order_ids in ord.items():
+            if order_ids:
+                print(f"    {change_type}: {order_ids}")
+    
+
+    print("\n>>> Account Balance:")
+    balance = sync.sync_account_balance()
+    if balance.get('success'):
+        for k, v in balance['balance'].items():
+            print(f"  {k}: {v}")
+    else:
+        print(f"  Error: {balance.get('error')}")
+
+
+    # 3. Show status after sync
+    print("\n>>> Status After Sync:")
+    status_after = sync.get_sync_status()
+    for k, v in status_after.items():
+        print(f"  {k}: {v}")
+    
+    # 4. Optional: reconcile a particular symbol
+    # Replace with a symbol you actually trade if you want to test
+    test_symbol = "NSE:NIFTY50-INDEX"
+    print(f"\n>>> Reconciling position for {test_symbol}:")
+    match, msg = sync.reconcile_position(test_symbol)
+    print(f"  Match: {match}")
+    print(f"  Message: {msg}")
+    
+    print("\n" + "=" * 60)
+    print("Synchronization test completed.")

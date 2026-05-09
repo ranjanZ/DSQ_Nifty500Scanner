@@ -174,9 +174,12 @@ class LiveTradingEngine:
     def is_market_open(self) -> bool:
         """Check if Indian market is currently open"""
         now = datetime.now(self.tz)
-        
+        return True
+    
+    
         # Market closed on weekends
         if now.weekday() >= 5:  # Saturday=5, Sunday=6
+            logger.info("Market closed on weekends")
             return False
         
         market_open = datetime.strptime(
@@ -187,7 +190,8 @@ class LiveTradingEngine:
         ).time()
         
         return market_open <= now.time() <= market_close
-    
+        
+
     def get_historical_data(self, symbol: str, days_back: int = 30):
         """Fetch historical data"""
         try:

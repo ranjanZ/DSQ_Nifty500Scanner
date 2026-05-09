@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, List
 import matplotlib.pyplot as plt
-from strategy.strategy_base import TradingStrategy
+from src.strategy.strategy_base import TradingStrategy
 
 
 class RSIWPatternStrategy(TradingStrategy):
