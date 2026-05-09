@@ -14,7 +14,7 @@ data/
 *.swo
 
 # Data files
-data/
+data/raw/
 
 # Logs
 *.log

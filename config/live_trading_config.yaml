@@ -16,7 +16,7 @@ live_trading:
   trailing_stop_pct: 0.01           # 1% trailing stop
   
   # Data refresh intervals
-  data_refresh_interval: 60         # seconds (1 minute candlesticks)
+  data_refresh_interval: 5       # seconds (1 minute candlesticks)
   price_update_interval: 5          # seconds (for real-time price checks)
   
   # Strategy selection
