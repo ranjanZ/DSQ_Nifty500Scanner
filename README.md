@@ -1,0 +1,1 @@
+# DSQ_Nifty500Scanner
