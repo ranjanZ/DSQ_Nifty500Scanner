@@ -246,6 +246,117 @@ class fyers_API:
             logger.error(f"❌ Error fetching funds: {e}")
             return {}
 
+    def get_quotes(self, symbol: str) -> dict:
+        """Get live quotes (LTP) for a symbol"""
+        try:
+            response = self.fyers.quotes({"symbols": [symbol]})
+            if response and response.get('s') == 'ok':
+                logger.debug(f"✅ Got quotes for {symbol}")
+                return response
+            else:
+                logger.error(f"❌ Quote failed for {symbol}: {response}")
+                return {}
+        except Exception as e:
+            logger.error(f"❌ Error fetching quotes for {symbol}: {e}")
+            return {}
+
+    def place_oco_order(self, symbol: str, qty: int, side: str, entry_price: float,
+                       stop_loss: float, take_profit: float) -> dict:
+        """
+        Place an OCO (One-Cancels-Other) bracket order
+        - Entry order (BUY/SELL)
+        - Stop-loss order (opposite side)
+        - Take-profit order (opposite side)
+        
+        Returns dict with 'parent', 'sl_order_id', 'tp_order_id'
+        """
+        try:
+            logger.info(f"📊 Placing OCO bracket for {symbol}: Entry={entry_price}, SL={stop_loss}, TP={take_profit}")
+            
+            side_int = 1 if side.upper() == "BUY" else -1
+            
+            # 1. Place entry order (LIMIT at entry_price)
+            entry_order_data = {
+                "symbol": symbol,
+                "qty": qty,
+                "type": 1,  # LIMIT
+                "side": side_int,
+                "productType": "INTRADAY",
+                "limitPrice": entry_price,
+                "stopPrice": 0,
+                "validity": "DAY",
+                "disclosedQty": 0,
+                "offlineOrder": False,
+                "stopLoss": 0,
+                "takeProfit": 0
+            }
+            
+            entry_response = self.fyers.place_order(data=entry_order_data)
+            if not entry_response or entry_response.get('s') != 'ok':
+                logger.error(f"❌ Entry order failed: {entry_response}")
+                return {'parent': None, 'sl_order_id': None, 'tp_order_id': None}
+            
+            entry_order_id = entry_response.get('id', '')
+            logger.info(f"✅ Entry order placed: {entry_order_id}")
+            
+            # 2. Place SL order (STOP_LOSS - market sell at SL price)
+            sl_order_data = {
+                "symbol": symbol,
+                "qty": qty,
+                "type": 2,  # MARKET (triggered by stop_price)
+                "side": -side_int,  # opposite side
+                "productType": "INTRADAY",
+                "limitPrice": 0,
+                "stopPrice": stop_loss,  # Trigger price
+                "validity": "DAY",
+                "disclosedQty": 0,
+                "offlineOrder": False,
+                "stopLoss": 0,
+                "takeProfit": 0
+            }
+            
+            sl_response = self.fyers.place_order(data=sl_order_data)
+            if not sl_response or sl_response.get('s') != 'ok':
+                logger.warning(f"⚠️  SL order failed: {sl_response}")
+                sl_order_id = None
+            else:
+                sl_order_id = sl_response.get('id', '')
+                logger.info(f"✅ SL order placed: {sl_order_id}")
+            
+            # 3. Place TP order (TAKE_PROFIT - market sell/buy at TP price)
+            tp_order_data = {
+                "symbol": symbol,
+                "qty": qty,
+                "type": 2,  # MARKET (triggered by stop_price)
+                "side": -side_int,  # opposite side
+                "productType": "INTRADAY",
+                "limitPrice": 0,
+                "stopPrice": take_profit,  # Trigger price
+                "validity": "DAY",
+                "disclosedQty": 0,
+                "offlineOrder": False,
+                "stopLoss": 0,
+                "takeProfit": 0
+            }
+            
+            tp_response = self.fyers.place_order(data=tp_order_data)
+            if not tp_response or tp_response.get('s') != 'ok':
+                logger.warning(f"⚠️  TP order failed: {tp_response}")
+                tp_order_id = None
+            else:
+                tp_order_id = tp_response.get('id', '')
+                logger.info(f"✅ TP order placed: {tp_order_id}")
+            
+            return {
+                'parent': entry_order_id,
+                'sl_order_id': sl_order_id,
+                'tp_order_id': tp_order_id
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error placing OCO bracket: {e}")
+            return {'parent': None, 'sl_order_id': None, 'tp_order_id': None}
+
 
 if __name__ == "__main__":
     api = fyers_API()

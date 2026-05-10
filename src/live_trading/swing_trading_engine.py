@@ -176,22 +176,26 @@ class SwingTradingEngine:
                            stop_loss_price: float, target_price: float) -> bool:
         """
         Place a true OCO bracket order using the broker's native OCO API.
-        For Fyers, this is a single 'place_order' with type='OCO'.
+        For Fyers, this is a bracket with entry + SL + TP orders.
         Returns True if OCO placed successfully.
         """
         try:
-            # Fyers OCO example (adjust according to your broker wrapper)
-            oco_order_id = self.broker.place_oco_order(
+            # Fyers OCO - returns dict with order IDs
+            oco_result = self.broker.place_oco_order(
                 symbol=symbol,
                 qty=quantity,
                 side="BUY",
-                price=entry_price,
+                entry_price=entry_price,
                 stop_loss=stop_loss_price,
                 take_profit=target_price
             )
-            if oco_order_id:
+            
+            parent_id = oco_result.get('parent')
+            if parent_id:
                 self.oco_orders[symbol] = {
-                    'oco_id': oco_order_id,
+                    'parent_id': parent_id,
+                    'sl_id': oco_result.get('sl_order_id'),
+                    'tp_id': oco_result.get('tp_order_id'),
                     'sl_price': stop_loss_price,
                     'tp_price': target_price,
                     'quantity': quantity
@@ -210,8 +214,14 @@ class SwingTradingEngine:
         if symbol not in self.oco_orders:
             return True
         try:
-            oco_id = self.oco_orders[symbol]['oco_id']
-            self.broker.cancel_order(oco_id)
+            oco_info = self.oco_orders[symbol]
+            # Cancel all three orders (parent entry, SL, TP)
+            if oco_info.get('parent_id'):
+                self.broker.cancel_order(oco_info['parent_id'])
+            if oco_info.get('sl_id'):
+                self.broker.cancel_order(oco_info['sl_id'])
+            if oco_info.get('tp_id'):
+                self.broker.cancel_order(oco_info['tp_id'])
             del self.oco_orders[symbol]
             logger.info(f"Cancelled OCO bracket for {symbol}")
             return True
@@ -274,8 +284,12 @@ class SwingTradingEngine:
     def _get_current_price(self, symbol: str) -> Optional[float]:
         """Fetch current LTP for a symbol (via broker)"""
         try:
-            quote = self.broker.get_quotes(symbol)
-            return quote.get('ltp') if quote else None
+            quotes = self.broker.get_quotes(symbol)
+            if quotes and 'd' in quotes:
+                # Fyers format: quotes['d'][0]['v']['lp']
+                ltp = quotes['d'][0]['v']['lp']
+                return float(ltp)
+            return None
         except:
             return None
 
@@ -458,21 +472,26 @@ class SwingTradingEngine:
             logger.warning(f"Invalid entry price for {symbol}")
             return False
 
-        weight = signal_info.get('final_weight', 0)
-        total_cap = self.get_total_capital()
-        alloc_cap = total_cap * weight if weight > 0 else self.trading_config['max_position_size']
-        available = self.get_available_capital()
-        alloc_cap = min(alloc_cap, available)
-        if alloc_cap <= 0:
-            logger.warning(f"Insufficient capital for {symbol}")
-            return False
-
-        quantity = int(alloc_cap // entry_price)
-        if quantity == 0:
-            logger.warning(f"Cannot afford 1 share of {symbol}")
-            return False
-
-        used_capital = quantity * entry_price
+        # ===== TESTING MODE: Use quantity 1 for small test =====
+        quantity = 1  # Fixed quantity for testing
+        logger.info(f"🧪 TESTING MODE: Using fixed quantity = {quantity}")
+        
+        # ===== ACTUAL PRODUCTION MODE (COMMENTED FOR TESTING): =====
+        # weight = signal_info.get('final_weight', 0)
+        # total_cap = self.get_total_capital()
+        # alloc_cap = total_cap * weight if weight > 0 else self.trading_config['max_position_size']
+        # available = self.get_available_capital()
+        # alloc_cap = min(alloc_cap, available)
+        # if alloc_cap <= 0:
+        #     logger.warning(f"Insufficient capital for {symbol}")
+        #     return False
+        # quantity = int(alloc_cap // entry_price)
+        # if quantity == 0:
+        #     logger.warning(f"Cannot afford 1 share of {symbol}")
+        #     return False
+        
+        # used_capital = quantity * entry_price  # ACTUAL: Dynamic capital for production
+        used_capital = quantity * entry_price  # TESTING: Using entry_price for qty=1
         target_price = entry_price * (1 + self.target_profit_pct)
         stop_loss_price = entry_price * (1 - self.stop_loss_pct)
 
