@@ -4,7 +4,7 @@ import sys, os, time
 import pandas as pd
 from fyers_apiv3 import fyersModel
 from fyers_apiv3.FyersWebsocket import data_ws
-from .fyers_auth import access_token, client_id, fyers
+from src.utils.fyers.fyers_auth import access_token, client_id, fyers
 
 import pytz
 import random
@@ -22,55 +22,45 @@ class fyers_API:
         self.access_token = access_token
         self.client_id = client_id
 
-    def place_order(self, symbol: str, qty: int, side: str, type: str = "MARKET", price: float = 0.0) -> str:
+    def place_order(self, symbol: str, qty: int, side: str, type: str = "MARKET",
+                    price: float = 0.0, product_type: str = "INTRADAY") -> str:
         """
-        Place an order with Fyers broker
-        
-        Args:
-            symbol: Trading symbol (e.g., "NSE:SBIN-EQ")
-            qty: Quantity to trade
-            side: "BUY" or "SELL"
-            type: "MARKET" or "LIMIT"
-            price: Price for limit orders
-        
-        Returns:
-            Order ID if successful, None otherwise
+        Place an order with Fyers broker.
+        type: "MARKET" (type=2) or "LIMIT" (type=1)
         """
         try:
-            if type == "MARKET":
-                order_type = 1
-            else:
-                order_type = 2
-            
+            # Fyers type codes: 1=LIMIT, 2=MARKET
+            order_type = 2 if type.upper() == "MARKET" else 1
             side_int = 1 if side.upper() == "BUY" else -1
-            
+
             order_data = {
                 "symbol": symbol,
                 "qty": qty,
                 "type": order_type,
                 "side": side_int,
-                "productType": "MIS",
-                "limitPrice": price if type == "LIMIT" else 0,
+                "productType": product_type,
+                "limitPrice": price if type.upper() == "LIMIT" else 0,
                 "stopPrice": 0,
+                "validity": "DAY",
                 "disclosedQty": 0,
-                "offlineOrder": "False",
-                "orderTag": "live_trading"
+                "offlineOrder": False,
+                "stopLoss": 0,      # ✅ required field (even if 0)
+                "takeProfit": 0     # ✅ required field
             }
-            
-            logger.debug(f"Placing {side} order: {symbol} | Qty: {qty} | Type: {type} | Price: {price}")
-            
+
+            logger.debug(f"Placing {side} order: {symbol} | Qty: {qty} | Type: {type}")
             response = self.fyers.place_order(data=order_data)
-            
+
             if response and response.get('s') == 'ok':
                 order_id = response.get('id', '')
-                logger.info(f"✅ Order placed: {order_id} | {side} {qty} {symbol} @ {price}")
+                logger.info(f"✅ Order placed: {order_id}")
                 return order_id
             else:
                 logger.error(f"❌ Order failed: {response}")
                 return None
-        
+
         except Exception as e:
-            logger.error(f"❌ Error placing order for {symbol}: {e}")
+            logger.error(f"❌ Error placing order: {e}")
             return None
 
     def cancel_order(self, order_id: str) -> bool:
@@ -260,7 +250,78 @@ class fyers_API:
 if __name__ == "__main__":
     api = fyers_API()
     print("✅ Fyers API initialized")
-    symbol_list = ["NSE:NIFTY50-INDEX", "NSE:NIFTY2581424550CE", "NSE:NIFTY2581424500PE", "NSE:NIFTY2581423600PE"]
-    fyers_API().get_his_candle_data(symbol=symbol_list[0], fromdate='2023-10-10', todate='2023-10-15', interval="1")
-    fyers_API().get_funds()
-    fyers_API().get_orders()
+    print("👉 Make sure your app has ALGO permissions and IP whitelisted.\n")
+
+    api = fyers_API()
+
+    # 1. Test get_his_candle_data
+    print("\n1. Testing get_his_candle_data()...")
+    df = api.get_his_candle_data("NSE:SBIN-EQ", "2025-04-01", "2025-04-10", "D")
+    if not df.empty:
+        print(f"   Retrieved {len(df)} candles. Sample:\n{df.head(2)}")
+    else:
+        print("   ❌ No data or error.")
+
+    # 2. Test get_quotes
+    print("\n2. Testing get_quotes()...")
+    quotes = api.get_quotes("NSE:SBIN-EQ")
+    if quotes and 'd' in quotes:
+        ltp = quotes['d'][0]['v']['lp']
+        print(f"   LTP of SBIN: {ltp}")
+    else:
+        print("   ❌ Quote failed.")
+
+    # 3. Test place_order (small quantity, market)
+    #    Only run if you confirm (dangerous)
+    print("\n3. Testing place_order (MARKET) with tiny quantity...")
+    symbol_test = "NSE:SBIN-EQ"
+    qty_test = 1
+    if input(f"Place {qty_test} share MARKET BUY order for {symbol_test}? (y/N): ").lower() == 'y':
+        order_id = api.place_order(symbol_test, qty_test, "BUY", "MARKET")
+        if order_id:
+            print(f"   Order placed: {order_id}")
+            # Cancel it immediately (optional)
+            if input("Cancel the order? (y/N): ").lower() == 'y':
+                api.cancel_order(order_id)
+        else:
+            print("   ❌ Order failed.")
+    else:
+        print("   Skipped.")
+
+    # 4. Test stoploss order (simulated)
+    print("\n4. Testing place_stoploss_order (limit order with trigger)...")
+    if input("Place a SELL STOP_LOSS_LIMIT order for 1 share NSE:SBIN-EQ (trigger 10% below LTP)? (y/N): ").lower() == 'y':
+        ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
+        trigger = round(ltp * 0.90, 2)
+        sl_id = api.place_stoploss_order(symbol_test, 1, "SELL", trigger, trigger)
+        if sl_id:
+            print(f"   Stop-loss order placed: {sl_id}")
+            if input("Cancel it? (y/N): ").lower() == 'y':
+                api.cancel_order(sl_id)
+        else:
+            print("   ❌ SL order failed.")
+    else:
+        print("   Skipped.")
+
+    # 5. Test OCO bracket emulation
+    print("\n5. Testing OCO bracket (entry + SL + TP)...")
+    if input("Place OCO bracket for 1 share (BUY) with SL -5%, TP +5%? (y/N): ").lower() == 'y':
+        ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
+        entry_price = ltp
+        sl_price = round(entry_price * 0.95, 2)
+        tp_price = round(entry_price * 1.05, 2)
+        result = api.place_oco_order(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+        print(f"   OCO result: {result}")
+        if result['parent']:
+            print("   Cancelling all orders from this bracket...")
+            for k, oid in result.items():
+                if oid:
+                    api.cancel_order(oid)
+    else:
+        print("   Skipped.")
+
+    print("\n✅ Test suite finished.")
+
+
+
+

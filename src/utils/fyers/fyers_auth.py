@@ -26,8 +26,13 @@ fyers_id="XA71982"
 pin="1234"
 totp_token="A2YB2RMZUEBXOJU5VQ6QKPEX6F7IMQP5"
 """
-client_id="27IH6OKCVZ-100"
-secret_key="OV2B621AGP"
+
+
+#client_id="27IH6OKCVZ-100"
+#secret_key="OV2B621AGP"
+
+client_id="8ZU1YKGMVT-200"
+secret_key="c9YkxN1yj5TEnz1p"
 #redirect_uri="https://trade.fyers.in/api-login/redirect-uri/index.html"
 redirect_uri="https://www.google.com"
 #redirect_uri="https://127.0.0.1:5000/"
@@ -96,7 +101,7 @@ TOKENURL="https://api-t1.fyers.in/api/v3/token"
 payload3 = {"fyers_id":fyers_id,
            "app_id":client_id[:-4],
            "redirect_uri":redirect_uri,
-           "appType":"100","code_challenge":"",
+           "appType":"200","code_challenge":"",
            "state":"None","scope":"","nonce":"","response_type":"code","create_cookie":True}
 
 res3 = ses.post(url=TOKENURL, json= payload3).json()  
