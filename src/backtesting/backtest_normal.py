@@ -194,18 +194,17 @@ class BacktestEngine:
             strategy = self.scanner.strategies[self.strategy_name]
             signals_df = strategy.generate_signals(df)
 
+            # Match backtest_offline: Take last 5, then get the latest (even if signal=0)
             last_5 = signals_df.iloc[-5:]
-            if any(last_5['signal'] != 0):
-                latest_signal_row = last_5[last_5['signal'] != 0].iloc[-1]
-            else:
-                latest_signal_row = last_5.iloc[-1]
+            latest = last_5.iloc[-1]
 
-            if latest_signal_row['signal'] == 1:
+            # Check only the latest row (not any signal in last 5)
+            if latest['signal'] == 1:
                 return {
                     'symbol': stock['symbol'],
                     'name': stock['name'],
-                    'close': float(latest_signal_row['close']),
-                    'open': float(latest_signal_row['open']),
+                    'close': float(latest['close']),
+                    'open': float(latest['open']),
                     'sector': stock['sector'],
                     'confidence': self.scanner._calculate_confidence(signals_df),
                 }

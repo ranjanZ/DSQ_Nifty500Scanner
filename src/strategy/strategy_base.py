@@ -583,57 +583,6 @@ class TradingStrategy(ABC):
 
 
 
-# #################################################@@@@@@@@@@@@@@
-# class StrategyFactory:
-#     """
-#     Factory class to create strategy instances
-#     """
-#     STRATEGIES = {
-#         'rsi': RSIStrategy,
-#         'ma_crossover': MovingAverageCrossoverStrategy,
-#         'macd': MACDStrategy,
-#         'Volume_Price_Strategy': VolumePriceStrategy,
-#     }
-    
-#     @staticmethod
-#     def _get_all_strategies():
-#         """Lazy load strategies to avoid circular imports"""
-#         if len(StrategyFactory.STRATEGIES) == 4:  # Only core strategies loaded
-#             try:
-#                 from src.strategy.madam_strategy import SupportResistanceStrategy
-#                 StrategyFactory.STRATEGIES['support_resistance'] = SupportResistanceStrategy
-#             except ImportError:
-#                 pass
-#         return StrategyFactory.STRATEGIES
-    
-#     @classmethod
-#     def create_strategy(cls, strategy_type: str, params: Dict[str, Any] = None) -> TradingStrategy:
-#         """Create strategy instance by type"""
-#         strategies = cls._get_all_strategies()
-#         if strategy_type not in strategies:
-#             available = list(strategies.keys())
-#             raise ValueError(f"Unknown strategy type: {strategy_type}. Available: {available}")
-        
-#         strategy_class = strategies[strategy_type]
-#         return strategy_class(params)
-    
-#     @classmethod
-#     def get_available_strategies(cls) -> List[str]:
-#         """Get list of available strategy types"""
-#         return list(cls._get_all_strategies().keys())
-    
-#     @classmethod
-#     def get_strategy_default_params(cls, strategy_type: str) -> Dict[str, Any]:
-#         """Get default parameters for a strategy"""
-#         strategies = cls._get_all_strategies()
-#         if strategy_type not in strategies:
-#             raise ValueError(f"Unknown strategy type: {strategy_type}")
-        
-#         strategy_instance = cls.STRATEGIES[strategy_type]()
-#         return strategy_instance.get_parameters()
-
-
-
 
 
 
