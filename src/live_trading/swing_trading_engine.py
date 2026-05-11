@@ -11,7 +11,6 @@ import time
 import logging
 import yaml
 import uuid
-import subprocess
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import pytz
@@ -25,6 +24,7 @@ from src.strategy.market_scanner import MarketScanner
 from src.live_trading.state_manager import StateManager, PositionState
 from src.live_trading.broker_sync import BrokerSync
 from src.data_pipeline.db_utils import get_table_content
+from src.data_pipeline.read_data_store_db_lambda1 import update as update_database
 
 
 def setup_logging(log_dir: str = "logs") -> logging.Logger:
@@ -273,34 +273,38 @@ class SwingTradingEngine:
     # ------------------------------------------------------------------
     # 3:13 PM – run DB updater, scan signals, place new OCO orders
     # ------------------------------------------------------------------
-    def run_data_updater(self):
-        """Execute the external script that updates the database"""
-        script_path = "src/data_pipeline/read_data_store_db_lambda1.py"
-        if not os.path.exists(script_path):
-            logger.warning(f"DB updater script not found: {script_path}")
-            return
+    def run_data_updater(self) -> bool:
+        """Execute database updater by direct import and run"""
         try:
             logger.info("🔄 Running database updater...")
-            result = subprocess.run([sys.executable, script_path], capture_output=True, text=True, timeout=120)
-            if result.returncode == 0:
-                logger.info("Database update completed successfully")
-            else:
-                logger.error(f"DB updater error: {result.stderr}")
+            update_database()
+            logger.info("✅ Database update completed successfully")
+            return True
         except Exception as e:
-            logger.error(f"Failed to run DB updater: {e}")
+            logger.error(f"❌ Failed to run DB updater: {e}")
+            traceback.print_exc()
+            return False
 
-    def scan_and_place_signals(self, days_back: int = 100):
-        """Scan for new signals and place OCO orders if capital <50% utilised"""
+    def scan_and_place_signals(self, days_back: int = 100) -> Dict[str, Any]:
+        """Scan for new signals and place OCO orders if capital <50% utilised
+        Returns dict with 'success', 'signals_found', 'positions_opened' keys"""
+        result = {'success': False, 'signals_found': 0, 'positions_opened': 0}
+        
         if not self.can_open_position():
             logger.info(f"Capital utilisation {self.utilisation_pct():.2%} – cannot open new positions")
-            return
+            result['success'] = True
+            result['message'] = "Capital limit reached"
+            return result
 
         logger.info("🔍 3:13 PM – scanning for new signals...")
         raw_signals = self._scan_for_signals(days_back)
         if not raw_signals:
             logger.info("No buy signals found")
-            return
+            result['success'] = True
+            result['signals_found'] = 0
+            return result
 
+        result['signals_found'] = len(raw_signals)
         selected = self._select_and_weight_signals(raw_signals)
         logger.info(f"Selected {len(selected)} signals for entry")
 
@@ -311,7 +315,11 @@ class SwingTradingEngine:
             if not self.can_open_position():
                 logger.warning("Capital limit reached, stopping new entries")
                 break
-            self._place_new_position(symbol, signal)
+            if self._place_new_position(symbol, signal):
+                result['positions_opened'] += 1
+        
+        result['success'] = True
+        return result
 
     def _scan_for_signals(self, days_back: int) -> List[Dict]:
         """Internal signal scanner using the strategy"""
@@ -411,7 +419,8 @@ class SwingTradingEngine:
         return final
 
     def _place_new_position(self, symbol: str, signal_info: Dict) -> bool:
-        """Place BUY + OCO order for a new signal using swing OCO."""
+        """Place BUY + OCO order for a new signal using swing OCO.
+        Returns True only if both entry order and GTT orders are successful."""
         entry_price = signal_info.get('open', 0)
         if entry_price <= 0:
             logger.warning(f"Invalid entry price for {symbol}: {entry_price}")
@@ -443,15 +452,18 @@ class SwingTradingEngine:
             tp_price=target_price
         )
         
+        # Check if entry order was successful
         if not result or result.get('entry', {}).get('s') != 'ok':
-            logger.error(f"Position placement failed for {symbol}: {result}")
+            logger.error(f"✗ Entry order FAILED for {symbol}: {result}")
+            logger.warning(f"⚠️ Not placing GTT orders as original entry order was not successful")
             return False
         
-        # Extract order IDs
+        # Entry order succeeded, check GTT order
         buy_order_id = result['entry'].get('id', '')
         gtt_response = result.get('gtt', {})
         if gtt_response.get('s') != 'ok':
-            logger.warning(f"⚠️ GTT OCO placement failed: {gtt_response}")
+            logger.warning(f"⚠️ GTT OCO placement failed for {symbol}: {gtt_response}")
+            logger.warning(f"Entry order placed but GTT orders could not be set. Manual SL/TP management required.")
         
         # Save state
         used_capital = quantity * entry_price
@@ -468,7 +480,7 @@ class SwingTradingEngine:
             order_id=buy_order_id
         )
         if self.state_manager.add_position(pos):
-            logger.info(f"📈 Position opened: {symbol} | Cap: {used_capital:.2f} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
+            logger.info(f"✅ Position opened: {symbol} | Cap: {used_capital:.2f} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
             return True
         else:
             logger.error(f"Failed to save state for {symbol}")
@@ -479,12 +491,28 @@ class SwingTradingEngine:
     # ------------------------------------------------------------------
     # Main Trading Loop (time‑triggered)
     # ------------------------------------------------------------------
+    def _load_timing_metadata(self) -> tuple:
+        """Load last_date_position_refresh and last_date_scan from state"""
+        metadata = self.state_manager.current_session.metadata if self.state_manager.current_session else {}
+        return metadata.get('last_date_position_refresh'), metadata.get('last_date_scan')
+    
+    def _save_timing_metadata(self, position_refresh_date: str = None, scan_date: str = None):
+        """Save timing metadata to state"""
+        if self.state_manager.current_session is None:
+            return
+        if position_refresh_date:
+            self.state_manager.current_session.metadata['last_date_position_refresh'] = position_refresh_date
+        if scan_date:
+            self.state_manager.current_session.metadata['last_date_scan'] = scan_date
+        self.state_manager.save_session()
+
     def run_swing_trading_loop(self):
         logger.info("Starting live swing trading loop")
-        last_date_position_refresh = None
-        last_date_scan = None
+        
+        # Load timing metadata from state (recovers from restart)
+        last_date_position_refresh, last_date_scan = self._load_timing_metadata()
 
-        print(" ************",not self.stop_flag.is_set())
+        print(" ************", not self.stop_flag.is_set())
         while not self.stop_flag.is_set():
             try:
                 now = datetime.now(self.tz)
@@ -510,13 +538,22 @@ class SwingTradingEngine:
                     logger.info("⏰ Position refresh trigger (3:00 PM)")
                     self.refresh_positions()
                     last_date_position_refresh = current_date
+                    self._save_timing_metadata(position_refresh_date=current_date)
 
                 # --- 3:13 PM DB update + signal scan ---
                 if current_time == self.scan_time and last_date_scan != current_date:
                     logger.info("⏰ 3:13 PM – Database update & signal scan")
-                    self.run_data_updater()
-                    self.scan_and_place_signals(days_back=100)
+                    db_success = self.run_data_updater()
+                    if not db_success:
+                        logger.error("⚠️ Database update failed - skipping signal scan")
+                    else:
+                        scan_result = self.scan_and_place_signals(days_back=100)
+                        logger.info(f"🎯 Scan result: {scan_result}")
+                        if not scan_result.get('success'):
+                            logger.error(f"⚠️ Signal scan not successful: {scan_result.get('message', 'Unknown error')}")
+                    
                     last_date_scan = current_date
+                    self._save_timing_metadata(scan_date=current_date)
 
                 time.sleep(30)   # check every 30 seconds
 

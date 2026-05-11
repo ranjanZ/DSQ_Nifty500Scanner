@@ -76,6 +76,7 @@ class TradingSessionState:
     closed_positions_count: int = 0
     capital_available: float = 0
     capital_used: float = 0
+    metadata: Dict[str, Any] = field(default_factory=dict)  # Store last_date_scan, last_date_position_refresh, etc.
     
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
