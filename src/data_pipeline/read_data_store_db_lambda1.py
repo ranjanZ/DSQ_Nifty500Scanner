@@ -9,12 +9,13 @@ import os
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+#sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 # Now import
 from src.utils.fyers.fyers_broker import *
 from src.data_pipeline.db_utils import delete_old_data
 from  src.data_pipeline.db_utils import crate_table_spot_data
+from  src.data_pipeline.db_utils import insert_dataframe_to_table
 
 
 # Set up logging
@@ -165,7 +166,6 @@ watchlists:
         try:
             # Import your existing DB functions
             # Assuming these functions are in the same file or imported
-            from  data_pipeline.db_utils import crate_table_spot_data
             
             # Create tables for all stocks in watchlists
             watchlists = self.stock_config.get('watchlists', {})
@@ -238,7 +238,6 @@ watchlists:
     def save_data_to_db(self, df, table_name):
         """Save DataFrame to database table"""
         try:
-            from  data_pipeline.db_utils import insert_dataframe_to_table
             
             if df is not None and not df.empty:
                 crate_table_spot_data(db_name=self.db_config['db_name'],table_name=table_name)
