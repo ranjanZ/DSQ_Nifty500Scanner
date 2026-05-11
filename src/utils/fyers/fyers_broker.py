@@ -63,21 +63,16 @@ class fyers_API:
             logger.error(f"❌ Error placing order: {e}")
             return None
 
-    def cancel_order(self, order_id: str) -> bool:
-        """Cancel an existing order"""
+    def cancel_order(self, order_id: str):
         try:
-            response = self.fyers.cancel_order(id=order_id)
-            
-            if response and response.get('s') == 'ok':
-                logger.info(f"✅ Order cancelled: {order_id}")
-                return True
-            else:
-                logger.error(f"❌ Cancel failed: {response}")
-                return False
-        
+            # WRONG: self.fyers.cancel_order(id=order_id)
+            # RIGHT:
+            response = self.fyers.cancel_order(data={"id": order_id})
+            return response
         except Exception as e:
-            logger.error(f"❌ Error cancelling order {order_id}: {e}")
-            return False
+            logger.error(f"❌ Error: {e}")
+
+
 
     def place_stoploss_order(self, symbol: str, qty: int, price: float, stop_price: float) -> str:
         """Place a stop-loss order"""
@@ -272,6 +267,10 @@ class fyers_API:
         try:
             response = self.fyers.quotes({"symbols": [symbol]})
             if response and response.get('s') == 'ok' and response.get('d') and len(response.get('d', [])) > 0:
+                # Check if the specific symbol data within the response is valid
+                if response['d'][0]['v'].get('s') == 'error':
+                    logger.error(f"❌ Invalid symbol format: {response['d'][0]['v'].get('errmsg')}")
+                    return {}
                 logger.debug(f"✅ Got quotes for {symbol}")
                 return response
             else:
@@ -281,7 +280,9 @@ class fyers_API:
             logger.error(f"❌ Error fetching quotes for {symbol}: {e}")
             return {}
 
-
+    def round_to_tick(self, price):
+        """Round price/points to the nearest 0.05 tick"""
+        return round(float(price) * 20) / 20
 
     def place_oco_order(self, symbol: str, qty: int, side: str, entry_price: float,
                        stop_loss: float, take_profit: float) -> dict:
@@ -380,11 +381,149 @@ class fyers_API:
             logger.error(f"❌ Error placing OCO bracket: {e}")
             return {'parent': None, 'sl_order_id': None, 'tp_order_id': None}
 
+    def create_gtt(self, symbol: str, qty: int, sl_price: float, tp_price: float):
+        """
+        Places a GTT OCO (Stop-loss + Take-profit) for Swing positions
+        """
+        try:
+            # GTT OCO Payload for Fyers V3
+            gtt_data = {
+                "symbol": symbol,
+                "qty": qty,
+                "side": -1,             # Sell to exit a Buy position
+                "type": 2,              # 2 = OCO (Stop-loss and Take-profit)
+                "condition": 1,         # 1 = Price-based trigger
+                "stopPrice": self.round_to_tick(sl_price),   # SL Trigger
+                "limitPrice": self.round_to_tick(sl_price),  # SL Execution
+                "targetPrice": self.round_to_tick(tp_price)  # TP Trigger/Execution
+            }
+            
+            # In V3, the method is place_gtt, not create_gtt
+            response = self.fyers.place_gtt(data=gtt_data)
+            return response
+        except Exception as e:
+            logger.error(f"❌ GTT Error: {e}")
+            return None
 
+    def place_true_oco(self, symbol: str, qty: int, side: str, entry_price: float, 
+                    sl_points: float, tp_points: float) -> dict:
+        """Place a true OCO with BO (Bracket Order) product type"""
+        try:
+            side_int = 1 if side.upper() == "BUY" else -1
+            
+            # ⚠️ CRITICAL: Round points to 0.05 tick size
+            sl_points = self.round_to_tick(sl_points)
+            tp_points = self.round_to_tick(tp_points)
+            entry_price = self.round_to_tick(entry_price)
 
+            order_data = {
+                "symbol": symbol,
+                "qty": qty,
+                "type": 1,
+                "side": side_int,
+                "productType": "BO",
+                "limitPrice": entry_price,
+                "stopPrice": 0,
+                "validity": "DAY",
+                "offlineOrder": False,
+                "stopLoss": sl_points, 
+                "takeProfit": tp_points
+            }
 
+            response = self.fyers.place_order(data=order_data)
+            
+            # Add 'parent' key manually so test suite doesn't crash
+            if response and response.get('s') == 'ok':
+                response['parent'] = response.get('id')
+            else:
+                response['parent'] = None
+                
+            return response
+        except Exception as e:
+            logger.error(f"❌ Error: {e}")
+            return {'s': 'error', 'parent': None}
+
+    def place_swing_oco(self, symbol: str, qty: int, side: str, entry_price: float,
+                        sl_price: float, tp_price: float) -> dict:
+        """Place swing trading OCO with CNC product type"""
+        try:
+            # 1. LIMIT entry order
+            entry_data = {
+                "symbol": symbol,
+                "qty": qty,
+                "type": 1,
+                "side": 1 if side.upper() == "BUY" else -1,
+                "productType": "CNC",
+                "limitPrice": entry_price,
+                "validity": "DAY",
+                "offlineOrder": False
+            }
+            entry_res = self.fyers.place_order(data=entry_data)
+
+            if entry_res.get('s') != 'ok':
+                logger.error(f"Entry order failed: {entry_res}")
+                return {"entry": entry_res, "gtt": None}
+
+            # 2. Exit side
+            exit_side = -1 if side.upper() == "BUY" else 1
+            is_buy = (side.upper() == "BUY")
+
+            # 3. Validate SL/TP levels
+            if is_buy:
+                if not (sl_price < entry_price < tp_price):
+                    raise ValueError(f"BUY: SL({sl_price}) < Entry({entry_price}) < TP({tp_price})")
+            else:
+                if not (sl_price > entry_price > tp_price):
+                    raise ValueError(f"SELL: SL({sl_price}) > Entry({entry_price}) > TP({tp_price})")
+
+            # 4. Round prices to tick size
+            tick = 0.1
+            def round_tick(p):
+                return round(p / tick) * tick
+
+            sl_round = round_tick(sl_price)
+            tp_round = round_tick(tp_price)
+
+            # 5. Build OCO legs
+            if is_buy:
+                # BUY: target (higher) is leg1, SL (lower) is leg2
+                leg1_price = tp_round
+                leg1_trigger = tp_round
+                leg2_price = sl_round
+                leg2_trigger = sl_round
+            else:
+                # SELL: SL (higher) is leg1, target (lower) is leg2
+                leg1_price = sl_round
+                leg1_trigger = sl_round
+                leg2_price = tp_round
+                leg2_trigger = tp_round
+
+            gtt_data = {
+                "side": exit_side,
+                "symbol": symbol,
+                "productType": "CNC",
+                "orderInfo": {
+                    "leg1": {
+                        "price": leg1_price,
+                        "triggerPrice": leg1_trigger,
+                        "qty": qty
+                    },
+                    "leg2": {
+                        "price": leg2_price,
+                        "triggerPrice": leg2_trigger,
+                        "qty": qty
+                    }
+                }
+            }
+
+            gtt_res = self.fyers.place_gtt_order(data=gtt_data)
+            return {"entry": entry_res, "gtt": gtt_res}
+
+        except Exception as e:
+            logger.error(f"❌ Swing order error: {e}")
+            return None
 if __name__ == "__main__":
-    api = fyers_API()
+    from src.utils.fyers.fyers_broker import *
     print("✅ Fyers API initialized")
     print("👉 Make sure your app has ALGO permissions and IP whitelisted.\n")
 
@@ -429,7 +568,7 @@ if __name__ == "__main__":
     if input("Place a SELL STOP_LOSS_LIMIT order for 1 share NSE:SBIN-EQ (trigger 10% below LTP)? (y/N): ").lower() == 'y':
         ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
         trigger = round(ltp * 0.90, 2)
-        sl_id = api.place_stoploss_order(symbol_test, 1, "SELL", trigger, trigger)
+        sl_id = api.place_stoploss_order(symbol_test, 1, trigger, trigger)
         if sl_id:
             print(f"   Stop-loss order placed: {sl_id}")
             if input("Cancel it? (y/N): ").lower() == 'y':
@@ -446,7 +585,9 @@ if __name__ == "__main__":
         entry_price = ltp
         sl_price = round(entry_price * 0.95, 2)
         tp_price = round(entry_price * 1.05, 2)
-        result = api.place_oco_order(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+        result = api.place_true_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+        result = api.place_swing_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+
         print(f"   OCO result: {result}")
         if result['parent']:
             print("   Cancelling all orders from this bracket...")
@@ -456,7 +597,17 @@ if __name__ == "__main__":
     else:
         print("   Skipped.")
 
+
+    ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
+    entry_price = ltp
+    sl_price = round(entry_price * 0.9991, 2)
+    tp_price = round(entry_price * 1.0009, 2)
+    result = api.place_swing_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+
+
     print("\n✅ Test suite finished.")
+
+
 
 
 
