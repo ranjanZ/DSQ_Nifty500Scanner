@@ -778,6 +778,7 @@ if __name__ == "__main__":
             entry_time=datetime.now(engine.tz).isoformat(),
             quantity=10,
             capital_used=25000,
+            entry_signal="TEST",
             target_price=2625.0,
             stop_loss_price=2450.0,
             order_id="test_order"
@@ -796,6 +797,7 @@ if __name__ == "__main__":
             entry_time=old_date,
             quantity=20,
             capital_used=30000,
+            entry_signal="TEST",
             target_price=1575.0,
             stop_loss_price=1470.0,
             order_id="test_order2"
@@ -807,7 +809,10 @@ if __name__ == "__main__":
     elif args.test == "signal_scan":
         print("🔍 Testing signal scan and order placement (3:13 PM equivalent)...")
         # Ensure we have enough free capital (set initial capital high)
-        engine.state_manager.update_capital(engine.initial_capital)  # reset
+        engine.state_manager.update_session_metrics(
+            capital_available=engine.initial_capital,
+            capital_used=0
+        )  # reset
         print_state()
         engine.scan_and_place_signals(days_back=30)
         print("✅ Scan completed. New positions would be opened (dry-run).")
@@ -830,7 +835,7 @@ if __name__ == "__main__":
         # 1. Morning refresh
         engine.state_manager.add_position(PositionState(
             symbol="NSE:RELIANCE-EQ", entry_price=2500.0, entry_time=datetime.now(engine.tz).isoformat(),
-            quantity=10, capital_used=25000, target_price=2625.0, stop_loss_price=2450.0, order_id="test1"
+            quantity=10, capital_used=25000, entry_signal="TEST", target_price=2625.0, stop_loss_price=2450.0, order_id="test1"
         ))
         engine.refresh_sl_tp_at_market_open()
 
@@ -838,7 +843,7 @@ if __name__ == "__main__":
         old_date = (datetime.now(engine.tz) - timedelta(days=engine.max_hold_days + 1)).isoformat()
         engine.state_manager.add_position(PositionState(
             symbol="NSE:INFY-EQ", entry_price=1500.0, entry_time=old_date,
-            quantity=20, capital_used=30000, target_price=1575.0, stop_loss_price=1470.0, order_id="test2"
+            quantity=20, capital_used=30000, entry_signal="TEST", target_price=1575.0, stop_loss_price=1470.0, order_id="test2"
         ))
         engine.refresh_positions()
 

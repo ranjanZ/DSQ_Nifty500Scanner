@@ -269,18 +269,46 @@ class SupportResistanceStrategy(TradingStrategy):
         
         return df
     
-    def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
+    def generate_signals(self, data: pd.DataFrame, last_n_days: int = None) -> pd.DataFrame:
         """
         Generate signals on SAME candle when conditions are met
-        Uses all historical data for level calculation
+        Indicators computed for ALL data, signals only for recent candles
+        
+        Args:
+            data: OHLCV dataframe with 'time' column
+            last_n_days: Only generate signals for last N days (None = all)
+        
+        Returns:
+            DataFrame with signal and signal_strength columns
         """
+        # Calculate indicators for ALL data (for accurate support/resistance levels)
         df = self.calculate_indicators(data)
         df['signal'] = 0
         df['signal_strength'] = 0.0
-        #print(DBG)
+        
         volume_threshold = self.params['volume_threshold']
         
-        for i in range(self.params['min_history_candles'], len(df)):
+        # Determine range for signal generation
+        start_idx = self.params['min_history_candles']
+        
+        if last_n_days is not None and len(df) > 0:
+            # Find the start index based on days
+            if 'time' in df.columns:
+                df_temp = df.copy()
+                if pd.api.types.is_datetime64_any_dtype(df_temp['time']):
+                    cutoff_time = df_temp['time'].max() - pd.Timedelta(days=last_n_days)
+                    start_idx = max(start_idx, df_temp[df_temp['time'] >= cutoff_time].index.min() or start_idx)
+                else:
+                    # Try to convert if not already datetime
+                    try:
+                        df_temp['time'] = pd.to_datetime(df_temp['time'])
+                        cutoff_time = df_temp['time'].max() - pd.Timedelta(days=last_n_days)
+                        start_idx = max(start_idx, df_temp[df_temp['time'] >= cutoff_time].index.min() or start_idx)
+                    except:
+                        pass  # Use full range if conversion fails
+        
+        # Generate signals only for specified range
+        for i in range(start_idx, len(df)):
             current_candle = df.iloc[i]
             
             # Check if current candle is at resistance
@@ -303,7 +331,6 @@ class SupportResistanceStrategy(TradingStrategy):
             
             # Condition 4: Small upper wick (price closed near high)
             condition4 = current_candle['upper_wick'] < 0.3 * current_candle['candle_size']
-            #print(f"DBG: Candle {i} - Close: {current_candle['close']:.2f}, Resistance Levels: {current_candle['resistance_levels']}, At Resistance: {is_at_res}, Condition1: {condition1}, Condition2: {condition2}")           
         
             # Generate buy signal if conditions met
             if condition1 and condition2:
