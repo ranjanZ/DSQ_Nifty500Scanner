@@ -40,4 +40,4 @@ backtest:
 
   # days of historical data used for signal generation
   lookback_days: 100
-  watchlist: ["nifty_top_5"]
+  watchlist: ["nifty_top_500"]

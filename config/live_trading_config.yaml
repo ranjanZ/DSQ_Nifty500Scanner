@@ -5,7 +5,7 @@ live_trading:
   timezone: "Asia/Kolkata"
   
   # Trading parameters
-  initial_capital: 50000
+  initial_capital: 10000
   max_positions: 3
   max_position_size: 5000           # Max capital per position
   risk_per_trade: 0.02              # 2% risk per trade
