@@ -269,7 +269,7 @@ class SupportResistanceStrategy(TradingStrategy):
         
         return df
     
-    def generate_signals(self, data: pd.DataFrame, last_n_days: int = None) -> pd.DataFrame:
+    def generate_signals(self, data: pd.DataFrame, num_back_signals: int = None) -> pd.DataFrame:
         """
         Generate signals on SAME candle when conditions are met
         Indicators computed for ALL data, signals only for recent candles
@@ -291,22 +291,10 @@ class SupportResistanceStrategy(TradingStrategy):
         # Determine range for signal generation
         start_idx = self.params['min_history_candles']
         
-        if last_n_days is not None and len(df) > 0:
-            # Find the start index based on days
-            if 'time' in df.columns:
-                df_temp = df.copy()
-                if pd.api.types.is_datetime64_any_dtype(df_temp['time']):
-                    cutoff_time = df_temp['time'].max() - pd.Timedelta(days=last_n_days)
-                    start_idx = max(start_idx, df_temp[df_temp['time'] >= cutoff_time].index.min() or start_idx)
-                else:
-                    # Try to convert if not already datetime
-                    try:
-                        df_temp['time'] = pd.to_datetime(df_temp['time'])
-                        cutoff_time = df_temp['time'].max() - pd.Timedelta(days=last_n_days)
-                        start_idx = max(start_idx, df_temp[df_temp['time'] >= cutoff_time].index.min() or start_idx)
-                    except:
-                        pass  # Use full range if conversion fails
-        
+        if num_back_signals is not None and len(df) > 0:
+            start_idx=max(0, len(df) - num_back_signals)  # Simple index-based approach if time column is unreliable
+
+      
         # Generate signals only for specified range
         for i in range(start_idx, len(df)):
             current_candle = df.iloc[i]
@@ -376,7 +364,7 @@ if __name__ == "__main__":
     from src.data_pipeline.db_utils import get_table_content
     from src.utils.plot_chart import plot_signals
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=200)
+    start_date = end_date - timedelta(days=50)
     data=get_table_content(
                 db_name='spot_db_anamika',
                 table_name="ablbl_eq",
@@ -384,7 +372,7 @@ if __name__ == "__main__":
                 end_date=end_date
             )
 
-    signals = strategy.generate_signals(data)
+    signals = strategy.generate_signals(data, num_back_signals=4)
     plot_signals(signals)
 
 

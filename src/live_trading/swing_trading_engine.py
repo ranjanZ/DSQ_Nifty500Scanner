@@ -814,7 +814,7 @@ if __name__ == "__main__":
             capital_used=0
         )  # reset
         print_state()
-        engine.scan_and_place_signals(days_back=30)
+        engine.scan_and_place_signals(days_back=1)
         print("✅ Scan completed. New positions would be opened (dry-run).")
 
     elif args.test == "place_order":

@@ -109,7 +109,7 @@ class MarketScanner:
             logger.error(f"Error getting data for {symbol}: {e}")
             return None
 
-    def scan_single_stock(self, stock_info: Dict[str, Any], strategy_name: str) -> Dict[str, Any]:
+    def scan_single_stock(self, stock_info: Dict[str, Any], strategy_name: str,num_back_signals=5) -> Dict[str, Any]:
         """Scan single stock with specific strategy"""
         if strategy_name not in self.strategies:
             return {
@@ -131,7 +131,7 @@ class MarketScanner:
 
         try:
 
-            signals_df = strategy.generate_signals(df)
+            signals_df = strategy.generate_signals(df, num_back_signals=num_back_signals)
             
             last_5 = signals_df.iloc[-5:]
             latest_signal = last_5[last_5['signal'] != 0].iloc[-1] if any(last_5['signal'] != 0) else last_5.iloc[-1]
@@ -175,7 +175,7 @@ class MarketScanner:
             if i % 10 == 0:
                 logger.info(f"Progress: {i}/{len(stocks)}")
                 
-            result = self.scan_single_stock(stock, strategy_name)
+            result = self.scan_single_stock(stock, strategy_name,num_back_signals=1)
             if 'error' not in result and result.get('signal') in ('BUY', 'SELL'):
                 results.append(result)
             else:
