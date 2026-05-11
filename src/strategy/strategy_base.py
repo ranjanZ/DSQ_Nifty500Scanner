@@ -76,6 +76,7 @@ class TradingStrategy(ABC):
         This method must be implemented by subclasses
         Returns DataFrame with signals
         """
+        print("DBG: EXEcuting generate_signals in base class")
         pass
     
     def get_signal_strength(self, data: pd.DataFrame) -> float:

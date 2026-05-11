@@ -128,8 +128,9 @@ class MarketScanner:
                 'symbol': stock_info['symbol'],
                 'name': stock_info['name']
             }
-       
+
         try:
+
             signals_df = strategy.generate_signals(df)
             
             last_5 = signals_df.iloc[-5:]
@@ -282,12 +283,13 @@ if __name__ == "__main__":
     from src.strategy.madam_strategy import SupportResistanceStrategy
 
     # Create scanner
-    scanner = MarketScanner("config/stock_list.yaml", watch_list=["nifty_top_500"],num_back_days=20)    # Instantiate strategies directly (with custom parameters if needed)
-    ma_strategy = MovingAverageCrossoverStrategy(params={'fast_period': 10, 'slow_period': 30})
-    sr_strategy = SupportResistanceStrategy(params={'volume_threshold': 1.3})
+    scanner = MarketScanner("config/stock_list.yaml", watch_list=["nifty_top_500"],num_back_days=30)    # Instantiate strategies directly (with custom parameters if needed)
+
+    ma_strategy = MovingAverageCrossoverStrategy(params={'fast_period': 10, 'slow_period': 300})
+    sr_strategy = SupportResistanceStrategy(params={'volume_threshold': 1.3,'min_history_candles': 2})
 
     # Add them to the scanner
-    scanner.add_strategy("MA_Crossover", ma_strategy)
+    #scanner.add_strategy("MA_Crossover", ma_strategy)
     scanner.add_strategy("Support_Resistance", sr_strategy)
 
     # Run multi‑strategy scan
@@ -300,3 +302,5 @@ if __name__ == "__main__":
     # Get top  signals for a specific strategy
     # top_buys = scanner.get_top_signals("MA_Crossover", top_n=20, signal_type='BUY')
     # top_sells = scanner.get_top_signals("MA_Crossover", top_n=20, signal_type='SELL')
+    print(top_buys)
+    print(top_sells)

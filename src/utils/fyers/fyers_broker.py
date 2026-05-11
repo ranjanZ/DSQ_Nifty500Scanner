@@ -265,7 +265,7 @@ class fyers_API:
     def get_quotes(self, symbol: str) -> dict:
         """Get live quotes (LTP) for a symbol"""
         try:
-            response = self.fyers.quotes({"symbols": [symbol]})
+            response = self.fyers.quotes({"symbols": symbol})
             if response and response.get('s') == 'ok' and response.get('d') and len(response.get('d', [])) > 0:
                 # Check if the specific symbol data within the response is valid
                 if response['d'][0]['v'].get('s') == 'error':
@@ -451,10 +451,10 @@ class fyers_API:
             entry_data = {
                 "symbol": symbol,
                 "qty": qty,
-                "type": 1,
+                "type": 2,
                 "side": 1 if side.upper() == "BUY" else -1,
                 "productType": "CNC",
-                "limitPrice": entry_price,
+                "limitPrice": 0,
                 "validity": "DAY",
                 "offlineOrder": False
             }

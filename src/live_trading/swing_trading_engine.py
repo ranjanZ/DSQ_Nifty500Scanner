@@ -181,14 +181,13 @@ class SwingTradingEngine:
         """
         try:
             # Fyers OCO - returns dict with order IDs
-            oco_result = self.broker.place_oco_order(
+            oco_result = self.broker.place_swing_oco(
                 symbol=symbol,
                 qty=quantity,
                 side="BUY",
                 entry_price=entry_price,
-                stop_loss=stop_loss_price,
-                take_profit=target_price
-            )
+                sl_price=stop_loss_price,
+                tp_price=target_price)
             
             if not oco_result:
                 logger.error(f"❌ No OCO result for {symbol}")
@@ -517,6 +516,70 @@ class SwingTradingEngine:
         return final
 
     def _place_new_position(self, symbol: str, signal_info: Dict) -> bool:
+        """Place BUY + OCO order for a new signal using swing OCO."""
+        entry_price = signal_info.get('open', 0)
+        if entry_price <= 0:
+            logger.warning(f"Invalid entry price for {symbol}: {entry_price}")
+            return False
+
+        try:
+            entry_price = float(entry_price)
+        except (ValueError, TypeError):
+            logger.error(f"Cannot convert entry price to float for {symbol}: {entry_price}")
+            return False
+
+        # ===== TESTING MODE: Use quantity 1 =====
+        quantity = 1
+        logger.info(f"🧪 TESTING MODE: Using fixed quantity = {quantity}")
+        
+        # Calculate SL and TP
+        target_price = entry_price * (1.0 + self.target_profit_pct)
+        stop_loss_price = entry_price * (1.0 - self.stop_loss_pct)
+
+        logger.info(f"Placing position: {symbol} | Entry: {entry_price:.2f} | Qty: {quantity} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
+
+        # Use place_swing_oco (entry + GTT in one call)
+        result = self.broker.place_swing_oco(
+            symbol=symbol,
+            qty=quantity,
+            side="BUY",
+            entry_price=entry_price,
+            sl_price=stop_loss_price,
+            tp_price=target_price
+        )
+        
+        if not result or result.get('entry', {}).get('s') != 'ok':
+            logger.error(f"Position placement failed for {symbol}: {result}")
+            return False
+        
+        # Extract order IDs
+        buy_order_id = result['entry'].get('id', '')
+        gtt_response = result.get('gtt', {})
+        if gtt_response.get('s') != 'ok':
+            logger.warning(f"⚠️ GTT OCO placement failed: {gtt_response}")
+        
+        # Save state
+        used_capital = quantity * entry_price
+        pos = PositionState(
+            symbol=symbol,
+            entry_price=entry_price,
+            entry_time=datetime.now(self.tz).isoformat(),
+            quantity=quantity,
+            capital_used=used_capital,
+            entry_signal=str(signal_info),
+            target_price=target_price,
+            stop_loss_price=stop_loss_price,
+            highest_price=entry_price,
+            order_id=buy_order_id
+        )
+        if self.state_manager.add_position(pos):
+            logger.info(f"📈 Position opened: {symbol} | Cap: {used_capital:.2f} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
+            return True
+        else:
+            logger.error(f"Failed to save state for {symbol}")
+            return False
+
+    def _place_new_position_old(self, symbol: str, signal_info: Dict) -> bool:
         """Place BUY + OCO order for a new signal"""
         entry_price = signal_info.get('open', 0)
         if entry_price <= 0:
@@ -752,9 +815,9 @@ if __name__ == "__main__":
     elif args.test == "place_order":
         print("💰 Testing direct order placement...")
         test_signal = {
-            'symbol': 'NSE:TCS-EQ',
-            'name': 'TCS',
-            'open': 3500.0,
+            'symbol': 'NSE:SBIN-EQ',
+            'name': 'SBI BANK',
+            'open': 980.0,
             'sector': 'Technology',
             'confidence': 0.85,
             'final_weight': 0.2

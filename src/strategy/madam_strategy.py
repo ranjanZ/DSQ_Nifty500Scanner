@@ -24,7 +24,7 @@ class SupportResistanceStrategy(TradingStrategy):
             'min_touch_count': 1,        # Minimum touches to validate level
             'merge_tolerance': 0.005,    # Merge similar levels within 0.5%
             'max_history_days': None,    # Optional: max days to look back (None = all)
-            'min_history_candles': 20,   # Minimum candles needed to calculate levels
+            'min_history_candles': 2,   # Minimum candles needed to calculate levels
             'adaptive_kde': True,        # Adjust KDE bandwidth based on data size
             'exponential_weighting': True, # Give more weight to recent data
             'weight_decay_factor': 0.99  # Decay factor for exponential weighting
@@ -277,7 +277,7 @@ class SupportResistanceStrategy(TradingStrategy):
         df = self.calculate_indicators(data)
         df['signal'] = 0
         df['signal_strength'] = 0.0
-        
+        #print(DBG)
         volume_threshold = self.params['volume_threshold']
         
         for i in range(self.params['min_history_candles'], len(df)):
@@ -303,7 +303,8 @@ class SupportResistanceStrategy(TradingStrategy):
             
             # Condition 4: Small upper wick (price closed near high)
             condition4 = current_candle['upper_wick'] < 0.3 * current_candle['candle_size']
-            
+            #print(f"DBG: Candle {i} - Close: {current_candle['close']:.2f}, Resistance Levels: {current_candle['resistance_levels']}, At Resistance: {is_at_res}, Condition1: {condition1}, Condition2: {condition2}")           
+        
             # Generate buy signal if conditions met
             if condition1 and condition2:
                 df.loc[df.index[i], 'signal'] = 1
