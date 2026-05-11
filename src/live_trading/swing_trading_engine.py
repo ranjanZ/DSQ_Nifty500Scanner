@@ -319,7 +319,7 @@ class SwingTradingEngine:
         stocks = self.scanner.get_stock_symbols()[:200]
         end_date = datetime.now(self.tz).replace(hour=0, minute=0, second=0, microsecond=0)
         start_date = end_date - timedelta(days=days_back)
-
+        #print(DBG)
         for stock in stocks:
             try:
                 symbol = stock['symbol']
@@ -330,13 +330,14 @@ class SwingTradingEngine:
                     start_date=start_date,
                     end_date=end_date
                 )
+                print(df)
                 if df is None or df.empty:
                     continue
                 df = df.sort_values('time')
                 df['time'] = pd.to_datetime(df['time'])
                 df = df[['time', 'open', 'high', 'low', 'close', 'volume']]
 
-                signal_df = self.strategy.generate_signals(df)
+                signal_df = self.strategy.generate_signals(df,num_back_signals=2)
                 if signal_df is None or signal_df.empty:
                     continue
                 latest = signal_df.iloc[-1]
@@ -483,6 +484,7 @@ class SwingTradingEngine:
         last_date_position_refresh = None
         last_date_scan = None
 
+        print(" ************",not self.stop_flag.is_set())
         while not self.stop_flag.is_set():
             try:
                 now = datetime.now(self.tz)
@@ -603,11 +605,11 @@ if __name__ == "__main__":
         print("🔍 Testing signal scan and order placement (3:13 PM equivalent)...")
         # Ensure we have enough free capital (set initial capital high)
         engine.state_manager.update_session_metrics(
-            capital_available=engine.initial_capital,
+            capital_available=10000,
             capital_used=0
         )  # reset
         print_state()
-        engine.scan_and_place_signals(days_back=1)
+        engine.scan_and_place_signals(days_back=100)
         print("✅ Scan completed. New positions would be opened (dry-run).")
 
     elif args.test == "place_order":
