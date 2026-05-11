@@ -118,19 +118,31 @@ class fyers_API:
             
             if response and response.get('s') == 'ok':
                 positions = {}
-                for pos in response.get('netPositions', []):
-                    symbol = pos.get('symbol', '')
-                    buy_avg = pos.get('buyAvg', 0)
-                    sell_avg = pos.get('sellAvg', 0)
-                    net_qty = pos.get('netQty', 0)
-                    entry_price = buy_avg if net_qty > 0 else sell_avg
+                net_positions = response.get('netPositions', [])
+                if not net_positions:
+                    logger.debug(f"ℹ️  No open positions")
+                    return positions
                     
-                    positions[symbol] = {
-                        "entry_price": entry_price,
-                        "quantity": net_qty,
-                        "capital_used": abs(net_qty * entry_price),
-                        "raw": pos
-                    }
+                for pos in net_positions:
+                    symbol = pos.get('symbol', '')
+                    if not symbol:
+                        continue
+                    try:
+                        buy_avg = float(pos.get('buyAvg', 0))
+                        sell_avg = float(pos.get('sellAvg', 0))
+                        net_qty = int(pos.get('netQty', 0))
+                        entry_price = buy_avg if net_qty > 0 else sell_avg
+                        
+                        positions[symbol] = {
+                            "entry_price": entry_price,
+                            "quantity": net_qty,
+                            "capital_used": abs(net_qty * entry_price),
+                            "raw": pos
+                        }
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Could not parse position for {symbol}: {e}")
+                        continue
+                        
                 logger.debug(f"✅ Fetched {len(positions)} positions from broker")
                 return positions
             else:
@@ -149,17 +161,26 @@ class fyers_API:
             if response and response.get('s') == 'ok':
                 orders = {}
                 order_list = response.get('orderBook', response.get('orders', []))
+                if not order_list:
+                    logger.debug(f"ℹ️  No open orders")
+                    return orders
+                    
                 for order in order_list:
                     order_id = order.get('id') or order.get('orderId')
                     if order_id is None:
                         continue
-                    orders[order_id] = {
-                        "status": order.get("status", "UNKNOWN"),
-                        "filled_quantity": order.get("filledQty", 0),
-                        "average_price": order.get("avgPrice", 0),
-                        "symbol": order.get("symbol", ""),
-                        "raw": order
-                    }
+                    try:
+                        orders[order_id] = {
+                            "status": str(order.get("status", "UNKNOWN")),
+                            "filled_quantity": int(order.get("filledQty", 0)),
+                            "average_price": float(order.get("avgPrice", 0)),
+                            "symbol": str(order.get("symbol", "")),
+                            "raw": order
+                        }
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Could not parse order {order_id}: {e}")
+                        continue
+                        
                 logger.debug(f"✅ Fetched {len(orders)} orders from broker")
                 return orders
             else:
@@ -193,9 +214,9 @@ class fyers_API:
             
             response = fyers_model.history(data=data)
             
-            if response is None or 'candles' not in response:
+            if response is None or 'candles' not in response or not response.get('candles'):
                 logger.warning(f"No candle data for {symbol}")
-                return None
+                return pd.DataFrame()  # Return empty DataFrame instead of None
             
             df = pd.DataFrame(
                 response['candles'],
@@ -210,7 +231,7 @@ class fyers_API:
 
         except Exception as e:
             logger.error(f"❌ Error fetching candles for {symbol}: {e}")
-            return None
+            return pd.DataFrame()  # Return empty DataFrame instead of None
 
     def get_funds(self) -> dict:
         """Get account balance and margin information"""
@@ -250,7 +271,7 @@ class fyers_API:
         """Get live quotes (LTP) for a symbol"""
         try:
             response = self.fyers.quotes({"symbols": [symbol]})
-            if response and response.get('s') == 'ok':
+            if response and response.get('s') == 'ok' and response.get('d') and len(response.get('d', [])) > 0:
                 logger.debug(f"✅ Got quotes for {symbol}")
                 return response
             else:
@@ -259,6 +280,8 @@ class fyers_API:
         except Exception as e:
             logger.error(f"❌ Error fetching quotes for {symbol}: {e}")
             return {}
+
+
 
     def place_oco_order(self, symbol: str, qty: int, side: str, entry_price: float,
                        stop_loss: float, take_profit: float) -> dict:
@@ -356,6 +379,8 @@ class fyers_API:
         except Exception as e:
             logger.error(f"❌ Error placing OCO bracket: {e}")
             return {'parent': None, 'sl_order_id': None, 'tp_order_id': None}
+
+
 
 
 if __name__ == "__main__":

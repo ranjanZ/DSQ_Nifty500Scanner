@@ -190,6 +190,10 @@ class SwingTradingEngine:
                 take_profit=target_price
             )
             
+            if not oco_result:
+                logger.error(f"❌ No OCO result for {symbol}")
+                return False
+                
             parent_id = oco_result.get('parent')
             if parent_id:
                 self.oco_orders[symbol] = {
@@ -203,27 +207,45 @@ class SwingTradingEngine:
                 logger.info(f"✅ OCO bracket placed for {symbol} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
                 return True
             else:
-                logger.error(f"Failed to place OCO for {symbol}")
+                logger.error(f"❌ Failed to place OCO for {symbol} - no parent_id")
                 return False
         except Exception as e:
-            logger.error(f"OCO placement error for {symbol}: {e}")
+            logger.error(f"❌ OCO placement error for {symbol}: {e}")
+            traceback.print_exc()
             return False
 
     def _cancel_oco_bracket(self, symbol: str) -> bool:
         """Cancel existing OCO orders for a symbol"""
         if symbol not in self.oco_orders:
+            logger.debug(f"No OCO orders to cancel for {symbol}")
             return True
         try:
             oco_info = self.oco_orders[symbol]
+            cancelled = []
+            failed = []
+            
             # Cancel all three orders (parent entry, SL, TP)
             if oco_info.get('parent_id'):
-                self.broker.cancel_order(oco_info['parent_id'])
+                if self.broker.cancel_order(oco_info['parent_id']):
+                    cancelled.append(oco_info['parent_id'])
+                else:
+                    failed.append(oco_info['parent_id'])
             if oco_info.get('sl_id'):
-                self.broker.cancel_order(oco_info['sl_id'])
+                if self.broker.cancel_order(oco_info['sl_id']):
+                    cancelled.append(oco_info['sl_id'])
+                else:
+                    failed.append(oco_info['sl_id'])
             if oco_info.get('tp_id'):
-                self.broker.cancel_order(oco_info['tp_id'])
+                if self.broker.cancel_order(oco_info['tp_id']):
+                    cancelled.append(oco_info['tp_id'])
+                else:
+                    failed.append(oco_info['tp_id'])
+                    
             del self.oco_orders[symbol]
-            logger.info(f"Cancelled OCO bracket for {symbol}")
+            if failed:
+                logger.warning(f"⚠️  Partial cancellation for {symbol}: Cancelled {len(cancelled)}, Failed {len(failed)}")
+            else:
+                logger.info(f"✅ Cancelled OCO bracket for {symbol}")
             return True
         except Exception as e:
             logger.warning(f"Could not cancel OCO for {symbol}: {e}")
@@ -285,19 +307,44 @@ class SwingTradingEngine:
         """Fetch current LTP for a symbol (via broker)"""
         try:
             quotes = self.broker.get_quotes(symbol)
-            if quotes and 'd' in quotes:
-                # Fyers format: quotes['d'][0]['v']['lp']
-                ltp = quotes['d'][0]['v']['lp']
-                return float(ltp)
-            return None
-        except:
+            if not quotes or not quotes.get('d'):
+                logger.warning(f"No quote data for {symbol}")
+                return None
+            
+            quote_data = quotes.get('d', [])
+            if not quote_data or len(quote_data) == 0:
+                logger.warning(f"Empty quote data for {symbol}")
+                return None
+            
+            # Fyers format: quotes['d'][0]['v']['lp']
+            try:
+                ltp = quote_data[0].get('v', {}).get('lp')
+                if ltp is not None:
+                    return float(ltp)
+                else:
+                    logger.warning(f"LTP not found in quote for {symbol}")
+                    return None
+            except (KeyError, TypeError, ValueError, IndexError) as e:
+                logger.warning(f"Could not parse LTP for {symbol}: {e}")
+                return None
+        except Exception as e:
+            logger.error(f"Error fetching quote for {symbol}: {e}")
             return None
 
     def _manual_close_position(self, symbol: str, exit_price: float, reason: str):
+        """Manually close a position with market sell order"""
         with self.state_lock:
             pos = self.state_manager.get_position(symbol)
             if not pos:
+                logger.warning(f"Position not found for {symbol}")
                 return
+            
+            try:
+                exit_price = float(exit_price)
+            except (ValueError, TypeError):
+                logger.error(f"Invalid exit price for {symbol}: {exit_price}")
+                return
+                
             # Place market sell order
             try:
                 order_id = self.broker.place_order(
@@ -308,10 +355,14 @@ class SwingTradingEngine:
                     price=exit_price
                 )
                 if order_id:
-                    logger.info(f"Manual SELL for {symbol} @ {exit_price:.2f}")
+                    logger.info(f"✅ Manual SELL for {symbol} @ {exit_price:.2f} | Order: {order_id}")
+                else:
+                    logger.error(f"SELL order failed for {symbol}")
+                    return
             except Exception as e:
-                logger.error(f"Manual sell failed: {e}")
+                logger.error(f"Error placing sell order for {symbol}: {e}")
                 return
+                
             pnl = (exit_price - pos.entry_price) * pos.quantity
             pnl_pct = ((exit_price - pos.entry_price) / pos.entry_price) * 100
             updates = {
@@ -469,7 +520,13 @@ class SwingTradingEngine:
         """Place BUY + OCO order for a new signal"""
         entry_price = signal_info.get('open', 0)
         if entry_price <= 0:
-            logger.warning(f"Invalid entry price for {symbol}")
+            logger.warning(f"Invalid entry price for {symbol}: {entry_price}")
+            return False
+
+        try:
+            entry_price = float(entry_price)
+        except (ValueError, TypeError):
+            logger.error(f"Cannot convert entry price to float for {symbol}: {entry_price}")
             return False
 
         # ===== TESTING MODE: Use quantity 1 for small test =====
@@ -492,8 +549,10 @@ class SwingTradingEngine:
         
         # used_capital = quantity * entry_price  # ACTUAL: Dynamic capital for production
         used_capital = quantity * entry_price  # TESTING: Using entry_price for qty=1
-        target_price = entry_price * (1 + self.target_profit_pct)
-        stop_loss_price = entry_price * (1 - self.stop_loss_pct)
+        target_price = entry_price * (1.0 + self.target_profit_pct)
+        stop_loss_price = entry_price * (1.0 - self.stop_loss_pct)
+
+        logger.info(f"Placing position: {symbol} | Entry: {entry_price:.2f} | Qty: {quantity} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
 
         # 1. Place BUY order
         buy_order_id = self.broker.place_order(
@@ -506,12 +565,12 @@ class SwingTradingEngine:
         if not buy_order_id:
             logger.error(f"BUY order failed for {symbol}")
             return False
-        logger.info(f"✅ BUY placed: {symbol} qty={quantity} @ {entry_price:.2f}")
+        logger.info(f"✅ BUY placed: {symbol} qty={quantity} @ {entry_price:.2f} | Order ID: {buy_order_id}")
 
         # 2. Place OCO bracket (SL + TP)
         oco_ok = self._place_oco_bracket(symbol, quantity, entry_price, stop_loss_price, target_price)
         if not oco_ok:
-            logger.warning(f"OCO placement failed – will retry at next refresh")
+            logger.warning(f"⚠️  OCO placement failed for {symbol} – will retry at next refresh")
 
         # 3. Save state
         pos = PositionState(
