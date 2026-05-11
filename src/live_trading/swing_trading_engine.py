@@ -84,7 +84,6 @@ class SwingTradingEngine:
         self.position_weights_config = self.backtest_cfg.get('position_weights', {})
 
         # Timing (all in 24‑hour format)
-        self.morning_refresh_time = "09:16"      # 9:16 AM - re‑place SL/TP
         self.position_refresh_time = "15:00"     # 3:00 PM - refresh state & time exits
         self.scan_time = "15:13"                 # 3:13 PM - update DB & scan signals
 
@@ -97,7 +96,6 @@ class SwingTradingEngine:
         # Data caches
         self.data_cache = {}
         self.stock_meta = {}
-        self.oco_orders = {}   # {symbol: {'sl_order_id':..., 'tp_order_id':...}}
 
         # Recover previous session
         if recover:
@@ -106,7 +104,7 @@ class SwingTradingEngine:
             self.state_manager.create_new_session(self.session_id, self.trading_config['initial_capital'])
 
         logger.info(f"Swing Trading Engine initialized – Session: {self.session_id}")
-        logger.info(f"Morning refresh: {self.morning_refresh_time} | Position refresh: {self.position_refresh_time}")
+        logger.info(f"Position refresh: {self.position_refresh_time}")
         logger.info(f"Signal scan: {self.scan_time} (after DB update)")
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
@@ -169,110 +167,7 @@ class SwingTradingEngine:
     def can_open_position(self) -> bool:
         return self.utilisation_pct() < 0.51
 
-    # ------------------------------------------------------------------
-    # OCO Order Management (One‑Cancels‑Other: SL + TP)
-    # ------------------------------------------------------------------
-    def _place_oco_bracket(self, symbol: str, quantity: int, entry_price: float,
-                           stop_loss_price: float, target_price: float) -> bool:
-        """
-        Place a true OCO bracket order using the broker's native OCO API.
-        For Fyers, this is a bracket with entry + SL + TP orders.
-        Returns True if OCO placed successfully.
-        """
-        try:
-            # Fyers OCO - returns dict with order IDs
-            oco_result = self.broker.place_swing_oco(
-                symbol=symbol,
-                qty=quantity,
-                side="BUY",
-                entry_price=entry_price,
-                sl_price=stop_loss_price,
-                tp_price=target_price)
-            
-            if not oco_result:
-                logger.error(f"❌ No OCO result for {symbol}")
-                return False
-                
-            parent_id = oco_result.get('parent')
-            if parent_id:
-                self.oco_orders[symbol] = {
-                    'parent_id': parent_id,
-                    'sl_id': oco_result.get('sl_order_id'),
-                    'tp_id': oco_result.get('tp_order_id'),
-                    'sl_price': stop_loss_price,
-                    'tp_price': target_price,
-                    'quantity': quantity
-                }
-                logger.info(f"✅ OCO bracket placed for {symbol} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
-                return True
-            else:
-                logger.error(f"❌ Failed to place OCO for {symbol} - no parent_id")
-                return False
-        except Exception as e:
-            logger.error(f"❌ OCO placement error for {symbol}: {e}")
-            traceback.print_exc()
-            return False
 
-    def _cancel_oco_bracket(self, symbol: str) -> bool:
-        """Cancel existing OCO orders for a symbol"""
-        if symbol not in self.oco_orders:
-            logger.debug(f"No OCO orders to cancel for {symbol}")
-            return True
-        try:
-            oco_info = self.oco_orders[symbol]
-            cancelled = []
-            failed = []
-            
-            # Cancel all three orders (parent entry, SL, TP)
-            if oco_info.get('parent_id'):
-                if self.broker.cancel_order(oco_info['parent_id']):
-                    cancelled.append(oco_info['parent_id'])
-                else:
-                    failed.append(oco_info['parent_id'])
-            if oco_info.get('sl_id'):
-                if self.broker.cancel_order(oco_info['sl_id']):
-                    cancelled.append(oco_info['sl_id'])
-                else:
-                    failed.append(oco_info['sl_id'])
-            if oco_info.get('tp_id'):
-                if self.broker.cancel_order(oco_info['tp_id']):
-                    cancelled.append(oco_info['tp_id'])
-                else:
-                    failed.append(oco_info['tp_id'])
-                    
-            del self.oco_orders[symbol]
-            if failed:
-                logger.warning(f"⚠️  Partial cancellation for {symbol}: Cancelled {len(cancelled)}, Failed {len(failed)}")
-            else:
-                logger.info(f"✅ Cancelled OCO bracket for {symbol}")
-            return True
-        except Exception as e:
-            logger.warning(f"Could not cancel OCO for {symbol}: {e}")
-            return False
-
-    # ------------------------------------------------------------------
-    # Morning refresh (9:16 AM) – re‑place OCO for all active positions
-    # ------------------------------------------------------------------
-    def refresh_sl_tp_at_market_open(self):
-        """Cancel old OCO orders and place fresh ones for every open position"""
-        positions = self.state_manager.get_all_positions()
-        if not positions:
-            logger.info("No active positions – nothing to refresh")
-            return
-
-        logger.info("🔄 Morning refresh: Re‑placing SL/TP orders...")
-        for symbol, pos in positions.items():
-            self._cancel_oco_bracket(symbol)
-            # Place new OCO using current open price? Use stored SL/TP levels
-            success = self._place_oco_bracket(
-                symbol=symbol,
-                quantity=pos.quantity,
-                entry_price=pos.entry_price,      # not used in OCO? broker uses for reference
-                stop_loss_price=pos.stop_loss_price,
-                target_price=pos.target_price
-            )
-            if not success:
-                logger.warning(f"⚠️  Could not re‑place SL/TP for {symbol}")
 
     # ------------------------------------------------------------------
     # Position refresh at 3:00 PM – sync & close time‑exceeded
@@ -299,7 +194,6 @@ class SwingTradingEngine:
                 # Get latest price from broker
                 current_price = self._get_current_price(symbol)
                 if current_price:
-                    self._cancel_oco_bracket(symbol)
                     self._manual_close_position(symbol, current_price, "TIME_LIMIT_EXCEEDED")
 
     def _get_current_price(self, symbol: str) -> Optional[float]:
@@ -361,7 +255,7 @@ class SwingTradingEngine:
             except Exception as e:
                 logger.error(f"Error placing sell order for {symbol}: {e}")
                 return
-                
+            
             pnl = (exit_price - pos.entry_price) * pos.quantity
             pnl_pct = ((exit_price - pos.entry_price) / pos.entry_price) * 100
             updates = {
@@ -579,88 +473,13 @@ class SwingTradingEngine:
             logger.error(f"Failed to save state for {symbol}")
             return False
 
-    def _place_new_position_old(self, symbol: str, signal_info: Dict) -> bool:
-        """Place BUY + OCO order for a new signal"""
-        entry_price = signal_info.get('open', 0)
-        if entry_price <= 0:
-            logger.warning(f"Invalid entry price for {symbol}: {entry_price}")
-            return False
 
-        try:
-            entry_price = float(entry_price)
-        except (ValueError, TypeError):
-            logger.error(f"Cannot convert entry price to float for {symbol}: {entry_price}")
-            return False
-
-        # ===== TESTING MODE: Use quantity 1 for small test =====
-        quantity = 1  # Fixed quantity for testing
-        logger.info(f"🧪 TESTING MODE: Using fixed quantity = {quantity}")
-        
-        # ===== ACTUAL PRODUCTION MODE (COMMENTED FOR TESTING): =====
-        # weight = signal_info.get('final_weight', 0)
-        # total_cap = self.get_total_capital()
-        # alloc_cap = total_cap * weight if weight > 0 else self.trading_config['max_position_size']
-        # available = self.get_available_capital()
-        # alloc_cap = min(alloc_cap, available)
-        # if alloc_cap <= 0:
-        #     logger.warning(f"Insufficient capital for {symbol}")
-        #     return False
-        # quantity = int(alloc_cap // entry_price)
-        # if quantity == 0:
-        #     logger.warning(f"Cannot afford 1 share of {symbol}")
-        #     return False
-        
-        # used_capital = quantity * entry_price  # ACTUAL: Dynamic capital for production
-        used_capital = quantity * entry_price  # TESTING: Using entry_price for qty=1
-        target_price = entry_price * (1.0 + self.target_profit_pct)
-        stop_loss_price = entry_price * (1.0 - self.stop_loss_pct)
-
-        logger.info(f"Placing position: {symbol} | Entry: {entry_price:.2f} | Qty: {quantity} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
-
-        # 1. Place BUY order
-        buy_order_id = self.broker.place_order(
-            symbol=symbol,
-            qty=quantity,
-            side="BUY",
-            type="MARKET",
-            price=entry_price
-        )
-        if not buy_order_id:
-            logger.error(f"BUY order failed for {symbol}")
-            return False
-        logger.info(f"✅ BUY placed: {symbol} qty={quantity} @ {entry_price:.2f} | Order ID: {buy_order_id}")
-
-        # 2. Place OCO bracket (SL + TP)
-        oco_ok = self._place_oco_bracket(symbol, quantity, entry_price, stop_loss_price, target_price)
-        if not oco_ok:
-            logger.warning(f"⚠️  OCO placement failed for {symbol} – will retry at next refresh")
-
-        # 3. Save state
-        pos = PositionState(
-            symbol=symbol,
-            entry_price=entry_price,
-            entry_time=datetime.now(self.tz).isoformat(),
-            quantity=quantity,
-            capital_used=used_capital,
-            entry_signal=str(signal_info),
-            target_price=target_price,
-            stop_loss_price=stop_loss_price,
-            highest_price=entry_price,
-            order_id=buy_order_id
-        )
-        if self.state_manager.add_position(pos):
-            logger.info(f"📈 Position opened: {symbol} | Cap: {used_capital:.2f} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
-            return True
-        else:
-            logger.error(f"Failed to save state for {symbol}")
-            return False
 
     # ------------------------------------------------------------------
     # Main Trading Loop (time‑triggered)
     # ------------------------------------------------------------------
     def run_swing_trading_loop(self):
         logger.info("Starting live swing trading loop")
-        last_date_morning = None
         last_date_position_refresh = None
         last_date_scan = None
 
@@ -683,12 +502,6 @@ class SwingTradingEngine:
                     logger.info("Market opened")
                     self.market_open = True
                     self.broker_sync.full_sync()
-
-                # --- 9:16 AM Morning SL/TP refresh ---
-                if current_time == self.morning_refresh_time and last_date_morning != current_date:
-                    logger.info("⏰ Morning refresh trigger")
-                    self.refresh_sl_tp_at_market_open()
-                    last_date_morning = current_date
 
                 # --- 3:00 PM Position refresh ---
                 if current_time == self.position_refresh_time and last_date_position_refresh != current_date:
@@ -726,8 +539,6 @@ class SwingTradingEngine:
     def stop(self):
         logger.info("Stopping engine...")
         self.stop_flag.set()
-        for sym in list(self.oco_orders.keys()):
-            self._cancel_oco_bracket(sym)
         self.broker_sync.full_sync()
         self.state_manager.save_session()
         logger.info("Engine stopped")
@@ -748,7 +559,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Swing Trading Engine Test Harness")
-    parser.add_argument("--test", choices=["morning_refresh", "position_refresh", "signal_scan", "place_order", "all"],
+    parser.add_argument("--test", choices=["position_refresh", "signal_scan", "place_order", "all"],
                         help="Run a specific test")
     parser.add_argument("--dry_run", action="store_true", default=True,
                         help="Run in dry-run mode (default True). Use --no-dry_run to execute real orders.")
@@ -769,25 +580,7 @@ if __name__ == "__main__":
         print(f"  Available: {summary.get('capital_available'):.2f}")
         print(f"  Utilisation: {engine.utilisation_pct():.2%}\n")
 
-    if args.test == "morning_refresh":
-        print("🔁 Testing morning SL/TP refresh (9:16 AM equivalent)...")
-        # Manually add a dummy position for testing
-        engine.state_manager.add_position(PositionState(
-            symbol="NSE:RELIANCE-EQ",
-            entry_price=2500.0,
-            entry_time=datetime.now(engine.tz).isoformat(),
-            quantity=10,
-            capital_used=25000,
-            entry_signal="TEST",
-            target_price=2625.0,
-            stop_loss_price=2450.0,
-            order_id="test_order"
-        ))
-        print_state()
-        engine.refresh_sl_tp_at_market_open()
-        print("✅ Done. Check logs for OCO placement (dry-run simulated).")
-
-    elif args.test == "position_refresh":
+    if args.test == "position_refresh":
         print("🔄 Testing position refresh (3:00 PM equivalent)...")
         # Add a dummy position that is old (exceeds max_hold_days)
         old_date = (datetime.now(engine.tz) - timedelta(days=engine.max_hold_days + 1)).isoformat()
@@ -832,14 +625,7 @@ if __name__ == "__main__":
 
     elif args.test == "all":
         print("🚀 Running all tests sequentially (dry-run mode recommended)...")
-        # 1. Morning refresh
-        engine.state_manager.add_position(PositionState(
-            symbol="NSE:RELIANCE-EQ", entry_price=2500.0, entry_time=datetime.now(engine.tz).isoformat(),
-            quantity=10, capital_used=25000, entry_signal="TEST", target_price=2625.0, stop_loss_price=2450.0, order_id="test1"
-        ))
-        engine.refresh_sl_tp_at_market_open()
-
-        # 2. Position refresh (add an old position)
+        # 1. Position refresh (add an old position)
         old_date = (datetime.now(engine.tz) - timedelta(days=engine.max_hold_days + 1)).isoformat()
         engine.state_manager.add_position(PositionState(
             symbol="NSE:INFY-EQ", entry_price=1500.0, entry_time=old_date,
@@ -847,10 +633,10 @@ if __name__ == "__main__":
         ))
         engine.refresh_positions()
 
-        # 3. Signal scan
+        # 2. Signal scan
         engine.scan_and_place_signals(days_back=30)
 
-        # 4. Direct order
+        # 3. Direct order
         test_signal = {'symbol': 'NSE:TCS-EQ', 'open': 3500.0, 'final_weight': 0.2}
         engine._place_new_position(test_signal['symbol'], test_signal)
 
