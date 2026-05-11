@@ -224,6 +224,62 @@ class SwingTradingEngine:
             logger.error(f"Error fetching quote for {symbol}: {e}")
             return None
 
+    def _get_order_status(self, order_id: str) -> Optional[Dict[str, Any]]:
+        """Check the current status of an order from broker"""
+        try:
+            orders = self.broker.get_orders()
+            if not orders or 'orders' not in orders:
+                logger.warning(f"Could not fetch orders from broker")
+                return None
+            
+            for order in orders.get('orders', []):
+                if order.get('id') == order_id:
+                    return order
+            
+            logger.warning(f"Order {order_id} not found in broker orders")
+            return None
+        except Exception as e:
+            logger.error(f"Error checking order status for {order_id}: {e}")
+            return None
+    
+    def _wait_for_order_fill(self, order_id: str, max_wait_seconds: int = 30) -> bool:
+        """Poll order status until it's filled/executed. Returns True if filled, False otherwise."""
+        logger.info(f"⏳ Waiting for order {order_id} to be filled (max {max_wait_seconds}s)...")
+        start_time = time.time()
+        poll_count = 0
+        
+        while time.time() - start_time < max_wait_seconds:
+            poll_count += 1
+            order = self._get_order_status(order_id)
+            
+            if order:
+                status = order.get('status', '').upper()
+                filled = order.get('filled_qty', 0)
+                qty = order.get('qty', 0)
+                ltp = order.get('price', 0)
+                
+                logger.debug(f"Order poll #{poll_count}: {order_id} | Status={status} | Filled={filled}/{qty}")
+                
+                # Check for filled states
+                if status in ['EXECUTED', 'FILLED']:
+                    logger.info(f"✅ Order {order_id} EXECUTED: {filled}/{qty} units filled")
+                    return True
+                
+                # Check for failed states
+                elif status in ['REJECTED', 'CANCELLED', 'EXPIRED', 'FAILED']:
+                    logger.error(f"❌ Order {order_id} {status}")
+                    return False
+                
+                # Partial fill - acceptable for entry
+                elif filled > 0:
+                    logger.info(f"⚡ Order {order_id} PARTIALLY FILLED: {filled}/{qty}")
+                    return True
+            
+            time.sleep(2)  # Poll every 2 seconds
+        
+        logger.warning(f"⏱️  Order {order_id} still PENDING after {max_wait_seconds}s, assuming rejection risk")
+        return False
+
     def _manual_close_position(self, symbol: str, exit_price: float, reason: str):
         """Manually close a position with market sell order"""
         with self.state_lock:
@@ -452,18 +508,32 @@ class SwingTradingEngine:
             tp_price=target_price
         )
         
-        # Check if entry order was successful
+        # Check if entry order was successful (initial response only)
         if not result or result.get('entry', {}).get('s') != 'ok':
             logger.error(f"✗ Entry order FAILED for {symbol}: {result}")
-            logger.warning(f"⚠️ Not placing GTT orders as original entry order was not successful")
+            logger.warning(f"⚠️ Not placing GTT orders as original entry order placement failed")
             return False
         
-        # Entry order succeeded, check GTT order
+        # Entry order accepted, get order ID
         buy_order_id = result['entry'].get('id', '')
+        if not buy_order_id:
+            logger.error(f"✗ No order ID returned for {symbol} entry order")
+            return False
+        
+        logger.info(f"📝 Entry order placed: {buy_order_id} (waiting for fill confirmation...)")
+        
+        # WAIT FOR ORDER TO ACTUALLY FILL before placing GTT orders
+        if not self._wait_for_order_fill(buy_order_id, max_wait_seconds=30):
+            logger.error(f"✗ Entry order {buy_order_id} did not fill or was rejected. Not placing GTT orders.")
+            return False
+        
+        logger.info(f"✅ Entry order CONFIRMED filled: {buy_order_id}. Now placing GTT orders...")
+        
+        # Now place GTT orders (only after entry is filled)
         gtt_response = result.get('gtt', {})
         if gtt_response.get('s') != 'ok':
             logger.warning(f"⚠️ GTT OCO placement failed for {symbol}: {gtt_response}")
-            logger.warning(f"Entry order placed but GTT orders could not be set. Manual SL/TP management required.")
+            logger.warning(f"Entry order is FILLED but GTT orders could not be set. Manual SL/TP management required.")
         
         # Save state
         used_capital = quantity * entry_price
@@ -493,26 +563,58 @@ class SwingTradingEngine:
     # ------------------------------------------------------------------
     def _load_timing_metadata(self) -> tuple:
         """Load last_date_position_refresh and last_date_scan from state"""
-        metadata = self.state_manager.current_session.metadata if self.state_manager.current_session else {}
-        return metadata.get('last_date_position_refresh'), metadata.get('last_date_scan')
+        try:
+            if self.state_manager.current_session is None:
+                logger.warning("No active session to load timing metadata")
+                return None, None
+            
+            # Ensure metadata dict exists
+            if not hasattr(self.state_manager.current_session, 'metadata'):
+                self.state_manager.current_session.metadata = {}
+            
+            metadata = self.state_manager.current_session.metadata
+            pos_refresh = metadata.get('last_date_position_refresh')
+            scan_date = metadata.get('last_date_scan')
+            
+            logger.info(f"📅 Loaded timing metadata: position_refresh={pos_refresh}, scan={scan_date}")
+            return pos_refresh, scan_date
+        except Exception as e:
+            logger.error(f"Error loading timing metadata: {e}")
+            return None, None
     
     def _save_timing_metadata(self, position_refresh_date: str = None, scan_date: str = None):
-        """Save timing metadata to state"""
-        if self.state_manager.current_session is None:
-            return
-        if position_refresh_date:
-            self.state_manager.current_session.metadata['last_date_position_refresh'] = position_refresh_date
-        if scan_date:
-            self.state_manager.current_session.metadata['last_date_scan'] = scan_date
-        self.state_manager.save_session()
+        """Save timing metadata to state - ENSURES PERSISTENCE TO DISK"""
+        try:
+            if self.state_manager.current_session is None:
+                logger.warning("Cannot save timing metadata: no active session")
+                return
+            
+            # Ensure metadata dict exists
+            if not hasattr(self.state_manager.current_session, 'metadata'):
+                self.state_manager.current_session.metadata = {}
+            
+            if position_refresh_date:
+                self.state_manager.current_session.metadata['last_date_position_refresh'] = position_refresh_date
+                logger.info(f"💾 Saved position_refresh_date: {position_refresh_date}")
+            
+            if scan_date:
+                self.state_manager.current_session.metadata['last_date_scan'] = scan_date
+                logger.info(f"💾 Saved scan_date: {scan_date}")
+            
+            # CRITICAL: Save to disk immediately
+            self.state_manager.save_session()
+            logger.debug(f"Timing metadata persisted to disk")
+        except Exception as e:
+            logger.error(f"Error saving timing metadata: {e}")
+            traceback.print_exc()
 
     def run_swing_trading_loop(self):
         logger.info("Starting live swing trading loop")
         
         # Load timing metadata from state (recovers from restart)
         last_date_position_refresh, last_date_scan = self._load_timing_metadata()
+        logger.info(f"🔄 Recovered timing state: Last position_refresh={last_date_position_refresh}, last_scan={last_date_scan}")
 
-        print(" ************", not self.stop_flag.is_set())
         while not self.stop_flag.is_set():
             try:
                 now = datetime.now(self.tz)
