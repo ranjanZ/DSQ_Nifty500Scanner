@@ -86,7 +86,7 @@ class SwingTradingEngine:
 
         # Timing (all in 24‑hour format)
         self.position_refresh_time = "15:00"     # 3:00 PM - refresh state & time exits
-        self.scan_time = "15:13"                 # 3:13 PM - update DB & scan signals
+        self.scan_time = "15:03"                 # 3:13 PM - update DB & scan signals
 
         # Threading / state
         self.market_open = False
@@ -226,14 +226,15 @@ class SwingTradingEngine:
             return None
 
     def _get_order_status(self, order_id: str) -> Optional[Dict[str, Any]]:
-        """Check the current status of an order from broker"""
+        """Check the current status of an order from broker and normalize to standard format"""
         try:
             orders = self.broker.get_orders()
 
-            for order_idx in   orders:
+            for order_idx in orders:
                 order = orders[str(order_idx)]['raw']
                 if order.get('id') == order_id:
-                    return order
+                    # Normalize Fyers response to standard format
+                    return self._normalize_order_response(order)
                 
             logger.warning(f"Order {order_id} not found in broker orders")
             return None
@@ -241,42 +242,65 @@ class SwingTradingEngine:
             logger.error(f"Error checking order status for {order_id}: {e}")
             return None
     
+    def _normalize_order_response(self, fyers_order: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert Fyers order response to standard format
+        Fyers uses: status (int), filledQty, remainingQuantity, etc
+        We standardize to: status (str), filled_qty, qty, etc
+        """
+        # Map Fyers status codes to strings
+        # 1=PENDING, 2=EXECUTED/FILLED, 3=REJECTED, 4=CANCELLED, 5=EXPIRED
+        status_map = {
+            1: 'CANCELLED',
+            2: 'FILLED',
+            4: 'TRANSIT',
+            5: 'REJECTED',
+            6: 'PENDING',
+            7: 'EXPIRED'
+        }
+
+        
+        status_code = fyers_order.get('status')
+        status_str = status_map.get(status_code, 'UNKNOWN')
+        
+        return {
+            'id': fyers_order.get('id'),
+            'status': status_str,
+            'filled_qty': fyers_order.get('filledQty', 0),
+            'qty': fyers_order.get('qty', 0),
+            'price': fyers_order.get('limitPrice', 0),
+            'symbol': fyers_order.get('symbol'),
+            'side': fyers_order.get('side'),
+            'orderDateTime': fyers_order.get('orderDateTime'),
+            'message': fyers_order.get('message')
+        }
+    
     def _wait_for_order_fill(self, order_id: str, max_wait_seconds: int = 30) -> bool:
         """Poll order status until it's filled/executed. Returns True if filled, False otherwise."""
-        logger.info(f"⏳ Waiting for order {order_id} to be filled (max {max_wait_seconds}s)...")
+        logger.info(f"⏳ Waiting for entry order {order_id} to fill (max {max_wait_seconds}s)...")
         start_time = time.time()
-        poll_count = 0
         
         while time.time() - start_time < max_wait_seconds:
-            poll_count += 1
             order = self._get_order_status(order_id)
             
             if order:
                 status = order.get('status', '').upper()
                 filled = order.get('filled_qty', 0)
                 qty = order.get('qty', 0)
-                ltp = order.get('price', 0)
                 
-                logger.debug(f"Order poll #{poll_count}: {order_id} | Status={status} | Filled={filled}/{qty}")
-                
-                # Check for filled states
-                if status in ['EXECUTED', 'FILLED']:
-                    logger.info(f"✅ Order {order_id} EXECUTED: {filled}/{qty} units filled")
+                # Success: fully filled or partially filled (acceptable for entry)
+                if status in ['EXECUTED', 'FILLED'] or filled > 0:
+                    logger.info(f"✅ Entry order {order_id} FILLED: {filled}/{qty} units")
                     return True
                 
-                # Check for failed states
+                # Failure: explicit rejection or cancellation
                 elif status in ['REJECTED', 'CANCELLED', 'EXPIRED', 'FAILED']:
-                    logger.error(f"❌ Order {order_id} {status}")
+                    logger.error(f"❌ Entry order {order_id} {status}")
                     return False
-                
-                # Partial fill - acceptable for entry
-                elif filled > 0:
-                    logger.info(f"⚡ Order {order_id} PARTIALLY FILLED: {filled}/{qty}")
-                    return True
             
-            time.sleep(2)  # Poll every 2 seconds
+            time.sleep(1)  # Poll every 1 second
         
-        logger.warning(f"⏱️  Order {order_id} still PENDING after {max_wait_seconds}s, assuming rejection risk")
+        # Timeout: still pending
+        logger.warning(f"⏱️  Entry order {order_id} still PENDING after {max_wait_seconds}s")
         return False
 
     def _manual_close_position(self, symbol: str, exit_price: float, reason: str):
@@ -475,8 +499,8 @@ class SwingTradingEngine:
         return final
 
     def _place_new_position(self, symbol: str, signal_info: Dict) -> bool:
-        """Place BUY + OCO order for a new signal using swing OCO.
-        Returns True only if both entry order and GTT orders are successful."""
+        """Place BUY + OCO order. Broker handles full sequence: entry→wait→GTT.
+        Returns True only if entry is filled (GTT is secondary)."""
         entry_price = signal_info.get('open', 0)
         if entry_price <= 0:
             logger.warning(f"Invalid entry price for {symbol}: {entry_price}")
@@ -485,20 +509,18 @@ class SwingTradingEngine:
         try:
             entry_price = float(entry_price)
         except (ValueError, TypeError):
-            logger.error(f"Cannot convert entry price to float for {symbol}: {entry_price}")
+            logger.error(f"Cannot convert entry price for {symbol}: {entry_price}")
             return False
 
-        # ===== TESTING MODE: Use quantity 1 =====
         quantity = 1
         logger.info(f"🧪 TESTING MODE: Using fixed quantity = {quantity}")
         
-        # Calculate SL and TP
         target_price = entry_price * (1.0 + self.target_profit_pct)
         stop_loss_price = entry_price * (1.0 - self.stop_loss_pct)
 
         logger.info(f"Placing position: {symbol} | Entry: {entry_price:.2f} | Qty: {quantity} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
 
-        # Use place_swing_oco (entry + GTT in one call)
+        # BROKER HANDLES FULL SEQUENCE: entry → wait → GTT
         result = self.broker.place_swing_oco(
             symbol=symbol,
             qty=quantity,
@@ -508,34 +530,20 @@ class SwingTradingEngine:
             tp_price=target_price
         )
         
-        # Check if entry order was successful (initial response only)
-        if not result or result.get('entry', {}).get('s') != 'ok':
-            logger.error(f"✗ Entry order FAILED for {symbol}: {result}")
-            logger.warning(f"⚠️ Not placing GTT orders as original entry order placement failed")
+        if not result or result.get('s') != 'ok':
+            logger.error(f"✗ OCO placement failed for {symbol}: {result}")
             return False
         
-        # Entry order accepted, get order ID
-        buy_order_id = result['entry'].get('id', '')
-        if not buy_order_id:
-            logger.error(f"✗ No order ID returned for {symbol} entry order")
+        buy_order_id = result.get('entry_order_id')
+        entry_filled = result.get('entry_filled')
+        
+        if not entry_filled:
+            logger.error(f"✗ Entry order did not fill: {result.get('message')}")
             return False
         
-        logger.info(f"📝 Entry order placed: {buy_order_id} (waiting for fill confirmation...)")
+        logger.info(f"✅ {result.get('message')}")
         
-        # WAIT FOR ORDER TO ACTUALLY FILL before placing GTT orders
-        if not self._wait_for_order_fill(buy_order_id, max_wait_seconds=30):
-            logger.error(f"✗ Entry order {buy_order_id} did not fill or was rejected. Not placing GTT orders.")
-            return False
-        
-        logger.info(f"✅ Entry order CONFIRMED filled: {buy_order_id}. Now placing GTT orders...")
-        
-        # Now place GTT orders (only after entry is filled)
-        gtt_response = result.get('gtt', {})
-        if gtt_response.get('s') != 'ok':
-            logger.warning(f"⚠️ GTT OCO placement failed for {symbol}: {gtt_response}")
-            logger.warning(f"Entry order is FILLED but GTT orders could not be set. Manual SL/TP management required.")
-        
-        # Save state
+        # Save position state
         used_capital = quantity * entry_price
         pos = PositionState(
             symbol=symbol,

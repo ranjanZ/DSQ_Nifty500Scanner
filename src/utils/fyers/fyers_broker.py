@@ -445,83 +445,170 @@ class fyers_API:
 
     def place_swing_oco(self, symbol: str, qty: int, side: str, entry_price: float,
                         sl_price: float, tp_price: float) -> dict:
-        """Place swing trading OCO with CNC product type"""
+        """
+        Place complete swing trading OCO in sequence (Fyers-specific, abstracted for future brokers):
+        1. Place MARKET entry order (CNC)
+        2. Poll until filled
+        3. Place GTT OCO (SL + TP)
+        
+        Returns: {'s': 'ok'/'error', 'entry_order_id': '...', 'entry_filled': T/F, 
+                  'gtt_placed': T/F, 'message': '...'}
+        """
         try:
-            # 1. LIMIT entry order
-            entry_data = {
-                "symbol": symbol,
-                "qty": qty,
-                "type": 2,
-                "side": 1 if side.upper() == "BUY" else -1,
-                "productType": "CNC",
-                "limitPrice": 0,
-                "validity": "DAY",
-                "offlineOrder": False
-            }
-            entry_res = self.fyers.place_order(data=entry_data)
-
-            if entry_res.get('s') != 'ok':
-                logger.error(f"Entry order failed: {entry_res}")
-                return {"entry": entry_res, "gtt": None}
-
-            # 2. Exit side
-            exit_side = -1 if side.upper() == "BUY" else 1
-            is_buy = (side.upper() == "BUY")
-
-            # 3. Validate SL/TP levels
+            import traceback
+            is_buy = side.upper() == "BUY"
+            
+            # Validate SL/TP levels
             if is_buy:
                 if not (sl_price < entry_price < tp_price):
                     raise ValueError(f"BUY: SL({sl_price}) < Entry({entry_price}) < TP({tp_price})")
             else:
                 if not (sl_price > entry_price > tp_price):
                     raise ValueError(f"SELL: SL({sl_price}) > Entry({entry_price}) > TP({tp_price})")
-
-            # 4. Round prices to tick size
+            
+            # Tick rounding
             tick = 0.1
-            def round_tick(p):
-                return round(p / tick) * tick
-
+            round_tick = lambda p: round(p / tick) * tick
+            
+            # STEP 1: Place MARKET entry order (CNC product)
+            entry_data = {
+                "symbol": symbol,
+                "qty": qty,
+                "type": 2,
+                "side": 1 if is_buy else -1,
+                "productType": "CNC",
+                "limitPrice": 0,
+                "validity": "DAY",
+                "offlineOrder": False,
+                "stopLoss": 0,
+                "takeProfit": 0
+            }
+            
+            entry_res = self.fyers.place_order(data=entry_data)
+            
+            if not entry_res or entry_res.get('s') != 'ok':
+                logger.error(f"❌ Entry order failed for {symbol}: {entry_res}")
+                return {
+                    's': 'error',
+                    'entry_order_id': None,
+                    'entry_filled': False,
+                    'gtt_placed': False,
+                    'message': 'Entry order placement failed'
+                }
+            
+            entry_order_id = entry_res.get('id', '')
+            logger.info(f"📝 Entry order placed: {entry_order_id} | Waiting for fill...")
+            
+            # STEP 2: Poll for entry fill (Fyers status codes)
+            entry_filled = self._wait_for_entry_fill(entry_order_id, max_wait_seconds=30)
+            
+            if not entry_filled:
+                logger.error(f"❌ Entry order {entry_order_id} did not fill")
+                return {
+                    's': 'error',
+                    'entry_order_id': entry_order_id,
+                    'entry_filled': False,
+                    'gtt_placed': False,
+                    'message': f'Entry did not fill'
+                }
+            
+            logger.info(f"✅ Entry order FILLED: {entry_order_id}")
+            
+            # STEP 3: Place GTT OCO (after entry confirmation)
+            exit_side = -1 if is_buy else 1
             sl_round = round_tick(sl_price)
             tp_round = round_tick(tp_price)
-
-            # 5. Build OCO legs
+            
             if is_buy:
-                # BUY: target (higher) is leg1, SL (lower) is leg2
-                leg1_price = tp_round
-                leg1_trigger = tp_round
-                leg2_price = sl_round
-                leg2_trigger = sl_round
+                leg1_price, leg1_trigger = tp_round, tp_round
+                leg2_price, leg2_trigger = sl_round, sl_round
             else:
-                # SELL: SL (higher) is leg1, target (lower) is leg2
-                leg1_price = sl_round
-                leg1_trigger = sl_round
-                leg2_price = tp_round
-                leg2_trigger = tp_round
-
+                leg1_price, leg1_trigger = sl_round, sl_round
+                leg2_price, leg2_trigger = tp_round, tp_round
+            
             gtt_data = {
                 "side": exit_side,
                 "symbol": symbol,
                 "productType": "CNC",
                 "orderInfo": {
-                    "leg1": {
-                        "price": leg1_price,
-                        "triggerPrice": leg1_trigger,
-                        "qty": qty
-                    },
-                    "leg2": {
-                        "price": leg2_price,
-                        "triggerPrice": leg2_trigger,
-                        "qty": qty
-                    }
+                    "leg1": {"price": leg1_price, "triggerPrice": leg1_trigger, "qty": qty},
+                    "leg2": {"price": leg2_price, "triggerPrice": leg2_trigger, "qty": qty}
                 }
             }
-
+            
             gtt_res = self.fyers.place_gtt_order(data=gtt_data)
-            return {"entry": entry_res, "gtt": gtt_res}
-
+            gtt_placed = gtt_res and gtt_res.get('s') == 'ok'
+            
+            if not gtt_placed:
+                logger.warning(f"⚠️ GTT placement failed for {symbol}: {gtt_res}")
+            else:
+                logger.info(f"✅ GTT OCO confirmed for {symbol}")
+            
+            return {
+                's': 'ok',
+                'entry_order_id': entry_order_id,
+                'entry_filled': True,
+                'gtt_placed': gtt_placed,
+                'message': 'Entry filled' + (' + GTT placed' if gtt_placed else ' (GTT failed)')
+            }
+            
         except Exception as e:
-            logger.error(f"❌ Swing order error: {e}")
-            return None
+            logger.error(f"❌ Swing OCO error: {e}")
+            traceback.print_exc()
+            return {
+                's': 'error',
+                'entry_order_id': None,
+                'entry_filled': False,
+                'gtt_placed': False,
+                'message': str(e)
+            }
+    
+    def _wait_for_entry_fill(self, order_id: str, max_wait_seconds: int = 30) -> bool:
+        """Internal: Poll Fyers order until filled. Status codes: 1=CANCELLED, 2=FILLED, 5=REJECTED, 6=PENDING, 7=EXPIRED"""
+        logger.info(f"⏳ Polling order {order_id} for fill (max {max_wait_seconds}s)...")
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait_seconds:
+            try:
+                orders = self.fyers.orderbook()
+                if not orders or orders.get('s') != 'ok':
+                    time.sleep(1)
+                    continue
+                
+                order_list = orders.get('orderBook', orders.get('orders', []))
+                order = None
+                
+                for o in order_list:
+                    if o.get('id') == order_id or o.get('orderId') == order_id:
+                        order = o
+                        break
+                
+                if not order:
+                    time.sleep(1)
+                    continue
+                
+                status_code = order.get('status')
+                filled_qty = order.get('filledQty', 0)
+                total_qty = order.get('qty', 0)
+                
+                if status_code == 2:
+                    logger.info(f"✅ Order {order_id} FILLED: {filled_qty}/{total_qty}")
+                    return True
+                elif filled_qty > 0:
+                    logger.info(f"✅ Order {order_id} PARTIAL FILL: {filled_qty}/{total_qty}")
+                    return True
+                elif status_code in [5, 7, 1]:
+                    logger.error(f"❌ Order {order_id} failed (status: {status_code})")
+                    return False
+                
+                time.sleep(1)
+            
+            except Exception as e:
+                logger.debug(f"Poll error: {e}")
+                time.sleep(1)
+        
+        logger.warning(f"⏱️ Order {order_id} PENDING after {max_wait_seconds}s")
+        return False
 if __name__ == "__main__":
     from src.utils.fyers.fyers_broker import *
     print("✅ Fyers API initialized")

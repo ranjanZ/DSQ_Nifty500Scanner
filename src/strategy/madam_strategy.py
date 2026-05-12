@@ -364,15 +364,15 @@ if __name__ == "__main__":
     from src.data_pipeline.db_utils import get_table_content
     from src.utils.plot_chart import plot_signals
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=50)
+    start_date = end_date - timedelta(days=100)
     data=get_table_content(
                 db_name='spot_db_anamika',
-                table_name="ablbl_eq",
+                table_name="aubank_eq",
                 start_date=start_date,
                 end_date=end_date
             )
 
-    signals = strategy.generate_signals(data, num_back_signals=4)
+    signals = strategy.generate_signals(data, num_back_signals=30)
     plot_signals(signals)
 
 

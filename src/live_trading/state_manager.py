@@ -35,6 +35,9 @@ class PositionState:
     status: str = "OPEN"
     pnl: float = 0
     pnl_pct: float = 0
+    exit_price: Optional[float] = None        # Exit price when closed
+    exit_time: Optional[str] = None          # Exit time when closed
+    exit_reason: Optional[str] = None        # Why it was closed (SL, TP, TIME_LIMIT, etc)
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -76,6 +79,7 @@ class TradingSessionState:
     start_time: str
     positions: Dict[str, PositionState] = field(default_factory=dict)
     orders: Dict[str, OrderState] = field(default_factory=dict)
+    closed_positions: List[Dict[str, Any]] = field(default_factory=list)  # Completed trade history
     total_pnl: float = 0
     closed_positions_count: int = 0
     capital_available: float = 0
@@ -216,14 +220,35 @@ class StateManager:
         return True
     
     def remove_position(self, symbol: str) -> bool:
-        """Remove a closed position (increment closed count)."""
+        """Archive a closed position to trade history and remove from open positions."""
         if self.current_session is None or symbol not in self.current_session.positions:
             return False
         
+        position = self.current_session.positions[symbol]
+        
+        # Archive to closed_positions with full trade details
+        closed_trade = {
+            'symbol': position.symbol,
+            'entry_price': position.entry_price,
+            'entry_time': position.entry_time,
+            'exit_price': position.exit_price if hasattr(position, 'exit_price') else None,
+            'exit_time': position.exit_time if hasattr(position, 'exit_time') else None,
+            'quantity': position.quantity,
+            'capital_used': position.capital_used,
+            'pnl': position.pnl,
+            'pnl_pct': position.pnl_pct,
+            'holding_days': (datetime.fromisoformat(position.exit_time if hasattr(position, 'exit_time') and position.exit_time else datetime.now().isoformat())
+                           - datetime.fromisoformat(position.entry_time)).days if (hasattr(position, 'exit_time') and position.exit_time) else 0,
+            'exit_reason': position.exit_reason if hasattr(position, 'exit_reason') else 'UNKNOWN',
+            'closed_at': datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
+        }
+        
+        self.current_session.closed_positions.append(closed_trade)
         del self.current_session.positions[symbol]
         self.current_session.closed_positions_count += 1
+        self.current_session.total_pnl += position.pnl
         self.save_session()
-        logger.info(f"Position closed and removed: {symbol}")
+        logger.info(f"Position CLOSED & ARCHIVED: {symbol} | P&L: {position.pnl:.2f} ({position.pnl_pct:.2f}%)")
         return True
     
     def add_order(self, order_state: OrderState) -> bool:
@@ -301,9 +326,16 @@ class StateManager:
             'total_orders': len(self.current_session.orders),
             'total_pnl': self.current_session.total_pnl,
             'closed_positions': self.current_session.closed_positions_count,
+            'closed_trades': self.current_session.closed_positions,  # Full trade history
             'capital_available': self.current_session.capital_available,
             'capital_used': self.current_session.capital_used
         }
+    
+    def get_closed_positions(self) -> List[Dict[str, Any]]:
+        """Get list of all closed positions (completed trades)."""
+        if self.current_session is None:
+            return []
+        return self.current_session.closed_positions
     
     def export_session(self, export_path: str) -> bool:
         """Export the permanent session to an external JSON file."""
