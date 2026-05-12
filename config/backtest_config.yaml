@@ -1,6 +1,6 @@
 backtest:
   start_date: "2026-01-01"          # start of backtesting period
-  end_date: "2026-02-04"            # end of backtesting period
+  end_date: "2026-04-04"            # end of backtesting period
   initial_capital: 100000
   strategy_name: "Support_Resistance"   # strategy to scan with
   target_profit_pct: 0.08           # 8%
@@ -10,13 +10,13 @@ backtest:
   # top 1 gets 50%, top 2 gets 30%, top 3 gets 20%
   position_weights:
     method: "sector_based"
-    max_positions: 7
+    max_positions: 2
     max_per_sector: 1
     # Weights proportional to sector size (total = ~500 stocks)
     sector_allocation:
       "Financial Services": 0.6
-      "Capital Goods": 0.3
-      "Healthcare": 0.3
+      "Capital Goods": 0.2
+      "Healthcare": 0.2
       "Automobile and Auto Components": 0
       "Information Technology": 0
       "Fast Moving Consumer Goods": 0

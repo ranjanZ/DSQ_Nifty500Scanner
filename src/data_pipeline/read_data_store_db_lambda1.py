@@ -266,7 +266,7 @@ watchlists:
         to_date = datetime.now().date()
         
         # Skip if we're already up to date
-        if from_date > to_date:
+        if from_date >= to_date:
             logger.info(f"Data for {symbol} is already up to date")
             return True
         
@@ -359,7 +359,7 @@ watchlists:
             logger.info(f"  {watchlist}: {len(stock_list)} stocks")
             for stock in stock_list:
                 logger.info(f"    - {stock['name']} ({stock['fyers_symbol']})")
-    def delete_all_stocks_old_data(self, num_days, batch_delay=0.5):
+    def delete_all_stocks_old_data(self, num_days, batch_delay=0.001):
         """Delete old data for all stocks in watchlists"""
         try:
             stocks = self.get_all_stocks()
@@ -389,6 +389,11 @@ watchlists:
             logger.error(f"Error deleting old data for all stocks: {e}")
     
 
+
+def delete_old_data_for_all_stocks(num_days):
+    data_manager = FyersDataManager(yaml_file_path="config/stock_list.yaml")
+    data_manager.delete_all_stocks_old_data(num_days)
+    print(f"Old data older than {num_days} days deleted for all stocks")
 
 
 def update():

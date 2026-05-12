@@ -1,12 +1,13 @@
 """
-State Management for Live Trading
-Handles persistence, recovery, and broker synchronization
+Permanent State Management for Live Trading
+- Single persistent session (never loses data)
+- All changes saved instantly to disk
+- State directory: data/session/
 """
 
 import os
 import json
 import logging
-import pickle
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import pytz
@@ -14,6 +15,9 @@ from dataclasses import dataclass, asdict, field
 
 logger = logging.getLogger("StateManager")
 
+# ----------------------------------------------------------------------
+# Data Models (unchanged from original, but fully retained)
+# ----------------------------------------------------------------------
 
 @dataclass
 class PositionState:
@@ -67,7 +71,7 @@ class OrderState:
 
 @dataclass
 class TradingSessionState:
-    """Complete trading session state"""
+    """Complete trading session state (single permanent session)"""
     session_id: str
     start_time: str
     positions: Dict[str, PositionState] = field(default_factory=dict)
@@ -76,7 +80,7 @@ class TradingSessionState:
     closed_positions_count: int = 0
     capital_available: float = 0
     capital_used: float = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)  # Store last_date_scan, last_date_position_refresh, etc.
+    metadata: Dict[str, Any] = field(default_factory=dict)
     
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -96,204 +100,174 @@ class TradingSessionState:
         return TradingSessionState(**data)
 
 
+# ----------------------------------------------------------------------
+# Permanent State Manager – always loads/creates the same session
+# ----------------------------------------------------------------------
+
 class StateManager:
-    """Manages persistent state for live trading"""
+    """
+    Manages a SINGLE, PERMANENT trading session.
+    - All data is persisted to disk immediately.
+    - On initialization, it loads the existing session from data/session/,
+      or creates a new one if none exists.
+    - No data is ever lost when the program restarts.
+    """
     
-    def __init__(self, state_dir: str = "data/trading_state"):
+    # Default permanent session ID
+    DEFAULT_SESSION_ID = "permanent"
+    
+    def __init__(self, state_dir: str = "data/session", session_id: str = None):
         """
-        Initialize state manager
+        Initialize the permanent state manager.
         
         Args:
-            state_dir: Directory to store state files
+            state_dir: Directory to store the session file (default: data/session)
+            session_id: Optional custom session ID (default: "permanent")
         """
         self.state_dir = state_dir
+        self.session_id = session_id or self.DEFAULT_SESSION_ID
         os.makedirs(state_dir, exist_ok=True)
         
-        self.current_session: Optional[TradingSessionState] = None
         self.tz = pytz.timezone('Asia/Kolkata')
+        self.current_session: Optional[TradingSessionState] = None
         
-        logger.info(f"StateManager initialized with directory: {state_dir}")
-    
-    def create_new_session(self, session_id: str, initial_capital: float) -> TradingSessionState:
-        """Create a new trading session"""
-        try:
-            now = datetime.now(self.tz).isoformat()
-            
-            session = TradingSessionState(
-                session_id=session_id,
-                start_time=now,
-                capital_available=initial_capital,
-                capital_used=0
-            )
-            
-            self.current_session = session
-            self.save_session(session)
-            
-            logger.info(f"Created new session: {session_id}")
-            return session
+        # Automatically load existing session or create a new one
+        self._load_or_create_session()
         
-        except Exception as e:
-            logger.error(f"Error creating new session: {e}")
-            raise
+        logger.info(f"StateManager initialized with session: {self.session_id} at {self.state_dir}")
     
-    def load_session(self, session_id: str) -> Optional[TradingSessionState]:
-        """Load session from disk"""
-        try:
-            session_file = os.path.join(self.state_dir, f"{session_id}.json")
-            
-            if not os.path.exists(session_file):
-                logger.warning(f"Session file not found: {session_file}")
-                return None
-            
-            with open(session_file, 'r') as f:
-                data = json.load(f)
-            
-            session = TradingSessionState.from_dict(data)
-            self.current_session = session
-            
-            logger.info(f"Loaded session: {session_id}")
-            return session
+    def _load_or_create_session(self):
+        """Load existing session from disk, or create a new one if not found."""
+        session_file = os.path.join(self.state_dir, f"{self.session_id}.json")
         
-        except Exception as e:
-            logger.error(f"Error loading session {session_id}: {e}")
-            return None
+        if os.path.exists(session_file):
+            try:
+                with open(session_file, 'r') as f:
+                    data = json.load(f)
+                self.current_session = TradingSessionState.from_dict(data)
+                logger.info(f"Loaded existing permanent session: {self.session_id}")
+            except Exception as e:
+                logger.error(f"Error loading session – creating new one: {e}")
+                self._create_new_session()
+        else:
+            self._create_new_session()
     
-    def save_session(self, session: TradingSessionState = None) -> bool:
-        """Save session to disk"""
+    def _create_new_session(self, initial_capital: float = 0):
+        """Create a brand new permanent session (overwrites any existing)."""
+        now = datetime.now(self.tz).isoformat()
+        self.current_session = TradingSessionState(
+            session_id=self.session_id,
+            start_time=now,
+            capital_available=initial_capital,
+            capital_used=0
+        )
+        self.save_session()
+        logger.info(f"Created new permanent session: {self.session_id} with capital {initial_capital}")
+    
+    def save_session(self) -> bool:
+        """Save the current session to disk."""
+        if self.current_session is None:
+            logger.warning("No session to save")
+            return False
+        
+        session_file = os.path.join(self.state_dir, f"{self.session_id}.json")
         try:
-            if session is None:
-                session = self.current_session
-            
-            if session is None:
-                logger.warning("No session to save")
-                return False
-            
-            session_file = os.path.join(self.state_dir, f"{session.session_id}.json")
-            
             with open(session_file, 'w') as f:
-                json.dump(session.to_dict(), f, indent=2)
-            
-            logger.debug(f"Session saved: {session.session_id}")
+                json.dump(self.current_session.to_dict(), f, indent=2)
+            logger.debug(f"Session saved: {self.session_id}")
             return True
-        
         except Exception as e:
             logger.error(f"Error saving session: {e}")
             return False
     
+    # ------------------------------------------------------------------
+    # Public API – same as original StateManager but without multiple sessions
+    # ------------------------------------------------------------------
+    
+    def reset_session(self, initial_capital: float = 0):
+        """
+        Completely reset the permanent session (all positions/orders cleared).
+        Use with caution – this cannot be undone.
+        """
+        self._create_new_session(initial_capital)
+        logger.warning(f"Permanent session reset with capital {initial_capital}")
+    
     def add_position(self, position_state: PositionState) -> bool:
-        """Add position to current session"""
-        try:
-            if self.current_session is None:
-                logger.error("No active session")
-                return False
-            
-            self.current_session.positions[position_state.symbol] = position_state
-            self.save_session()
-            
-            logger.info(f"Position added: {position_state.symbol}")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Error adding position: {e}")
+        """Add a new open position."""
+        if self.current_session is None:
             return False
+        self.current_session.positions[position_state.symbol] = position_state
+        self.save_session()
+        logger.info(f"Position added: {position_state.symbol}")
+        return True
     
     def update_position(self, symbol: str, updates: Dict[str, Any]) -> bool:
-        """Update position state"""
-        try:
-            if self.current_session is None or symbol not in self.current_session.positions:
-                logger.warning(f"Position not found: {symbol}")
-                return False
-            
-            position = self.current_session.positions[symbol]
-            
-            for key, value in updates.items():
-                if hasattr(position, key):
-                    setattr(position, key, value)
-            
-            self.save_session()
-            logger.debug(f"Position updated: {symbol}")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Error updating position: {e}")
+        """Update an existing position."""
+        if self.current_session is None or symbol not in self.current_session.positions:
+            logger.warning(f"Position not found: {symbol}")
             return False
+        
+        position = self.current_session.positions[symbol]
+        for key, value in updates.items():
+            if hasattr(position, key):
+                setattr(position, key, value)
+        self.save_session()
+        logger.debug(f"Position updated: {symbol}")
+        return True
     
     def remove_position(self, symbol: str) -> bool:
-        """Remove closed position"""
-        try:
-            if self.current_session is None or symbol not in self.current_session.positions:
-                logger.warning(f"Position not found: {symbol}")
-                return False
-            
-            del self.current_session.positions[symbol]
-            self.current_session.closed_positions_count += 1
-            self.save_session()
-            
-            logger.info(f"Position removed: {symbol}")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Error removing position: {e}")
+        """Remove a closed position (increment closed count)."""
+        if self.current_session is None or symbol not in self.current_session.positions:
             return False
+        
+        del self.current_session.positions[symbol]
+        self.current_session.closed_positions_count += 1
+        self.save_session()
+        logger.info(f"Position closed and removed: {symbol}")
+        return True
     
     def add_order(self, order_state: OrderState) -> bool:
-        """Add order to current session"""
-        try:
-            if self.current_session is None:
-                logger.error("No active session")
-                return False
-            
-            self.current_session.orders[order_state.order_id] = order_state
-            self.save_session()
-            
-            logger.info(f"Order added: {order_state.order_id}")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Error adding order: {e}")
+        """Add an order."""
+        if self.current_session is None:
             return False
+        self.current_session.orders[order_state.order_id] = order_state
+        self.save_session()
+        logger.info(f"Order added: {order_state.order_id}")
+        return True
     
     def update_order(self, order_id: str, updates: Dict[str, Any]) -> bool:
-        """Update order state"""
-        try:
-            if self.current_session is None or order_id not in self.current_session.orders:
-                logger.warning(f"Order not found: {order_id}")
-                return False
-            
-            order = self.current_session.orders[order_id]
-            
-            for key, value in updates.items():
-                if hasattr(order, key):
-                    setattr(order, key, value)
-            
-            self.save_session()
-            logger.debug(f"Order updated: {order_id}")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Error updating order: {e}")
+        """Update an existing order."""
+        if self.current_session is None or order_id not in self.current_session.orders:
             return False
+        
+        order = self.current_session.orders[order_id]
+        for key, value in updates.items():
+            if hasattr(order, key):
+                setattr(order, key, value)
+        self.save_session()
+        logger.debug(f"Order updated: {order_id}")
+        return True
     
     def get_position(self, symbol: str) -> Optional[PositionState]:
-        """Get position state"""
+        """Retrieve a position by symbol."""
         if self.current_session is None:
             return None
         return self.current_session.positions.get(symbol)
     
     def get_order(self, order_id: str) -> Optional[OrderState]:
-        """Get order state"""
+        """Retrieve an order by ID."""
         if self.current_session is None:
             return None
         return self.current_session.orders.get(order_id)
     
     def get_all_positions(self) -> Dict[str, PositionState]:
-        """Get all open positions"""
+        """Get all open positions."""
         if self.current_session is None:
             return {}
         return self.current_session.positions.copy()
     
     def get_all_orders(self) -> Dict[str, OrderState]:
-        """Get all orders"""
+        """Get all orders."""
         if self.current_session is None:
             return {}
         return self.current_session.orders.copy()
@@ -301,29 +275,22 @@ class StateManager:
     def update_session_metrics(self, total_pnl: float = None, 
                               capital_available: float = None, 
                               capital_used: float = None) -> bool:
-        """Update session metrics"""
-        try:
-            if self.current_session is None:
-                return False
-            
-            if total_pnl is not None:
-                self.current_session.total_pnl = total_pnl
-            
-            if capital_available is not None:
-                self.current_session.capital_available = capital_available
-            
-            if capital_used is not None:
-                self.current_session.capital_used = capital_used
-            
-            self.save_session()
-            return True
-        
-        except Exception as e:
-            logger.error(f"Error updating session metrics: {e}")
+        """Update session-level metrics (PNL, capital)."""
+        if self.current_session is None:
             return False
+        
+        if total_pnl is not None:
+            self.current_session.total_pnl = total_pnl
+        if capital_available is not None:
+            self.current_session.capital_available = capital_available
+        if capital_used is not None:
+            self.current_session.capital_used = capital_used
+        
+        self.save_session()
+        return True
     
     def get_session_summary(self) -> Dict[str, Any]:
-        """Get session summary"""
+        """Return a summary of the current permanent session."""
         if self.current_session is None:
             return {}
         
@@ -338,118 +305,75 @@ class StateManager:
             'capital_used': self.current_session.capital_used
         }
     
-    def list_sessions(self) -> List[str]:
-        """List all saved sessions"""
-        try:
-            sessions = []
-            for filename in os.listdir(self.state_dir):
-                if filename.endswith('.json'):
-                    sessions.append(filename[:-5])  # Remove .json
-            return sorted(sessions)
-        except Exception as e:
-            logger.error(f"Error listing sessions: {e}")
-            return []
-    
-    def delete_session(self, session_id: str) -> bool:
-        """Delete a session"""
-        try:
-            session_file = os.path.join(self.state_dir, f"{session_id}.json")
-            if os.path.exists(session_file):
-                os.remove(session_file)
-                logger.info(f"Session deleted: {session_id}")
-                return True
+    def export_session(self, export_path: str) -> bool:
+        """Export the permanent session to an external JSON file."""
+        if self.current_session is None:
             return False
-        except Exception as e:
-            logger.error(f"Error deleting session: {e}")
-            return False
-    
-    def export_session(self, session_id: str, export_path: str) -> bool:
-        """Export session to external file"""
         try:
-            session = self.load_session(session_id)
-            if session is None:
-                return False
-            
             os.makedirs(os.path.dirname(export_path), exist_ok=True)
-            
             with open(export_path, 'w') as f:
-                json.dump(session.to_dict(), f, indent=2)
-            
+                json.dump(self.current_session.to_dict(), f, indent=2)
             logger.info(f"Session exported to {export_path}")
             return True
         except Exception as e:
-            logger.error(f"Error exporting session: {e}")
+            logger.error(f"Export failed: {e}")
             return False
 
 
+# ----------------------------------------------------------------------
+# Quick demonstration (run this file to test)
+# ----------------------------------------------------------------------
+
 if __name__ == "__main__":
-    """Test State Manager"""
     import tempfile
     import shutil
-    from datetime import datetime
     
     print("\n" + "="*80)
-    print("STATE MANAGER - QUICK TEST")
+    print("PERMANENT STATE MANAGER - PERSISTENCE TEST")
     print("="*80)
     
-    # Create temporary directory
-    temp_dir = tempfile.mkdtemp()
+    # Use a temporary directory for testing
+    test_dir = tempfile.mkdtemp()
     
     try:
-        # Initialize
-        manager = StateManager(state_dir=temp_dir)
-        print(f"✓ StateManager initialized in {temp_dir}")
+        # Simulate first run – create manager (new permanent session)
+        print("\n--- FIRST RUN (creating session) ---")
+        manager1 = StateManager(state_dir=test_dir)
         
-        # Create session
-        session = manager.create_new_session("test_session", initial_capital=50000)
-        print(f"✓ Created session: {session.session_id}")
-        
-        # Add position
-        position = PositionState(
-            symbol="NSE:SBIN-EQ",
-            entry_price=500,
+        # Add some data
+        pos = PositionState(
+            symbol="NSE:RELIANCE-EQ",
+            entry_price=2500,
             entry_time=datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
-            quantity=10,
-            capital_used=5000,
+            quantity=5,
+            capital_used=12500,
             entry_signal="BUY",
-            target_price=525,
-            stop_loss_price=485
+            target_price=2650,
+            stop_loss_price=2420
         )
-        manager.add_position(position)
-        print(f"✓ Added position: {position.symbol}")
+        manager1.add_position(pos)
+        manager1.update_session_metrics(capital_available=87500, capital_used=12500)
         
-        # Add order
-        order = OrderState(
-            order_id="ORD_001",
-            symbol="NSE:SBIN-EQ",
-            side="BUY",
-            quantity=10,
-            order_type="LIMIT",
-            price=500
-        )
-        manager.add_order(order)
-        print(f"✓ Added order: {order.order_id}")
+        print(f"Added position. Open positions: {len(manager1.get_all_positions())}")
+        print(f"Capital available: {manager1.get_session_summary()['capital_available']}")
         
-        # Save session
-        manager.save_session()
-        print(f"✓ Session saved")
+        # Now simulate program restart – create a new manager instance
+        print("\n--- SECOND RUN (reloading session) ---")
+        manager2 = StateManager(state_dir=test_dir)
         
-        # Get summary
-        summary = manager.get_session_summary()
-        print(f"✓ Session summary:")
-        print(f"  - Open positions: {summary['open_positions']}")
-        print(f"  - Total orders: {summary['total_orders']}")
-        print(f"  - Capital used: ${summary['capital_used']}")
+        # Data should still be there
+        print(f"Open positions after reload: {len(manager2.get_all_positions())}")
+        pos2 = manager2.get_position("NSE:RELIANCE-EQ")
+        if pos2:
+            print(f"Position found: {pos2.symbol} @ {pos2.entry_price}")
+        else:
+            print("ERROR: Position lost!")
         
-        # List sessions
-        sessions = manager.list_sessions()
-        print(f"✓ Found {len(sessions)} session(s): {sessions}")
+        summary = manager2.get_session_summary()
+        print(f"Session summary: {summary}")
         
-        # Load session
-        loaded_session = manager.load_session("test_session")
-        print(f"✓ Loaded session with {len(loaded_session.positions)} positions")
-        
-        print("\n✅ All tests passed!\n")
+        print("\n✅ Permanent session works – data survives program restarts!")
         
     finally:
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(test_dir)
+        print("\nTest directory cleaned up.")

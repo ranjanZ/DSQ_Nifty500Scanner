@@ -25,6 +25,7 @@ from src.live_trading.state_manager import StateManager, PositionState
 from src.live_trading.broker_sync import BrokerSync
 from src.data_pipeline.db_utils import get_table_content
 from src.data_pipeline.read_data_store_db_lambda1 import update as update_database
+from src.data_pipeline.read_data_store_db_lambda1 import delete_old_data_for_all_stocks
 
 
 def setup_logging(log_dir: str = "logs") -> logging.Logger:
@@ -62,8 +63,8 @@ class SwingTradingEngine:
             self.backtest_cfg = yaml.safe_load(f)['backtest']
 
         # Session ID
-        self.session_id = session_id or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
-
+        #self.session_id = session_id or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        self.session_id="parmanent"
         # Broker & state
         self.broker = fyers_API()
         self.strategy = SupportResistanceStrategy(params=self.trading_config.get('strategy_params', {}))
@@ -228,14 +229,12 @@ class SwingTradingEngine:
         """Check the current status of an order from broker"""
         try:
             orders = self.broker.get_orders()
-            if not orders or 'orders' not in orders:
-                logger.warning(f"Could not fetch orders from broker")
-                return None
-            
-            for order in orders.get('orders', []):
+
+            for order_idx in   orders:
+                order = orders[str(order_idx)]['raw']
                 if order.get('id') == order_id:
                     return order
-            
+                
             logger.warning(f"Order {order_id} not found in broker orders")
             return None
         except Exception as e:
@@ -333,6 +332,7 @@ class SwingTradingEngine:
         """Execute database updater by direct import and run"""
         try:
             logger.info("🔄 Running database updater...")
+            delete_old_data_for_all_stocks(num_days=1)
             update_database()
             logger.info("✅ Database update completed successfully")
             return True
@@ -709,7 +709,7 @@ if __name__ == "__main__":
     # Initialize engine with dry_run=True by default (safe)
     engine = SwingTradingEngine(
         config_path="config/live_trading_config.yaml",
-        recover=False,   # start fresh for testing
+        recover=True,   # start fresh for testing
     )
 
     # Helper to print current state

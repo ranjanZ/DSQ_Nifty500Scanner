@@ -283,7 +283,7 @@ if __name__ == "__main__":
     from src.strategy.madam_strategy import SupportResistanceStrategy
 
     # Create scanner
-    scanner = MarketScanner("config/stock_list.yaml", watch_list=["nifty_top_500"],num_back_days=30)    # Instantiate strategies directly (with custom parameters if needed)
+    scanner = MarketScanner("config/stock_list.yaml", watch_list=["nifty_top_500"],num_back_days=100)    # Instantiate strategies directly (with custom parameters if needed)
 
     ma_strategy = MovingAverageCrossoverStrategy(params={'fast_period': 10, 'slow_period': 300})
     sr_strategy = SupportResistanceStrategy(params={'volume_threshold': 1.3,'min_history_candles': 2})
