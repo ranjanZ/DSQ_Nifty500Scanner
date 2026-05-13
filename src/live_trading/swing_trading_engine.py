@@ -62,6 +62,15 @@ class SwingTradingEngine:
         with open(backtest_config_path, 'r') as f:
             self.backtest_cfg = yaml.safe_load(f)['backtest']
 
+        # Get initial capital
+        initial_capital = self.trading_config.get('initial_capital')
+        if initial_capital is None:
+            logger.info("Initial capital not set, fetching from broker...")
+            funds = self.broker.get_funds()
+            initial_capital = funds.get('available_margin', 0)
+            logger.info(f"Using broker available margin as initial capital: {initial_capital}")
+            self.trading_config['initial_capital'] = initial_capital
+
         # Session ID
         #self.session_id = session_id or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         self.session_id="parmanent"
@@ -178,14 +187,25 @@ class SwingTradingEngine:
         - Sync with broker: detect any positions auto‑closed by SL/TP
         - Close positions that exceeded max_hold_days
         - Update capital accordingly
+        - Compute profit for open positions
         """
         logger.info("📊 3:00 PM position refresh – syncing with broker...")
         # Full sync updates capital and open positions automatically
         sync_result = self.broker_sync.full_sync()
         logger.info(f"Sync completed: {sync_result}")
 
-        # Now check time‑based exits (holding period exceeded)
+        # Update pnl for open positions
         positions = self.state_manager.get_all_positions()
+        for symbol, pos in positions.items():
+            current_price = self._get_current_price(symbol)
+            if current_price:
+                pnl = (current_price - pos.entry_price) * pos.quantity
+                pnl_pct = ((current_price - pos.entry_price) / pos.entry_price) * 100
+                updates = {'pnl': pnl, 'pnl_pct': pnl_pct}
+                self.state_manager.update_position(symbol, updates)
+                logger.debug(f"Updated P&L for {symbol}: {pnl:.2f} ({pnl_pct:.2f}%)")
+
+        # Now check time‑based exits (holding period exceeded)
         now_time = datetime.now(self.tz)
         for symbol, pos in positions.items():
             entry_date = datetime.fromisoformat(pos.entry_time)
