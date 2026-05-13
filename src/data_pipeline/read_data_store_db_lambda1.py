@@ -308,11 +308,11 @@ watchlists:
         # Remove duplicates
         return list(set(symbols))
     
-    def update_all_stocks(self, interval="D", batch_delay=1):
+    def update_all_stocks(self, interval="D", batch_delay=0.1):
         """Update data for all stocks in watchlists"""
         #print(DBG)
         try:
-            stocks = self.get_all_stocks()
+            stocks = self.get_all_stocks()[:200]
             
             for stock in stocks:
                 symbol = stock['fyers_symbol']
@@ -418,7 +418,7 @@ def update():
     #data_manager.initialize_database()
     
     # Regular update - check and update missing data
-    data_manager.update_all_stocks(interval="D", batch_delay=1)
+    data_manager.update_all_stocks(interval="D", batch_delay=0.1)
 
 if __name__ == "__main__":
     # data_manager = FyersDataManager(yaml_file_path="config/stock_list.yaml")

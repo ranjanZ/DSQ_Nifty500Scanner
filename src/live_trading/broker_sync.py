@@ -275,6 +275,27 @@ class BrokerSync:
         except Exception as e:
             logger.error(f"Error syncing orders: {e}")
             return False, {'error': str(e)}
+    
+    def sync_portfolio_snapshot(self) -> Tuple[bool, Dict[str, Any]]:
+        """Store latest broker portfolio holdings and closed positions by date."""
+        try:
+            logger.info("Syncing portfolio snapshot with broker")
+            portfolio_data = self.broker.get_all_portfolio_data()
+            if not isinstance(portfolio_data, dict):
+                return False, {'error': 'Invalid portfolio data'}
+            snapshot_date = datetime.now(self.tz).strftime("%Y-%m-%d")
+            snapshot = {
+                'date': snapshot_date,
+                'holdings': portfolio_data.get('holdings', []),
+                'closed_positions': portfolio_data.get('closed_positions', []),
+                'updated_at': datetime.now(self.tz).isoformat()
+            }
+            self.state_manager.update_portfolio_snapshot(snapshot, date=snapshot_date)
+            return True, {'date': snapshot_date, 'snapshot': snapshot}
+        except Exception as e:
+            logger.error(f"Error syncing portfolio snapshot: {e}")
+            return False, {'error': str(e)}
+
     def sync_account_balance(self) -> Dict[str, Any]:
         """
         Fetch latest account balance from broker and return it.
@@ -321,11 +342,16 @@ class BrokerSync:
             ord_success, ord_changes = self.sync_orders()
             result['orders'] = ord_changes
             result['success'] = result['success'] and ord_success
+
+            # Sync daily broker portfolio snapshot (holdings + closed positions)
+            port_success, port_changes = self.sync_portfolio_snapshot()
+            result['portfolio_snapshot'] = port_changes
+            result['success'] = result['success'] and port_success
+
             balance_result = self.sync_account_balance()
             result['balance'] = balance_result
             result['success'] = result['success'] and balance_result.get('success', True)
 
-            
             logger.info(f"Full sync completed: {'SUCCESS' if result['success'] else 'FAILED'}")
             return result
         

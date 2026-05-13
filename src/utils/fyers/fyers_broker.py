@@ -111,11 +111,13 @@ class fyers_API:
         # Fetch raw data
         h = self.fyers.holdings()
         holdings_raw = h.get('holdings', []) if h.get('s') == 'ok' else []
+        time.sleep(1)
         t = self.fyers.tradebook()
         trades_raw = t.get('tradebook', []) if t.get('s') == 'ok' else []
+        time.sleep(1)
         p = self.fyers.positions()
         positions_raw = p.get('netPositions', []) if p.get('s') == 'ok' else []
-
+        
         # Timestamp extractor (try common keys)
         def get_ts(tr):
             for key in ('orderDateTime', 'tradeDateTime', 'exchangeTime', 'transactionTime', 'orderTime'):
@@ -263,7 +265,67 @@ class fyers_API:
             logger.error(f"❌ Error fetching orders: {e}")
             return {}
 
+
     def get_his_candle_data(self, symbol="NSE:SBIN-EQ", fromdate='2023-10-10', todate='2023-10-15', interval="1"):
+        """Get historical candle data from Fyers broker with rate‑limit retry."""
+        max_retries =6
+        base_delay = 1  # seconds
+
+        for attempt in range(max_retries):
+            try:
+                fyers_model = fyersModel.FyersModel(
+                    client_id=self.client_id,
+                    is_async=False,
+                    token=self.access_token,
+                    log_path=cur_path + "/logs/"
+                )
+
+                data = {
+                    "symbol": symbol,
+                    "resolution": interval,
+                    "date_format": 1,
+                    "range_from": fromdate,
+                    "range_to": todate,
+                    "cont_flag": "1"
+                }
+
+                logger.debug(f"Fetching candles: {symbol} | {fromdate} to {todate} (attempt {attempt+1}/{max_retries})")
+                
+                response = fyers_model.history(data=data)
+                
+                # Check if response indicates rate limit (429) or other error
+                if response and response.get('s') == 'error' and response.get('code') == 429:
+                    delay = base_delay * (2 ** attempt)  # exponential backoff
+                    logger.warning(f"Rate limit reached. Retrying in {delay}s...")
+                    time.sleep(delay)
+                    continue  # retry
+                
+                # Normal success or other error that should not be retried
+                if response is None or 'candles' not in response or not response.get('candles'):
+                    logger.warning(f"No candle data for {symbol}")
+                    return pd.DataFrame()
+                
+                df = pd.DataFrame(
+                    response['candles'],
+                    columns=['time', 'open', 'high', 'low', 'close', 'volume']
+                )
+                
+                df['time'] = df['time'].apply(pd.Timestamp, unit='s', tzinfo=pytz.timezone('Asia/Kolkata'))
+                df['time'] = df['time'].apply(pd.Timestamp.isoformat)
+                
+                logger.debug(f"✅ Fetched {len(df)} candles for {symbol}")
+                return df
+
+            except Exception as e:
+                logger.error(f"❌ Error fetching candles for {symbol}: {e}")
+                # If it's the last attempt, return empty DataFrame
+                if attempt == max_retries - 1:
+                    return pd.DataFrame()
+                time.sleep(base_delay)  # simple delay before retrying on exception
+
+        return pd.DataFrame()  # fallback after all retries
+
+    def get_his_candle_data_single_appemt(self, symbol="NSE:SBIN-EQ", fromdate='2023-10-10', todate='2023-10-15', interval="1"):
         """Get historical candle data from Fyers broker"""
         try:
             fyers_model = fyersModel.FyersModel(
@@ -682,7 +744,6 @@ class fyers_API:
             
             except Exception as e:
                 logger.debug(f"Poll error: {e}")
-                time.sleep(1)
         
         logger.warning(f"⏱️ Order {order_id} PENDING after {max_wait_seconds}s")
         return False

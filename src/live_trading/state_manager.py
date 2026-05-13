@@ -79,12 +79,11 @@ class TradingSessionState:
     start_time: str
     positions: Dict[str, PositionState] = field(default_factory=dict)
     orders: Dict[str, OrderState] = field(default_factory=dict)
-    closed_positions: List[Dict[str, Any]] = field(default_factory=list)  # Completed trade history
     total_pnl: float = 0
-    closed_positions_count: int = 0
     capital_available: float = 0
     capital_used: float = 0
     metadata: Dict[str, Any] = field(default_factory=dict)
+    portfolio_history: Dict[str, Any] = field(default_factory=dict)
     
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -101,6 +100,9 @@ class TradingSessionState:
                             for k, v in data.get('positions', {}).items()}
         data['orders'] = {k: OrderState.from_dict(v) if isinstance(v, dict) else v 
                          for k, v in data.get('orders', {}).items()}
+        # Remove deprecated fields (now stored in portfolio_history)
+        data.pop('closed_positions', None)
+        data.pop('closed_positions_count', None)
         return TradingSessionState(**data)
 
 
@@ -184,6 +186,44 @@ class StateManager:
             logger.error(f"Error saving session: {e}")
             return False
     
+    def get_session_file(self, session_id: str = None) -> str:
+        """Return the file path for a given session ID."""
+        sid = session_id or self.session_id
+        return os.path.join(self.state_dir, f"{sid}.json")
+    
+    def list_sessions(self) -> List[str]:
+        """List all saved session IDs."""
+        if not os.path.isdir(self.state_dir):
+            return []
+        sessions = [name[:-5] for name in os.listdir(self.state_dir) if name.endswith('.json')]
+        sessions.sort(key=lambda x: os.path.getmtime(self.get_session_file(x)))
+        return sessions
+    
+    def load_session(self, session_id: str) -> Optional[TradingSessionState]:
+        """Load a saved session from disk."""
+        session_file = self.get_session_file(session_id)
+        if not os.path.exists(session_file):
+            logger.warning(f"Session not found: {session_id}")
+            return None
+        try:
+            with open(session_file, 'r') as f:
+                data = json.load(f)
+            session = TradingSessionState.from_dict(data)
+            self.current_session = session
+            self.session_id = session_id
+            logger.info(f"Loaded session: {session_id}")
+            return session
+        except Exception as e:
+            logger.error(f"Error loading session {session_id}: {e}")
+            return None
+    
+    def create_new_session(self, session_id: str = None, initial_capital: float = 0) -> Optional[TradingSessionState]:
+        """Create a new trading session and persist it to disk."""
+        if session_id:
+            self.session_id = session_id
+        self._create_new_session(initial_capital)
+        return self.current_session
+    
     # ------------------------------------------------------------------
     # Public API – same as original StateManager but without multiple sessions
     # ------------------------------------------------------------------
@@ -226,26 +266,8 @@ class StateManager:
         
         position = self.current_session.positions[symbol]
         
-        # Archive to closed_positions with full trade details
-        closed_trade = {
-            'symbol': position.symbol,
-            'entry_price': position.entry_price,
-            'entry_time': position.entry_time,
-            'exit_price': position.exit_price if hasattr(position, 'exit_price') else None,
-            'exit_time': position.exit_time if hasattr(position, 'exit_time') else None,
-            'quantity': position.quantity,
-            'capital_used': position.capital_used,
-            'pnl': position.pnl,
-            'pnl_pct': position.pnl_pct,
-            'holding_days': (datetime.fromisoformat(position.exit_time if hasattr(position, 'exit_time') and position.exit_time else datetime.now().isoformat())
-                           - datetime.fromisoformat(position.entry_time)).days if (hasattr(position, 'exit_time') and position.exit_time) else 0,
-            'exit_reason': position.exit_reason if hasattr(position, 'exit_reason') else 'UNKNOWN',
-            'closed_at': datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
-        }
-        
-        self.current_session.closed_positions.append(closed_trade)
+        # Remove from open positions (closed_positions now tracked in portfolio_history via broker sync)
         del self.current_session.positions[symbol]
-        self.current_session.closed_positions_count += 1
         self.current_session.total_pnl += position.pnl
         self.save_session()
         logger.info(f"Position CLOSED & ARCHIVED: {symbol} | P&L: {position.pnl:.2f} ({position.pnl_pct:.2f}%)")
@@ -314,10 +336,43 @@ class StateManager:
         self.save_session()
         return True
     
+    def update_portfolio_snapshot(self, portfolio_data: Dict[str, Any], date: str = None) -> bool:
+        """Store a daily portfolio snapshot keyed by date."""
+        if self.current_session is None:
+            return False
+        if date is None:
+            date = datetime.now(self.tz).strftime("%Y-%m-%d")
+        snapshot = {
+            'date': date,
+            'holdings': portfolio_data.get('holdings', []),
+            'closed_positions': portfolio_data.get('closed_positions', []),
+            'updated_at': datetime.now(self.tz).isoformat()
+        }
+        self.current_session.portfolio_history[date] = snapshot
+        self.save_session()
+        return True
+    
+    def get_portfolio_snapshot(self, date: str = None) -> Dict[str, Any]:
+        if self.current_session is None:
+            return {}
+        if date is None:
+            date = datetime.now(self.tz).strftime("%Y-%m-%d")
+        return self.current_session.portfolio_history.get(date, {})
+    
+    def get_portfolio_history(self) -> Dict[str, Any]:
+        if self.current_session is None:
+            return {}
+        return self.current_session.portfolio_history.copy()
+    
     def get_session_summary(self) -> Dict[str, Any]:
         """Return a summary of the current permanent session."""
         if self.current_session is None:
             return {}
+        
+        # Calculate total closed positions from portfolio_history
+        total_closed = 0
+        for snapshot in self.current_session.portfolio_history.values():
+            total_closed += len(snapshot.get('closed_positions', []))
         
         return {
             'session_id': self.current_session.session_id,
@@ -325,17 +380,20 @@ class StateManager:
             'open_positions': len(self.current_session.positions),
             'total_orders': len(self.current_session.orders),
             'total_pnl': self.current_session.total_pnl,
-            'closed_positions': self.current_session.closed_positions_count,
-            'closed_trades': self.current_session.closed_positions,  # Full trade history
+            'closed_positions': total_closed,  # From portfolio_history
+            'portfolio_snapshots': len(self.current_session.portfolio_history),
             'capital_available': self.current_session.capital_available,
             'capital_used': self.current_session.capital_used
         }
     
     def get_closed_positions(self) -> List[Dict[str, Any]]:
-        """Get list of all closed positions (completed trades)."""
+        """Get list of all closed positions from portfolio history."""
         if self.current_session is None:
             return []
-        return self.current_session.closed_positions
+        closed_trades = []
+        for snapshot in self.current_session.portfolio_history.values():
+            closed_trades.extend(snapshot.get('closed_positions', []))
+        return closed_trades
     
     def export_session(self, export_path: str) -> bool:
         """Export the permanent session to an external JSON file."""

@@ -120,8 +120,25 @@ def test_state_manager():
         assert summary['total_orders'] == 1
         logger.info(f"✓ Session summary: {summary}")
         
-        # Test 1.7: List sessions
-        logger.info("\nTest 1.7: List saved sessions")
+        # Test 1.7: Portfolio snapshot storage
+        logger.info("\nTest 1.7: Portfolio snapshot storage")
+        today = datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y-%m-%d')
+        portfolio_data = {
+            'holdings': [
+                {'symbol': 'NSE:BIOCON-EQ', 'quantity': 1, 'average_price': 401.5, 'current_value': 411.1, 'unrealized_pnl': 9.6}
+            ],
+            'closed_positions': [
+                {'symbol': 'NSE:BANKBARODA-EQ', 'quantity': 1, 'entry_price': 266.55, 'exit_price': 261.65, 'realised_pnl': -4.9, 'exit_time': None, 'type': 'delivery_sell'}
+            ]
+        }
+        assert manager.update_portfolio_snapshot(portfolio_data, date=today) == True
+        snapshot = manager.get_portfolio_snapshot(today)
+        assert snapshot['holdings'][0]['symbol'] == 'NSE:BIOCON-EQ'
+        assert snapshot['closed_positions'][0]['symbol'] == 'NSE:BANKBARODA-EQ'
+        logger.info(f"✓ Portfolio snapshot saved for {today}")
+        
+        # Test 1.8: List sessions
+        logger.info("\nTest 1.8: List saved sessions")
         sessions = manager.list_sessions()
         
         assert "test_session_1" in sessions
@@ -169,8 +186,13 @@ def test_broker_sync():
         state_manager.add_position(position)
         
         # Mock broker
-        mock_broker = Mock()
-        
+        mock_broker = Mock()        mock_broker.get_positions.return_value = {}
+        mock_broker.get_orders.return_value = {}
+        mock_broker.get_all_portfolio_data.return_value = {
+            'holdings': [],
+            'closed_positions': []
+        }
+        mock_broker.get_funds.return_value = {'equity_available': 50000}        
         # Test 2.1: Create BrokerSync
         logger.info("\nTest 2.1: Create BrokerSync")
         sync = BrokerSync(broker=mock_broker, state_manager=state_manager)

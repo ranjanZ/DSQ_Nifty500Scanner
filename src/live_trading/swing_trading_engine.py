@@ -94,8 +94,8 @@ class SwingTradingEngine:
         self.position_weights_config = self.backtest_cfg.get('position_weights', {})
 
         # Timing (all in 24‑hour format)
-        self.position_refresh_time = "15:00"     # 3:00 PM - refresh state & time exits
-        self.scan_time = "15:03"                 # 3:13 PM - update DB & scan signals
+        self.position_refresh_time = self.trading_config.get('position_refresh_time', "15:00")     # 3:00 PM - refresh state & time exits
+        self.scan_time = self.trading_config.get('scan_time', "15:13")                # 3:13 PM - update DB & scan signals
 
         # Threading / state
         self.market_open = False
@@ -152,6 +152,7 @@ class SwingTradingEngine:
             return False
         open_time = datetime.strptime(self.trading_config['market_open'], "%H:%M").time()
         close_time = datetime.strptime(self.trading_config['market_close'], "%H:%M").time()
+        print(f"Checking market hours: now={now.time()} | open={open_time} - close={close_time}")
         return open_time <= now.time() <= close_time
 
     def _current_time_str(self) -> str:
@@ -404,6 +405,7 @@ class SwingTradingEngine:
             result['signals_found'] = 0
             return result
 
+
         result['signals_found'] = len(raw_signals)
         selected = self._select_and_weight_signals(raw_signals)
         logger.info(f"Selected {len(selected)} signals for entry")
@@ -411,6 +413,7 @@ class SwingTradingEngine:
         for signal in selected:
             symbol = signal['symbol']
             if self.state_manager.get_position(symbol) is not None:
+                logger.warning(f"Position already open for {symbol}")
                 continue
             if not self.can_open_position():
                 logger.warning("Capital limit reached, stopping new entries")
@@ -425,7 +428,7 @@ class SwingTradingEngine:
         """Internal signal scanner using the strategy"""
         signals = []
         stocks = self.scanner.get_stock_symbols()[:200]
-        end_date = datetime.now(self.tz).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date=datetime.now()
         start_date = end_date - timedelta(days=days_back)
         #print(DBG)
         for stock in stocks:
@@ -532,9 +535,26 @@ class SwingTradingEngine:
             logger.error(f"Cannot convert entry price for {symbol}: {entry_price}")
             return False
 
-        quantity = 1
-        logger.info(f"🧪 TESTING MODE: Using fixed quantity = {quantity}")
+        # quantity = 1
+        # logger.info(f"🧪 TESTING MODE: Using fixed quantity = {quantity}")
         
+
+        #===== ACTUAL PRODUCTION MODE (COMMENTED FOR TESTING): =====
+        weight = signal_info.get('final_weight', 0)
+        total_cap = self.get_total_capital()
+        alloc_cap = total_cap * weight if weight > 0 else self.trading_config['max_position_size']
+        available = self.get_available_capital()
+        alloc_cap = min(alloc_cap, available)
+        if alloc_cap <= 100:
+            logger.warning(f"Insufficient capital for {symbol}")
+            return False
+        quantity = int(alloc_cap // entry_price)
+        if quantity == 0:
+            logger.warning(f"Cannot afford 1 share of {symbol}")
+            return False
+        used_capital = quantity * entry_price  # ACTUAL: Dynamic capital for production
+
+
         target_price = entry_price * (1.0 + self.target_profit_pct)
         stop_loss_price = entry_price * (1.0 - self.stop_loss_pct)
 
@@ -651,11 +671,12 @@ class SwingTradingEngine:
 
                 # Market open check
                 is_open = self.is_market_open()
+                print(f"Market open: {is_open} | Time: {current_time} | Date: {current_date}")
                 if not is_open:
                     if self.market_open:
                         logger.info("Market closed")
                         self.market_open = False
-                    time.sleep(60)
+                    time.sleep(6)
                     continue
 
                 if not self.market_open:
@@ -663,15 +684,16 @@ class SwingTradingEngine:
                     self.market_open = True
                     self.broker_sync.full_sync()
 
+                
                 # --- 3:00 PM Position refresh ---
-                if current_time == self.position_refresh_time and last_date_position_refresh != current_date:
+                if current_time == self.position_refresh_time:# and last_date_position_refresh != current_date:
                     logger.info("⏰ Position refresh trigger (3:00 PM)")
                     self.refresh_positions()
                     last_date_position_refresh = current_date
                     self._save_timing_metadata(position_refresh_date=current_date)
 
                 # --- 3:13 PM DB update + signal scan ---
-                if current_time == self.scan_time and last_date_scan != current_date:
+                if current_time == self.scan_time:# and last_date_scan != current_date:
                     logger.info("⏰ 3:13 PM – Database update & signal scan")
                     db_success = self.run_data_updater()
                     if not db_success:
@@ -680,7 +702,7 @@ class SwingTradingEngine:
                         scan_result = self.scan_and_place_signals(days_back=100)
                         logger.info(f"🎯 Scan result: {scan_result}")
                         if not scan_result.get('success'):
-                            logger.error(f"⚠️ Signal scan not successful: {scan_result.get('message', 'Unknown error')}")
+                            logger.error(f"⚠️ Signal scan not Successful: {scan_result.get('message', 'Unknown error')}")
                     
                     last_date_scan = current_date
                     self._save_timing_metadata(scan_date=current_date)
