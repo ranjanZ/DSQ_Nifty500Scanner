@@ -304,3 +304,14 @@ if __name__ == "__main__":
     # top_sells = scanner.get_top_signals("MA_Crossover", top_n=20, signal_type='SELL')
     print(top_buys)
     print(top_sells)
+
+
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    print(f"DSQ Nifty 500 Market Scanner|| Top Buy Signals - {today}\n")
+    print("=" * 80)
+
+    for record in top_buys:
+        print(f"{record['symbol']} | {record['name']} | {record['signal']} | {record['sector']} | {record['current_price']}")
+        print("-" * 80)

@@ -6,6 +6,7 @@ from datetime import timedelta
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 from src.strategy.market_scanner import MarketScanner
 from src.data_pipeline.db_utils import get_table_content
@@ -146,7 +147,7 @@ class BacktestEngine:
         self.data_dict = {}
         self.stock_meta = {}
 
-        for stock in stocks:
+        for stock in tqdm(stocks, desc="📥 Loading data", unit="stock"):
             symbol = stock['symbol']
             table = self.scanner.get_table_name(symbol)
             fetch_start = self.start_date - timedelta(days=self.lookback_days)
@@ -165,12 +166,13 @@ class BacktestEngine:
                 self.data_dict[symbol] = None
             self.stock_meta[symbol] = stock
 
-        logger.info(f"Loaded data for {sum(1 for v in self.data_dict.values() if v is not None)} stocks.")
+        loaded_count = sum(1 for v in self.data_dict.values() if v is not None)
+        logger.info(f"✅ Loaded data for {loaded_count}/{len(stocks)} stocks.")
 
     # ------------------------------------------------------------------
     # 2. Signal pre‑computation (parallelised with threads)
     # ------------------------------------------------------------------
-    def _precompute_signals(self):
+    def _precompute_signals_old(self):
         """
         For each symbol, compute buy signals for every trading day
         using only data available up to that day.
@@ -192,7 +194,7 @@ class BacktestEngine:
                 if len(historical) < self.lookback_days // 2:
                     continue
                 try:
-                    signals_df = strategy.generate_signals(historical)
+                    signals_df = strategy.generate_signals(historical, num_back_signals=5)
 
                     last_5 = signals_df.iloc[-5:]
                     latest = last_5.iloc[-1]   # latest row (may have signal 0)
@@ -217,12 +219,79 @@ class BacktestEngine:
         symbols = list(self.data_dict.keys())
         with ThreadPoolExecutor(max_workers=8) as pool:
             futures = {pool.submit(process_symbol, sym): sym for sym in symbols}
-            for future in as_completed(futures):
+            for future in tqdm(as_completed(futures), total=len(symbols), desc="🔍 Computing signals", unit="stock"):
                 for date, signal in future.result():
                     self.signals_by_date[date].append(signal)
 
         total_signals = sum(len(v) for v in self.signals_by_date.values())
-        logger.info(f"Precomputed {total_signals} total buy signals across all days.")
+        logger.info(f"✅ Precomputed {total_signals} total buy signals across all days.")
+
+
+    def _precompute_signals(self):
+        """
+        Pre‑compute signals once per symbol on the full history,
+        then extract daily signals from the resulting DataFrame.
+        """
+        logger.info("Precomputing signals (one pass per symbol) ...")
+        self.signals_by_date: Dict[pd.Timestamp, List[dict]] = {
+            d: [] for d in self.trading_days
+        }
+
+        def process_symbol(symbol):
+            df = self.data_dict.get(symbol)
+            if df is None or len(df) < 5:
+                return []
+            meta = self.stock_meta[symbol]
+            strategy = self.scanner.strategies[self.strategy_name]
+
+            # --- Compute signals once for the whole history ---
+            try:
+                # Use a large num_back_signals to get the entire DataFrame
+                signals_full = strategy.generate_signals(
+                    df, num_back_signals=len(df)
+                )
+                print("done for ", symbol)
+            except Exception as e:
+                logger.debug(f"Signal generation failed for {symbol}: {e}")
+                return []
+
+            # signals_full should have the same length as df and contain a 'signal' column
+            # We'll ensure 'time' is preserved; if not, we can join on index
+            if 'time' not in signals_full.columns:
+                # Assume it's index‑aligned with df
+                signals_full['time'] = df['time'].values
+
+            results = []
+            for date in self.trading_days:
+                # Slicing is cheap – only a few comparisons per day
+                recent = signals_full.loc[signals_full['time'] <= date].tail(5)
+                if recent.empty:
+                    continue
+                latest = recent.iloc[-1]
+                if latest['signal'] == 1:
+                    results.append((
+                        date,
+                        {
+                            'symbol': symbol,
+                            'name': meta.get('name', symbol),
+                            'close': float(latest['close']),
+                            'open': float(latest['open']),
+                            'sector': meta.get('sector', 'Unknown'),
+                            'confidence': self.scanner._calculate_confidence(recent),
+                        }
+                    ))
+            return results
+
+        symbols = list(self.data_dict.keys())
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = {pool.submit(process_symbol, sym): sym for sym in symbols}
+            for future in tqdm(as_completed(futures), total=len(symbols),
+                            desc="🔍 Computing signals", unit="stock"):
+                for date, signal in future.result():
+                    self.signals_by_date[date].append(signal)
+
+        total_signals = sum(len(v) for v in self.signals_by_date.values())
+        logger.info(f"✅ Precomputed {total_signals} total buy signals across all days.")
 
     # ------------------------------------------------------------------
     # 3. Backtest loop (purely in‑memory)
@@ -234,7 +303,7 @@ class BacktestEngine:
         self.closed_trades: List[Trade] = []
         self.portfolio_values = []
 
-        for date in self.trading_days:
+        for date in tqdm(self.trading_days, desc="📊 Backtesting", unit="day"):
             # a) Exit checks
             self.check_and_exit_trades(date)
 

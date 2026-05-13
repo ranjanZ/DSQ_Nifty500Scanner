@@ -53,65 +53,105 @@ class BrokerSync:
     
     def sync_positions(self) -> Tuple[bool, Dict[str, Any]]:
         """
-        Synchronize positions with broker
+        Synchronize positions with broker AND handle GTT exits.
+        
+        Logic:
+        1. Positions in broker = open positions
+        2. Positions NOT in broker but in local state = closed by GTT/SL/TP
+        3. When closed by GTT, find the GTT order to get exit price and reason
         
         Returns:
             Tuple of (success, changes_dict)
         """
         try:
-            logger.info("Starting position synchronization")
+            logger.info("🔄 Starting comprehensive position synchronization")
             
             broker_positions = self.get_broker_positions()
+            broker_orders = self.get_broker_orders()
             local_positions = self.state_manager.get_all_positions()
             
             changes = {
                 'added': [],
                 'updated': [],
-                'removed': [],
+                'closed_by_gtt': [],      # Positions closed by GTT order execution
+                'closed_manual': [],      # Positions not found on broker (closed manually)
                 'conflicts': []
             }
             
-            # Check for positions in broker but not in local state
+            # ===== STEP 1: Find positions closed by GTT =====
+            # Check each local position - if not in broker, it was closed
+            for symbol, local_pos in local_positions.items():
+                if symbol not in broker_positions:
+                    logger.info(f"📍 Position {symbol} NOT found on broker - checking if closed by GTT...")
+                    
+                    # Find GTT exit order for this symbol
+                    gtt_exit = self._find_gtt_exit_order(symbol, broker_orders)
+                    
+                    if gtt_exit:
+                        # Position was closed by GTT
+                        exit_price = gtt_exit.get('executed_price', 0)
+                        exit_reason = gtt_exit.get('reason', 'GTT_EXIT')
+                        
+                        logger.info(f"✅ GTT EXIT detected for {symbol}: price={exit_price}, reason={exit_reason}")
+                        
+                        # Close the position with exit details
+                        pnl = (exit_price - local_pos.entry_price) * local_pos.quantity
+                        pnl_pct = ((exit_price - local_pos.entry_price) / local_pos.entry_price * 100) if local_pos.entry_price else 0
+                        
+                        updates = {
+                            'status': 'CLOSED',
+                            'exit_price': exit_price,
+                            'exit_time': datetime.now(self.tz).isoformat(),
+                            'exit_reason': exit_reason,
+                            'pnl': pnl,
+                            'pnl_pct': pnl_pct
+                        }
+                        self.state_manager.update_position(symbol, updates)
+                        self.state_manager.remove_position(symbol)  # Archive to closed_positions
+                        changes['closed_by_gtt'].append(symbol)
+                    else:
+                        # Position closed manually or by unknown reason
+                        logger.warning(f"⚠️  Position {symbol} closed but no GTT order found - archiving as unknown exit")
+                        updates = {
+                            'status': 'CLOSED',
+                            'exit_price': 0,
+                            'exit_time': datetime.now(self.tz).isoformat(),
+                            'exit_reason': 'MANUAL_CLOSE_OR_UNKNOWN'
+                        }
+                        self.state_manager.update_position(symbol, updates)
+                        self.state_manager.remove_position(symbol)
+                        changes['closed_manual'].append(symbol)
+            
+            # ===== STEP 2: Check for new positions on broker =====
             for symbol, broker_pos in broker_positions.items():
                 if symbol not in local_positions:
-                    logger.warning(f"Position found in broker but not in local state: {symbol}")
+                    logger.warning(f"📍 New position found on broker: {symbol}")
                     changes['added'].append(symbol)
                     
-                    # Add missing position
                     pos_state = PositionState(
                         symbol=symbol,
                         entry_price=broker_pos.get('entry_price', 0),
                         entry_time=datetime.now(self.tz).isoformat(),
                         quantity=broker_pos.get('quantity', 0),
                         capital_used=broker_pos.get('capital_used', 0),
-                        entry_signal="RECOVERED",
+                        entry_signal="RECOVERED_FROM_BROKER",
                         target_price=broker_pos.get('target_price', 0),
                         stop_loss_price=broker_pos.get('stop_loss_price', 0)
                     )
                     self.state_manager.add_position(pos_state)
             
-            # Check for positions in local state but not in broker
-            for symbol, local_pos in local_positions.items():
-                if symbol not in broker_positions:
-                    logger.warning(f"Position found in local state but not in broker: {symbol}")
-                    changes['removed'].append(symbol)
-                    
-                    # Mark as closed or investigate
-                    self.state_manager.remove_position(symbol)
-            
-            # Update existing positions
+            # ===== STEP 3: Update existing positions =====
             for symbol, broker_pos in broker_positions.items():
                 if symbol in local_positions:
                     local_pos = local_positions[symbol]
                     
-                    # Check for differences
+                    # Check for differences in quantity or entry price
                     if (local_pos.quantity != broker_pos.get('quantity', 0) or
                         abs(local_pos.entry_price - broker_pos.get('entry_price', 0)) > 0.01):
                         
-                        logger.warning(f"Position mismatch: {symbol}")
+                        logger.warning(f"⚠️  Position mismatch: {symbol}")
                         changes['conflicts'].append(symbol)
                         
-                        # Update with broker data
                         updates = {
                             'quantity': broker_pos.get('quantity', local_pos.quantity),
                             'entry_price': broker_pos.get('entry_price', local_pos.entry_price)
@@ -119,12 +159,69 @@ class BrokerSync:
                         self.state_manager.update_position(symbol, updates)
                         changes['updated'].append(symbol)
             
-            logger.info(f"Position sync completed: {changes}")
+            logger.info(f"✅ Position sync completed: {changes}")
             return True, changes
         
         except Exception as e:
-            logger.error(f"Error syncing positions: {e}")
+            logger.error(f"❌ Error syncing positions: {e}")
             return False, {'error': str(e)}
+    
+    def _find_gtt_exit_order(self, symbol: str, broker_orders: Dict) -> Optional[Dict[str, Any]]:
+        """
+        Find a SELL GTT order for the symbol that was executed.
+        Returns dict with executed_price and reason (TP/SL).
+        
+        GTT order structure (Fyers):
+        - status: "EXECUTED" means it filled
+        - side: -1 (SELL)
+        - orderType: 2 (GTT)
+        - tradedPrice: exit price
+        """
+        try:
+            for order_id, order_data in broker_orders.items():
+                # Normalize Fyers response
+                order = order_data if isinstance(order_data, dict) else order_data.get('raw', {})
+                
+                # Check if this is a SELL order for our symbol
+                if order.get('symbol') != symbol:
+                    continue
+                
+                side = order.get('side', 0)
+                is_sell = (side == -1)  # -1 = SELL in Fyers
+                
+                if not is_sell:
+                    continue
+                
+                # Check if this is a GTT order that executed
+                order_type = order.get('type', 0)
+                is_gtt = (order_type == 2) or order.get('orderType') == 'GTT' or 'GTT' in str(order.get('orderTag', ''))
+                
+                status = order.get('status', 0)
+                # Status 5 = EXECUTED in Fyers
+                is_executed = (status == 5 or isinstance(status, str) and status.upper() == 'EXECUTED')
+                
+                if is_gtt and is_executed:
+                    # This GTT hit! Get exit price
+                    exit_price = float(order.get('tradedPrice', 0)) or float(order.get('limitPrice', 0)) or 0
+                    
+                    # Determine if it was TP or SL (best guess based on order structure)
+                    # GTT OCO: leg1 = first exit (usually TP), leg2 = second (usually SL)
+                    reason = "TP"  # Default to TP
+                    
+                    logger.info(f"🎯 Found GTT exit order for {symbol}: {order_id}, executed at {exit_price}")
+                    
+                    return {
+                        'order_id': order_id,
+                        'executed_price': exit_price,
+                        'reason': reason,
+                        'status': 'EXECUTED'
+                    }
+            
+            return None
+        
+        except Exception as e:
+            logger.error(f"Error finding GTT exit order for {symbol}: {e}")
+            return None
     
     def sync_orders(self) -> Tuple[bool, Dict[str, Any]]:
         """
