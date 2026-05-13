@@ -105,180 +105,83 @@ class fyers_API:
         except Exception as e:
             logger.error(f"❌ Error placing stop-loss for {symbol}: {e}")
             return None
-
-
     def get_all_portfolio_data(self) -> dict:
-        """
-        Fetch and sync Fyers v3 portfolio.
-        Returns a comprehensive dictionary with three sections:
-        - positions       : active open positions (intraday + uncovered shorts)
-        - holdings        : synced demat holdings (only unsold shares)
-        - closed_positions: today's completely closed positions with realised P&L
-        """
-        portfolio = {
-            "positions": {},
-            "holdings": {},
-            "closed_positions": {}
-        }
-
-        # ------------------------------------------------------------------
-        # 1. FETCH ACTIVE POSITIONS (intraday & new delivery shorts)
-        # ------------------------------------------------------------------
-        try:
-            pos_res = self.fyers.positions()
-            if pos_res and pos_res.get('s') == 'ok':
-                all_pos = pos_res.get('netPositions', []) + pos_res.get('overallPositions', [])
-                for pos in all_pos:
-                    symbol = pos.get('symbol', '')
-                    if not symbol:
-                        continue
-
-                    net_qty = int(pos.get('netQty', 0))
-                    buy_avg = float(pos.get('buyAvg', 0))
-                    sell_avg = float(pos.get('sellAvg', 0))
-
-                    portfolio["positions"][symbol] = {
-                        "entry_price": buy_avg if net_qty > 0 else sell_avg,
-                        "quantity": net_qty,
-                        "capital_used": abs(net_qty * (buy_avg if net_qty > 0 else sell_avg)),
-                        "product_type": pos.get('productType', ''),
-                        "realized_pnl": float(pos.get('realized_profit', 0)),
-                        "unrealized_pnl": float(pos.get('unrealized_profit', 0)),
-                        "raw": pos
-                    }
-                logger.debug(f"Positions parsed: {len(portfolio['positions'])}")
-            else:
-                logger.error(f"Failed to fetch positions: {pos_res}")
-        except Exception as e:
-            logger.error(f"Error fetching positions: {e}")
-
-        # ------------------------------------------------------------------
-        # 2. FETCH DEMAT HOLDINGS & SYNC (use remainingQuantity)
-        # ------------------------------------------------------------------
-        try:
-            hold_res = self.fyers.holdings()
-            raw_holdings = []  # keep all for closed‑position calculation
-            if hold_res and hold_res.get('s') == 'ok':
-                all_holdings = hold_res.get('holdings', [])
-                raw_holdings = all_holdings   # we need even zero‑remaining items
-                for hold in all_holdings:
-                    symbol = hold.get('symbol', '')
-                    if not symbol:
-                        continue
-
-                    remaining_qty = int(hold.get('remainingQuantity', 0))
-                    # Only include holdings that still have unsold shares
-                    if remaining_qty == 0:
-                        continue
-
-                    avg_price = float(hold.get('costPrice', 0))
-                    market_val = float(hold.get('marketVal', 0))
-                    unreal_pl = float(hold.get('pl', 0))
-
-                    portfolio["holdings"][symbol] = {
-                        "average_price": avg_price,
-                        "quantity": remaining_qty,          # synced quantity
-                        "current_value": market_val,
-                        "unrealized_pnl": unreal_pl,
-                        "raw": hold
-                    }
-                logger.debug(f"Holdings parsed (synced): {len(portfolio['holdings'])}")
-            else:
-                logger.error(f"Failed to fetch holdings: {hold_res}")
-        except Exception as e:
-            logger.error(f"Error fetching holdings: {e}")
-            raw_holdings = []
-
-        # ------------------------------------------------------------------
-        # 3. FETCH TRADEBOOK & BUILD CLOSED POSITIONS
-        # ------------------------------------------------------------------
-        try:
-            trade_res = self.fyers.tradebook()
-            if trade_res and trade_res.get('s') == 'ok':
-                trades = trade_res.get('tradebook', [])
-            else:
-                logger.error(f"Failed to fetch tradebook: {trade_res}")
-                trades = []
-        except Exception as e:
-            logger.error(f"Error fetching tradebook: {e}")
-            trades = []
-
-        # Aggregate trades: group by symbol, sum buy/sell quantities and values
         from collections import defaultdict
-        trade_data = defaultdict(lambda: {'buy_qty': 0, 'buy_val': 0.0,
-                                        'sell_qty': 0, 'sell_val': 0.0,
-                                        'product': ''})
-        for t in trades:
-            sym = t.get('symbol', '')
-            side = t.get('side', 0)   # 1 = buy, -1 = sell
-            qty = int(t.get('qty', 0))
-            price = float(t.get('price', 0))
-            val = qty * price
-            if side == 1:
-                trade_data[sym]['buy_qty'] += qty
-                trade_data[sym]['buy_val'] += val
-            elif side == -1:
-                trade_data[sym]['sell_qty'] += qty
-                trade_data[sym]['sell_val'] += val
-            trade_data[sym]['product'] = t.get('productType', '')
 
-        # Determine closed positions from trade data + holdings cost basis
-        for sym, td in trade_data.items():
-            net_qty = td['buy_qty'] - td['sell_qty']
-            # A position is considered "closed" if net traded quantity is zero
-            # (intraday square‑off) OR if it's a pure delivery sell (sell > buy)
-            # and the corresponding holding is fully sold.
-            if net_qty == 0:
-                # Intraday closed position
-                realised_pnl = td['sell_val'] - td['buy_val']
-                portfolio["closed_positions"][sym] = {
-                    "quantity": td['buy_qty'],
-                    "average_buy_price": (td['buy_val'] / td['buy_qty']) if td['buy_qty'] else 0,
-                    "average_sell_price": (td['sell_val'] / td['sell_qty']) if td['sell_qty'] else 0,
-                    "realised_pnl": realised_pnl,
-                    "product_type": td['product'],
-                    "type": "intraday"
-                }
-            elif td['sell_qty'] > td['buy_qty']:
-                # Delivery sell (holding sold). Find cost price from holdings
-                cost_price = None
-                for h in raw_holdings:
-                    if h.get('symbol') == sym and int(h.get('quantity', 0)) > 0:
-                        # Use original holding quantity to match
-                        cost_price = float(h.get('costPrice', 0))
+        # Fetch raw data
+        h = self.fyers.holdings()
+        holdings_raw = h.get('holdings', []) if h.get('s') == 'ok' else []
+        t = self.fyers.tradebook()
+        trades_raw = t.get('tradebook', []) if t.get('s') == 'ok' else []
+        p = self.fyers.positions()
+        positions_raw = p.get('netPositions', []) if p.get('s') == 'ok' else []
+
+        # Timestamp extractor (try common keys)
+        def get_ts(tr):
+            for key in ('orderDateTime', 'tradeDateTime', 'exchangeTime', 'transactionTime', 'orderTime'):
+                if tr.get(key):
+                    return tr[key]
+            return None
+
+        # Holdings list (only remainingQuantity > 0)
+        holdings = []
+        for hrec in holdings_raw:
+            sym = hrec.get('symbol')
+            rem = int(hrec.get('remainingQuantity', 0))
+            if sym and rem > 0:
+                holdings.append({
+                    "symbol": sym,
+                    "quantity": rem,
+                    "average_price": float(hrec.get('costPrice', 0)),
+                    "current_value": float(hrec.get('marketVal', 0)),
+                    "unrealized_pnl": float(hrec.get('pl', 0))
+                })
+
+        # Aggregate sell trades (for exit_time and sell value)
+        agg = defaultdict(lambda: {'sq': 0, 'sv': 0.0, 'st': []})
+        for tr in trades_raw:
+            sym = tr.get('symbol')
+            side = tr.get('side')
+            qty = int(tr.get('qty', 0))
+            price = float(tr.get('price', 0))
+            ts = get_ts(tr)
+            if side == -1:  # sell
+                agg[sym]['sq'] += qty
+                agg[sym]['sv'] += qty * price
+                if ts:
+                    agg[sym]['st'].append(ts)
+
+        # Closed positions list (fully sold holdings: remainingQuantity == 0)
+        closed = []
+        for hrec in holdings_raw:
+            sym = hrec.get('symbol')
+            rem = int(hrec.get('remainingQuantity', 0))
+            orig = int(hrec.get('quantity', 0))
+            if sym and rem == 0 and orig > 0:
+                cost = float(hrec.get('costPrice', 0))
+                # Sell price from CNC positions (if available) else tradebook
+                sell_price = None
+                for pos in positions_raw:
+                    if (pos.get('symbol') == sym and pos.get('productType') == 'CNC' 
+                        and int(pos.get('netQty', 0)) < 0):
+                        sell_price = float(pos.get('sellAvg', 0))
                         break
-                if cost_price is not None:
-                    qty_sold = td['sell_qty'] - td['buy_qty']  # pure sell quantity
-                    realised_pnl = (td['sell_val'] / td['sell_qty'] * qty_sold) - (cost_price * qty_sold)
-                    portfolio["closed_positions"][sym] = {
-                        "quantity": qty_sold,
-                        "average_cost_price": cost_price,
-                        "average_sell_price": td['sell_val'] / td['sell_qty'] if td['sell_qty'] else 0,
-                        "realised_pnl": realised_pnl,
-                        "product_type": 'CNC',
+                if sell_price is None and sym in agg and agg[sym]['sq'] > 0:
+                    sell_price = agg[sym]['sv'] / agg[sym]['sq']
+                if sell_price:
+                    exit_time = max(agg[sym]['st']) if agg[sym]['st'] else None
+                    closed.append({
+                        "symbol": sym,
+                        "quantity": orig,
+                        "entry_price": round(cost, 2),
+                        "exit_price": round(sell_price, 2),
+                        "realised_pnl": round((sell_price - cost) * orig, 2),
+                        "exit_time": exit_time,
                         "type": "delivery_sell"
-                    }
-        logger.debug(f"Closed positions derived: {len(portfolio['closed_positions'])}")
+                    })
 
-        # ------------------------------------------------------------------
-        # 4. CLEAN REDUNDANT SHORT POSITIONS COVERED BY DELIVERY SELLS
-        # ------------------------------------------------------------------
-        # If a delivery sell appears in closed_positions, the matching CNC short
-        # in active positions is a mirror and can be removed.
-        positions_to_remove = []
-        for sym, pos_data in portfolio["positions"].items():
-            if (pos_data["product_type"] == "CNC" and
-                pos_data["quantity"] < 0 and
-                sym in portfolio["closed_positions"] and
-                portfolio["closed_positions"][sym]["type"] == "delivery_sell"):
-                positions_to_remove.append(sym)
+        return {"holdings": holdings, "closed_positions": closed}
 
-        for sym in positions_to_remove:
-            del portfolio["positions"][sym]
-            logger.debug(f"Removed covered delivery short position: {sym}")
-
-        return portfolio
-    
 
     def get_positions(self) -> dict:
         """Get current positions from broker"""
