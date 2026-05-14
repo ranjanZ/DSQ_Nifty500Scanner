@@ -1,0 +1,211 @@
+{
+  "session_id": "permanent",
+  "start_time": "2026-05-13T19:24:20.890347+05:30",
+  "positions": {
+    "NSE:MEDANTA-EQ": {
+      "symbol": "NSE:MEDANTA-EQ",
+      "entry_price": 1211.7,
+      "entry_time": "2026-05-14T15:10:02.259206+05:30",
+      "quantity": 1,
+      "capital_used": 1201.2,
+      "entry_signal": "{'symbol': 'NSE:MEDANTA-EQ', 'name': 'GLOBAL HEALTH LIMITED', 'open': 1201.2, 'sector': 'Healthcare', 'confidence': np.float64(0.4), 'sector_weight': 0.2, 'final_weight': 0.2}",
+      "target_price": 1297.296,
+      "stop_loss_price": 1153.152,
+      "highest_price": 1201.2,
+      "order_id": "26051400611109",
+      "status": "OPEN",
+      "pnl": 0,
+      "pnl_pct": 0,
+      "exit_price": null,
+      "exit_time": null,
+      "exit_reason": null
+    },
+    "NSE:APOLLOTYRE-EQ": {
+      "symbol": "NSE:APOLLOTYRE-EQ",
+      "entry_price": 400.95,
+      "entry_time": "2026-05-14T15:10:03.478699+05:30",
+      "quantity": 3,
+      "capital_used": 1196.4,
+      "entry_signal": "{'symbol': 'NSE:APOLLOTYRE-EQ', 'name': 'APOLLO TYRES LTD', 'open': 398.8, 'sector': 'Automobile and Auto Components', 'confidence': np.float64(0.2), 'sector_weight': 0.15, 'final_weight': 0.15}",
+      "target_price": 430.70400000000006,
+      "stop_loss_price": 382.848,
+      "highest_price": 398.8,
+      "order_id": "26051400611115",
+      "status": "OPEN",
+      "pnl": 0,
+      "pnl_pct": 0,
+      "exit_price": null,
+      "exit_time": null,
+      "exit_reason": null
+    },
+    "NSE:ASHOKLEY-EQ": {
+      "symbol": "NSE:ASHOKLEY-EQ",
+      "entry_price": 154.35,
+      "entry_time": "2026-05-14T15:10:03.658486+05:30",
+      "quantity": 12,
+      "capital_used": 1849.08,
+      "entry_signal": "{'symbol': 'NSE:ASHOKLEY-EQ', 'name': 'ASHOK LEYLAND LTD', 'open': 154.09, 'sector': 'Capital Goods', 'confidence': np.float64(0.2), 'sector_weight': 0.2, 'final_weight': 0.2}",
+      "target_price": 166.4172,
+      "stop_loss_price": 147.9264,
+      "highest_price": 154.09,
+      "order_id": "26051400611176",
+      "status": "OPEN",
+      "pnl": 0,
+      "pnl_pct": 0,
+      "exit_price": null,
+      "exit_time": null,
+      "exit_reason": null
+    },
+    "NSE:AIIL-EQ": {
+      "symbol": "NSE:AIIL-EQ",
+      "entry_price": 504.7,
+      "entry_time": "2026-05-14T15:10:04.876912+05:30",
+      "quantity": 6,
+      "capital_used": 2913.0,
+      "entry_signal": "{'symbol': 'NSE:AIIL-EQ', 'name': 'AUTHUM INVEST & INFRA LTD', 'open': 485.5, 'sector': 'Financial Services', 'confidence': np.float64(0.2), 'sector_weight': 0.3, 'final_weight': 0.3}",
+      "target_price": 524.34,
+      "stop_loss_price": 466.08,
+      "highest_price": 485.5,
+      "order_id": "26051400611182",
+      "status": "OPEN",
+      "pnl": 0,
+      "pnl_pct": 0,
+      "exit_price": null,
+      "exit_time": null,
+      "exit_reason": null
+    },
+    "NSE:BERGEPAINT-EQ": {
+      "symbol": "NSE:BERGEPAINT-EQ",
+      "entry_price": 530.7,
+      "entry_time": "2026-05-14T15:10:05.076749+05:30",
+      "quantity": 9,
+      "capital_used": 4634.55,
+      "entry_signal": "{'symbol': 'NSE:BERGEPAINT-EQ', 'name': 'BERGER PAINTS (I) LTD', 'open': 514.95, 'sector': 'Consumer Durables', 'confidence': np.float64(0.4), 'sector_weight': 0, 'final_weight': 0.0}",
+      "target_price": 556.1460000000001,
+      "stop_loss_price": 494.35200000000003,
+      "highest_price": 514.95,
+      "order_id": "26051400611220",
+      "status": "OPEN",
+      "pnl": 0,
+      "pnl_pct": 0,
+      "exit_price": null,
+      "exit_time": null,
+      "exit_reason": null
+    },
+    "NSE:ALKYLAMINE-EQ": {
+      "symbol": "NSE:ALKYLAMINE-EQ",
+      "entry_price": 1736.8,
+      "entry_time": "2026-05-14T15:10:05.268284+05:30",
+      "quantity": 3,
+      "capital_used": 4992.6,
+      "entry_signal": "{'symbol': 'NSE:ALKYLAMINE-EQ', 'name': 'ALKYL AMINES CHEM. LTD', 'open': 1664.2, 'sector': 'Chemicals', 'confidence': np.float64(0.2), 'sector_weight': 0, 'final_weight': 0.0}",
+      "target_price": 1797.3360000000002,
+      "stop_loss_price": 1597.632,
+      "highest_price": 1664.2,
+      "order_id": "26051400611226",
+      "status": "OPEN",
+      "pnl": 0,
+      "pnl_pct": 0,
+      "exit_price": null,
+      "exit_time": null,
+      "exit_reason": null
+    }
+  },
+  "orders": {},
+  "total_pnl": -13.0,
+  "capital_available": 10000,
+  "capital_used": 0,
+  "metadata": {
+    "last_date_position_refresh": "2026-05-14",
+    "last_date_scan": "2026-05-14"
+  },
+  "portfolio_history": {
+    "2026-05-13": {
+      "date": "2026-05-13",
+      "holdings": [
+        {
+          "symbol": "NSE:BANKBARODA-EQ",
+          "quantity": 1,
+          "average_price": 266.55,
+          "current_value": 261.65,
+          "unrealized_pnl": -4.900000000000034
+        }
+      ],
+      "closed_positions": [
+        {
+          "symbol": "NSE:BIOCON-EQ",
+          "quantity": 1,
+          "entry_price": 401.5,
+          "exit_price": 411.1,
+          "realised_pnl": 9.6,
+          "exit_time": null,
+          "type": "delivery_sell"
+        }
+      ],
+      "updated_at": "2026-05-13T23:54:59.284136+05:30"
+    },
+    "2026-05-14": {
+      "date": "2026-05-14",
+      "holdings": [
+        {
+          "symbol": "NSE:BANKBARODA-EQ",
+          "quantity": 1,
+          "average_price": 266.55,
+          "current_value": 267.8,
+          "unrealized_pnl": 1.25,
+          "entry_time": null
+        },
+        {
+          "symbol": "NSE:APOLLOTYRE-EQ",
+          "quantity": 3,
+          "average_price": 400.95,
+          "current_value": 1205.4,
+          "unrealized_pnl": 2.550000000000068,
+          "entry_time": "14-May-2026 15:10:02"
+        },
+        {
+          "symbol": "NSE:AIIL-EQ",
+          "quantity": 6,
+          "average_price": 504.7,
+          "current_value": 3033.6,
+          "unrealized_pnl": 5.400000000000205,
+          "entry_time": "14-May-2026 15:10:03"
+        },
+        {
+          "symbol": "NSE:ALKYLAMINE-EQ",
+          "quantity": 3,
+          "average_price": 1736.8,
+          "current_value": 5250.0,
+          "unrealized_pnl": 39.600000000000136,
+          "entry_time": "14-May-2026 15:10:05"
+        },
+        {
+          "symbol": "NSE:ASHOKLEY-EQ",
+          "quantity": 12,
+          "average_price": 154.35,
+          "current_value": 1852.08,
+          "unrealized_pnl": -0.11999999999989086,
+          "entry_time": "14-May-2026 15:10:03"
+        },
+        {
+          "symbol": "NSE:MEDANTA-EQ",
+          "quantity": 1,
+          "average_price": 1211.7,
+          "current_value": 1211.9,
+          "unrealized_pnl": 0.20000000000004547,
+          "entry_time": "14-May-2026 15:10:02"
+        },
+        {
+          "symbol": "NSE:BERGEPAINT-EQ",
+          "quantity": 9,
+          "average_price": 530.7,
+          "current_value": 4805.1,
+          "unrealized_pnl": 28.799999999999386,
+          "entry_time": "14-May-2026 15:10:04"
+        }
+      ],
+      "closed_positions": [],
+      "updated_at": "2026-05-14T17:54:54.126922+05:30"
+    }
+  }
+}
