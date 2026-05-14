@@ -143,7 +143,7 @@ class BacktestEngine:
         in one batch per stock. Stores in self.data_dict {symbol: DataFrame}.
         """
         logger.info("Loading historical data for all stocks ...")
-        stocks = self.scanner.get_stock_symbols()  # uses the watchlist from config
+        stocks = self.scanner.get_stock_symbols()[:200]  # uses the watchlist from config
         self.data_dict = {}
         self.stock_meta = {}
 
