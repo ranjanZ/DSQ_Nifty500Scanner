@@ -12,6 +12,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 import pytz
 from dataclasses import dataclass, asdict, field
+from typing import Dict, Any, List
 
 logger = logging.getLogger("StateManager")
 
@@ -176,6 +177,10 @@ class StateManager:
             logger.warning("No session to save")
             return False
         
+
+        print(f"++++++++++++++++++++++Portfolio history contains {len(self.current_session.portfolio_history)} snapshots.")
+        self.current_session.portfolio_history = self.fill_entry_times(self.current_session.portfolio_history)
+
         session_file = os.path.join(self.state_dir, f"{self.session_id}.json")
         try:
             with open(session_file, 'w') as f:
@@ -335,7 +340,61 @@ class StateManager:
         
         self.save_session()
         return True
-    
+
+
+    def fill_entry_times(self,pos_history: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Fill missing entry_time for holdings and closed_positions using data from previous days.
+        
+        For each date (in chronological order):
+        - Maintain a map of symbol -> most recent non-null entry_time seen so far.
+        - For holdings with entry_time == None, assign the value from the map.
+        - For holdings with non-null entry_time, update the map.
+        - For closed_positions, attempt to add an 'entry_time' field using the map
+            (if a matching symbol is found).
+        
+        Args:
+            pos_history: Dictionary with dates as keys, each containing 'holdings' and 'closed_positions'.
+            
+        Returns:
+            A new dictionary with the same structure, but with entry_time fields filled where possible.
+        """
+        # Sort dates in ascending order
+        sorted_dates = sorted(pos_history.keys())
+        
+        # Map symbol -> latest known entry_time (string)
+        entry_time_map: Dict[str, str] = {}
+        
+        # Create a deep copy to avoid mutating the original
+        import copy
+        result = copy.deepcopy(pos_history)
+        
+        for date in sorted_dates:
+            day_data = result[date]
+            
+            # Process holdings: fill missing entry_time
+            for holding in day_data.get("holdings", []):
+                symbol = holding["symbol"]
+                if holding.get("entry_time") is not None:
+                    # Update map with this non-null entry_time
+                    entry_time_map[symbol] = holding["entry_time"]
+                else:
+                    # Try to fill from map
+                    if symbol in entry_time_map:
+                        holding["entry_time"] = entry_time_map[symbol]
+                    # else remains None (no previous entry found)
+            
+            # Process closed_positions: add entry_time if possible
+            for closed in day_data.get("closed_positions", []):
+                symbol = closed["symbol"]
+                # Only add entry_time if we have a recorded entry_time for that symbol
+                if symbol in entry_time_map and "entry_time" not in closed:
+                    closed["entry_time"] = entry_time_map[symbol]
+                # If entry_time already exists (maybe from earlier logic), leave it
+        
+        return result
+
+
     def update_portfolio_snapshot(self, portfolio_data: Dict[str, Any], date: str = None) -> bool:
         """Store a daily portfolio snapshot keyed by date."""
         if self.current_session is None:
@@ -349,19 +408,27 @@ class StateManager:
             'updated_at': datetime.now(self.tz).isoformat()
         }
         self.current_session.portfolio_history[date] = snapshot
+
+
+
         self.save_session()
         return True
-    
+
+
+
     def get_portfolio_snapshot(self, date: str = None) -> Dict[str, Any]:
         if self.current_session is None:
             return {}
         if date is None:
             date = datetime.now(self.tz).strftime("%Y-%m-%d")
+
+
         return self.current_session.portfolio_history.get(date, {})
     
     def get_portfolio_history(self) -> Dict[str, Any]:
         if self.current_session is None:
             return {}
+
         return self.current_session.portfolio_history.copy()
     
     def get_session_summary(self) -> Dict[str, Any]:
