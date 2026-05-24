@@ -318,6 +318,17 @@ class StateManager:
             return {}
         return self.current_session.positions.copy()
     
+    def get_all_current_holdings(self) -> Dict[str, PositionState]:
+        
+
+        print(f"++++++++++++++++++++++Portfolio history contains {len(self.current_session.portfolio_history)} snapshots.")
+        self.current_session.portfolio_history = self.fill_entry_times(self.current_session.portfolio_history)
+        currwnt_date=datetime.now().strftime("%Y-%m-%d")
+        return self.current_session.portfolio_history.get(currwnt_date, {}).get('holdings', {})
+
+
+
+
     def get_all_orders(self) -> Dict[str, OrderState]:
         """Get all orders."""
         if self.current_session is None:

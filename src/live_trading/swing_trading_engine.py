@@ -147,6 +147,7 @@ class SwingTradingEngine:
     # Market & timing helpers
     # ------------------------------------------------------------------
     def is_market_open(self) -> bool:
+        return True
         now = datetime.now(self.tz)
         if now.weekday() >= 5:
             return False
@@ -168,15 +169,16 @@ class SwingTradingEngine:
         return self.state_manager.get_session_summary().get('capital_used', 0)
 
     def get_total_capital(self) -> float:
-        return self.state_manager.get_session_summary().get('capital_total', self.trading_config['initial_capital'])
-
+        #return self.state_manager.get_session_summary().get('capital_total', self.trading_config['initial_capital'])
+        return self.trading_config['operating_capital'] # Use fixed operating capital for allocation decisions
+    
     def utilisation_pct(self) -> float:
         total = self.get_total_capital()
         used = self.get_used_capital()
         return used / total if total > 0 else 0.0
 
     def can_open_position(self) -> bool:
-        return self.utilisation_pct() < 0.51
+        return self.utilisation_pct() < 0.95
 
 
 
@@ -206,17 +208,36 @@ class SwingTradingEngine:
                 self.state_manager.update_position(symbol, updates)
                 logger.debug(f"Updated P&L for {symbol}: {pnl:.2f} ({pnl_pct:.2f}%)")
 
-        # Now check time‑based exits (holding period exceeded)
-        now_time = datetime.now(self.tz)
-        for symbol, pos in positions.items():
-            entry_date = datetime.fromisoformat(pos.entry_time)
+
+
+        now_time = datetime.now()
+        holdding_positions = self.state_manager.get_all_current_holdings()
+        for position in holdding_positions:
+            symbol = position['symbol']
+            entry_date = datetime.strptime(position['entry_time'], "%d-%b-%Y %H:%M:%S")
             days_held = (now_time - entry_date).days
+            print(f"*************************Checking {symbol}: held for {days_held} days (entry: {entry_date.date()}, now: {now_time.date()})")
             if days_held >= self.max_hold_days:
                 logger.warning(f"⏱️  {symbol} exceeded {self.max_hold_days} days – closing")
                 # Get latest price from broker
                 current_price = self._get_current_price(symbol)
                 if current_price:
                     self._manual_close_position(symbol, current_price, "TIME_LIMIT_EXCEEDED")
+
+            
+
+        # # Now check time‑based exits (holding period exceeded)
+        # now_time = datetime.now(self.tz)
+        # for symbol, pos in positions.items():
+        #     entry_date = datetime.fromisoformat(pos.entry_time)
+        #     days_held = (now_time - entry_date).days
+        #     print(f"*************************Checking {symbol}: held for {days_held} days (entry: {entry_date.date()}, now: {now_time.date()})")
+        #     if days_held >= self.max_hold_days:
+        #         logger.warning(f"⏱️  {symbol} exceeded {self.max_hold_days} days – closing")
+        #         # Get latest price from broker
+        #         current_price = self._get_current_price(symbol)
+        #         if current_price:
+        #             self._manual_close_position(symbol, current_price, "TIME_LIMIT_EXCEEDED")
 
     def _get_current_price(self, symbol: str) -> Optional[float]:
         """Fetch current LTP for a symbol (via broker)"""
@@ -327,16 +348,16 @@ class SwingTradingEngine:
     def _manual_close_position(self, symbol: str, exit_price: float, reason: str):
         """Manually close a position with market sell order"""
         with self.state_lock:
-            pos = self.state_manager.get_position(symbol)
-            if not pos:
-                logger.warning(f"Position not found for {symbol}")
-                return
+            # pos = self.state_manager.get_position(symbol)
+            # if not pos:
+            #     logger.warning(f"Position not found for {symbol}")
+            #     return
             
-            try:
-                exit_price = float(exit_price)
-            except (ValueError, TypeError):
-                logger.error(f"Invalid exit price for {symbol}: {exit_price}")
-                return
+            # try:
+            #     exit_price = float(exit_price)
+            # except (ValueError, TypeError):
+            #     logger.error(f"Invalid exit price for {symbol}: {exit_price}")
+            #     return
                 
             # Place market sell order
             try:
@@ -408,7 +429,7 @@ class SwingTradingEngine:
 
         result['signals_found'] = len(raw_signals)
         selected = self._select_and_weight_signals(raw_signals)
-        logger.info(f"Selected {len(selected)} signals for entry")
+        logger.info(f"****** Selected {selected} signals for entry")
 
         for signal in selected:
             symbol = signal['symbol']
@@ -458,6 +479,7 @@ class SwingTradingEngine:
                         'symbol': symbol,
                         'name': stock.get('name', symbol),
                         'open': float(latest['open']),
+                        'close': float(latest['close']),
                         'sector': stock.get('sector', 'Unknown'),
                         'confidence': confidence,
                     })
@@ -524,7 +546,7 @@ class SwingTradingEngine:
     def _place_new_position(self, symbol: str, signal_info: Dict) -> bool:
         """Place BUY + OCO order. Broker handles full sequence: entry→wait→GTT.
         Returns True only if entry is filled (GTT is secondary)."""
-        entry_price = signal_info.get('open', 0)
+        entry_price = signal_info.get('close', 0)
         if entry_price <= 0:
             logger.warning(f"Invalid entry price for {symbol}: {entry_price}")
             return False
@@ -542,23 +564,32 @@ class SwingTradingEngine:
         #===== ACTUAL PRODUCTION MODE (COMMENTED FOR TESTING): =====
         weight = signal_info.get('final_weight', 0)
         total_cap = self.get_total_capital()
-        alloc_cap = total_cap * weight if weight > 0 else self.trading_config['max_position_size']
-        available = self.get_available_capital()
-        alloc_cap = min(alloc_cap, available)
-        if alloc_cap <= 100:
-            logger.warning(f"Insufficient capital for {symbol}")
+        alloc_cap = total_cap * weight 
+        if weight <= 0:
+            logger.warning(f"Invalid weight for {symbol}: {weight}")
             return False
+
+        available = self.get_available_capital()
+        #alloc_cap = min(alloc_cap, available)
+        # if alloc_cap <= 100:
+        #     logger.warning(f"Insufficient capital for {symbol}")
+        #     return False
+        
+
         quantity = int(alloc_cap // entry_price)
         if quantity == 0:
-            logger.warning(f"Cannot afford 1 share of {symbol}")
+            logger.warning(f"Cannot afford even 1 share of {symbol}  entry_price={entry_price:.2f} with alloc_cap={alloc_cap:.2f}")
             return False
         used_capital = quantity * entry_price  # ACTUAL: Dynamic capital for production
 
+        print(f"Allocating capital for {symbol}: total_cap={total_cap:.2f}, weight={weight:.4f}, alloc_cap={alloc_cap:.2f}, available={available:.2f} => quantity={quantity}, used_capital={used_capital:.2f}")
 
         target_price = entry_price * (1.0 + self.target_profit_pct)
         stop_loss_price = entry_price * (1.0 - self.stop_loss_pct)
 
         logger.info(f"Placing position: {symbol} | Entry: {entry_price:.2f} | Qty: {quantity} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
+        
+        return True # TESTING: Skip actual order placement for now
 
         # BROKER HANDLES FULL SEQUENCE: entry → wait → GTT
         result = self.broker.place_swing_oco(
@@ -806,7 +837,7 @@ if __name__ == "__main__":
         test_signal = {
             'symbol': 'NSE:SBIN-EQ',
             'name': 'SBI BANK',
-            'open': 980.0,
+            'close': 980.0,
             'sector': 'Technology',
             'confidence': 0.85,
             'final_weight': 0.2
