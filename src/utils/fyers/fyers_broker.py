@@ -10,10 +10,32 @@ import pytz
 import random
 import datetime
 import logging
+import re
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
 cur_path = os.path.dirname(os.path.abspath(__file__))
+
+
+
+def _normalize_symbol(symbol: str) -> str:
+    """
+    Convert exchange-specific symbol to a canonical stock name.
+    Examples:
+        'NSE:BHARTIARTL-EQ' -> 'BHARTIARTL'
+        'BSE:BHARTIARTL-A'  -> 'BHARTIARTL'
+        'NSE:ASHOKLEY-EQ'   -> 'ASHOKLEY'
+        'BSE:BIKAJI-A'      -> 'BIKAJI'
+    """
+    if not symbol:
+        return ''
+    # Remove exchange prefix (NSE:, BSE:, etc.)
+    if ':' in symbol:
+        symbol = symbol.split(':', 1)[1]
+    # Remove common suffixes like -EQ, -A, -EQ, -BE, etc.
+    symbol = re.sub(r'-(EQ|A|BE|SW|SM)$', '', symbol)
+    return symbol
 
 
 class fyers_API:
@@ -106,201 +128,107 @@ class fyers_API:
             logger.error(f"❌ Error placing stop-loss for {symbol}: {e}")
             return None
 
+
     def get_all_portfolio_data(self) -> dict:
         from collections import defaultdict
+        import time
 
         # Fetch raw data
         h = self.fyers.holdings()
         holdings_raw = h.get('holdings', []) if h.get('s') == 'ok' else []
-        time.sleep(1)
+        time.sleep(0.5)
+
         t = self.fyers.tradebook()
         trades_raw = t.get('tradeBook', []) if t.get('s') == 'ok' else []
+        time.sleep(0.5)
 
-        time.sleep(1)
-        p = self.fyers.positions()
-        positions_raw = p.get('netPositions', []) if p.get('s') == 'ok' else []
-
-        # Timestamp extractor (try common keys)
-        def get_ts(tr):
-            for key in ('orderDateTime', 'tradeDateTime', 'exchangeTime', 'transactionTime', 'orderTime'):
-                if tr.get(key):
-                    return tr[key]
-            return None
-
-        # Aggregate all trades: separate buy and sell quantities, values, timestamps
+        # Aggregate trades using normalized symbol
         agg = defaultdict(lambda: {
             'buy_qty': 0, 'buy_val': 0.0, 'buy_ts': [],
             'sell_qty': 0, 'sell_val': 0.0, 'sell_ts': []
         })
-        for tr in trades_raw:
-            sym = tr.get('symbol')
-            side = str(tr.get('side', '')).upper()      # normalize to string
-            qty = int(tr.get('qty', 0))
-            price = float(tr.get('price', 0))
-            ts = get_ts(tr)
 
-            if side in ('BUY', '1', 1):
-                agg[sym]['buy_qty'] += qty
-                agg[sym]['buy_val'] += qty * price
-                if ts:
-                    agg[sym]['buy_ts'].append(ts)
-            elif side in ('SELL', '-1', -1):
-                agg[sym]['sell_qty'] += qty
-                agg[sym]['sell_val'] += qty * price
-                if ts:
-                    agg[sym]['sell_ts'].append(ts)
+        for trade in trades_raw:
+            raw_sym = trade.get('symbol')
+            if not raw_sym:
+                continue
+            norm_sym = _normalize_symbol(raw_sym)
+            side = str(trade.get('side', '')).upper()
+            qty = int(trade.get('tradedQty', 0))
+            price = float(trade.get('tradePrice', 0))
+            ts = trade.get('orderDateTime')
 
-        # Holdings from the holdings endpoint (only remainingQuantity > 0)
+            if side in ('BUY', '1'):
+                agg[norm_sym]['buy_qty'] += qty
+                agg[norm_sym]['buy_val'] += qty * price
+                if ts:
+                    agg[norm_sym]['buy_ts'].append(ts)
+            elif side in ('SELL', '-1'):
+                agg[norm_sym]['sell_qty'] += qty
+                agg[norm_sym]['sell_val'] += qty * price
+                if ts:
+                    agg[norm_sym]['sell_ts'].append(ts)
+
+        # Current holdings (remainingQuantity > 0)
         holdings = []
-        symbols_in_holdings = set()
         for hrec in holdings_raw:
-            sym = hrec.get('symbol')
-            rem = int(hrec.get('remainingQuantity', 0))
-            if sym and rem > 0:
-                symbols_in_holdings.add(sym)
-                # Entry time = earliest buy timestamp for this symbol
-                entry_time = min(agg[sym]['buy_ts']) if agg[sym]['buy_ts'] else None
-                holdings.append({
-                    "symbol": sym,
-                    "quantity": rem,
-                    "average_price": float(hrec.get('costPrice', 0)),
-                    "current_value": float(hrec.get('marketVal', 0)),
-                    "unrealized_pnl": float(hrec.get('pl', 0)),
-                    "entry_time": entry_time          # <-- new field
-                })
+            raw_sym = hrec.get('symbol')
+            if not raw_sym:
+                continue
+            remaining = int(hrec.get('remainingQuantity', 0))
+            if remaining <= 0:
+                continue
 
-        # New CNC stocks still in positions (net buy, not yet settled in holdings)
-        for pos in positions_raw:
-            sym = pos.get('symbol')
-            product = pos.get('productType', '')
-            net_qty = int(pos.get('netQty', 0))
-            if sym and product == 'CNC' and net_qty > 0 and sym not in symbols_in_holdings:
-                buy_avg = float(pos.get('buyAvg', 0))
-                ltp = float(pos.get('ltp', 0))
-                pl = float(pos.get('pl', 0))
-                # entry time from tradebook (earliest buy)
-                entry_time = min(agg[sym]['buy_ts']) if agg[sym]['buy_ts'] else None
-                holdings.append({
-                    "symbol": sym,
-                    "quantity": net_qty,
-                    "average_price": buy_avg,
-                    "current_value": round(ltp * net_qty, 2),
-                    "unrealized_pnl": pl,
-                    "entry_time": entry_time
-                })
+            norm_sym = _normalize_symbol(raw_sym)
+            entry_time = min(agg[norm_sym]['buy_ts']) if agg[norm_sym]['buy_ts'] else None
 
-        # Closed positions: fully sold holdings (remainingQuantity == 0)
+            holdings.append({
+                "symbol": raw_sym,               # keep original symbol for reference
+                "normalized_symbol": norm_sym,   # optional, useful for debugging
+                "quantity": remaining,
+                "average_price": float(hrec.get('costPrice', 0)),
+                "current_value": float(hrec.get('marketVal', 0)),
+                "unrealized_pnl": float(hrec.get('pl', 0)),
+                "entry_time": entry_time
+            })
+
+        # Closed positions (remainingQuantity == 0 and original quantity > 0)
         closed = []
         for hrec in holdings_raw:
-            sym = hrec.get('symbol')
-            rem = int(hrec.get('remainingQuantity', 0))
-            orig = int(hrec.get('quantity', 0))
-            if sym and rem == 0 and orig > 0:
-                cost = float(hrec.get('costPrice', 0))
-                # Try to get sell price from CNC sell position first
-                sell_price = None
-                for pos in positions_raw:
-                    if (pos.get('symbol') == sym and pos.get('productType') == 'CNC'
-                            and int(pos.get('netQty', 0)) < 0):
-                        sell_price = float(pos.get('sellAvg', 0))
-                        break
-                # Fallback to tradebook sell average
-                if sell_price is None and sym in agg and agg[sym]['sell_qty'] > 0:
-                    sell_price = agg[sym]['sell_val'] / agg[sym]['sell_qty']
-                if sell_price:
-                    # exit_time = latest sell timestamp
-                    exit_time = max(agg[sym]['sell_ts']) if agg[sym]['sell_ts'] else None
-                    closed.append({
-                        "symbol": sym,
-                        "quantity": orig,
-                        "entry_price": round(cost, 2),
-                        "exit_price": round(sell_price, 2),
-                        "realised_pnl": round((sell_price - cost) * orig, 2),
-                        "exit_time": exit_time,
-                        "type": "delivery_sell"
-                    })
+            raw_sym = hrec.get('symbol')
+            if not raw_sym:
+                continue
+            remaining = int(hrec.get('remainingQuantity', 0))
+            original_qty = int(hrec.get('quantity', 0))
+            if remaining != 0 or original_qty <= 0:
+                continue
+
+            norm_sym = _normalize_symbol(raw_sym)
+            cost_price = float(hrec.get('costPrice', 0))
+
+            # Compute sell price from aggregated sells (which now include cross-exchange trades)
+            sell_data = agg.get(norm_sym)
+            if not sell_data or sell_data['sell_qty'] == 0:
+                continue  # no sell found – shouldn't happen if fully sold, but skip
+
+            sell_price = sell_data['sell_val'] / sell_data['sell_qty']
+            realised_pnl = (sell_price - cost_price) * original_qty
+            exit_time = max(sell_data['sell_ts']) if sell_data['sell_ts'] else None
+
+            closed.append({
+                "symbol": raw_sym,
+                "normalized_symbol": norm_sym,
+                "quantity": original_qty,
+                "entry_price": round(cost_price, 2),
+                "exit_price": round(sell_price, 2),
+                "realised_pnl": round(realised_pnl, 2),
+                "exit_time": exit_time,
+                "type": "delivery_sell"
+            })
 
         return {"holdings": holdings, "closed_positions": closed}
 
 
-    def get_all_portfolio_data_old(self) -> dict:
-        from collections import defaultdict
-
-        # Fetch raw data
-        h = self.fyers.holdings()
-        holdings_raw = h.get('holdings', []) if h.get('s') == 'ok' else []
-        time.sleep(1)
-        t = self.fyers.tradebook()
-        trades_raw = t.get('tradebook', []) if t.get('s') == 'ok' else []
-        time.sleep(1)
-        p = self.fyers.positions()
-        positions_raw = p.get('netPositions', []) if p.get('s') == 'ok' else []
-        
-        # Timestamp extractor (try common keys)
-        def get_ts(tr):
-            for key in ('orderDateTime', 'tradeDateTime', 'exchangeTime', 'transactionTime', 'orderTime'):
-                if tr.get(key):
-                    return tr[key]
-            return None
-
-        # Holdings list (only remainingQuantity > 0)
-        holdings = []
-        for hrec in holdings_raw:
-            sym = hrec.get('symbol')
-            rem = int(hrec.get('remainingQuantity', 0))
-            if sym and rem > 0:
-                holdings.append({
-                    "symbol": sym,
-                    "quantity": rem,
-                    "average_price": float(hrec.get('costPrice', 0)),
-                    "current_value": float(hrec.get('marketVal', 0)),
-                    "unrealized_pnl": float(hrec.get('pl', 0))
-                })
-
-        # Aggregate sell trades (for exit_time and sell value)
-        agg = defaultdict(lambda: {'sq': 0, 'sv': 0.0, 'st': []})
-        for tr in trades_raw:
-            sym = tr.get('symbol')
-            side = tr.get('side')
-            qty = int(tr.get('qty', 0))
-            price = float(tr.get('price', 0))
-            ts = get_ts(tr)
-            if side == -1:  # sell
-                agg[sym]['sq'] += qty
-                agg[sym]['sv'] += qty * price
-                if ts:
-                    agg[sym]['st'].append(ts)
-
-        # Closed positions list (fully sold holdings: remainingQuantity == 0)
-        closed = []
-        for hrec in holdings_raw:
-            sym = hrec.get('symbol')
-            rem = int(hrec.get('remainingQuantity', 0))
-            orig = int(hrec.get('quantity', 0))
-            if sym and rem == 0 and orig > 0:
-                cost = float(hrec.get('costPrice', 0))
-                # Sell price from CNC positions (if available) else tradebook
-                sell_price = None
-                for pos in positions_raw:
-                    if (pos.get('symbol') == sym and pos.get('productType') == 'CNC' 
-                        and int(pos.get('netQty', 0)) < 0):
-                        sell_price = float(pos.get('sellAvg', 0))
-                        break
-                if sell_price is None and sym in agg and agg[sym]['sq'] > 0:
-                    sell_price = agg[sym]['sv'] / agg[sym]['sq']
-                if sell_price:
-                    exit_time = max(agg[sym]['st']) if agg[sym]['st'] else None
-                    closed.append({
-                        "symbol": sym,
-                        "quantity": orig,
-                        "entry_price": round(cost, 2),
-                        "exit_price": round(sell_price, 2),
-                        "realised_pnl": round((sell_price - cost) * orig, 2),
-                        "exit_time": exit_time,
-                        "type": "delivery_sell"
-                    })
-
-        return {"holdings": holdings, "closed_positions": closed}
 
 
     def get_positions(self) -> dict:

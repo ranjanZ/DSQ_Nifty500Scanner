@@ -1,14 +1,51 @@
 {
   "session_id": "permanent",
   "start_time": "2026-05-13T19:24:20.890347+05:30",
-  "positions": {},
+  "positions": {
+    "BSE:BIKAJI-A": {
+      "symbol": "BSE:BIKAJI-A",
+      "entry_price": 637.55,
+      "entry_time": "2026-05-25T15:11:37.914116+05:30",
+      "quantity": -4,
+      "capital_used": 2550.2,
+      "entry_signal": "RECOVERED_FROM_BROKER",
+      "target_price": 0,
+      "stop_loss_price": 0,
+      "highest_price": 0,
+      "order_id": null,
+      "status": "OPEN",
+      "pnl": 0,
+      "pnl_pct": 0,
+      "exit_price": null,
+      "exit_time": null,
+      "exit_reason": null
+    },
+    "BSE:BHARTIARTL-A": {
+      "symbol": "BSE:BHARTIARTL-A",
+      "entry_price": 1873.5,
+      "entry_time": "2026-05-25T15:11:37.916090+05:30",
+      "quantity": -2,
+      "capital_used": 3747.0,
+      "entry_signal": "RECOVERED_FROM_BROKER",
+      "target_price": 0,
+      "stop_loss_price": 0,
+      "highest_price": 0,
+      "order_id": null,
+      "status": "OPEN",
+      "pnl": 0,
+      "pnl_pct": 0,
+      "exit_price": null,
+      "exit_time": null,
+      "exit_reason": null
+    }
+  },
   "orders": {},
   "total_pnl": -13.0,
   "capital_available": 10000,
   "capital_used": 0,
   "metadata": {
     "last_date_position_refresh": "2026-05-20",
-    "last_date_scan": "2026-05-20"
+    "last_date_scan": "2026-05-25"
   },
   "portfolio_history": {
     "2026-05-13": {
@@ -908,6 +945,178 @@
       ],
       "closed_positions": [],
       "updated_at": "2026-05-23T23:09:04.461870+05:30"
+    },
+    "2026-05-24": {
+      "date": "2026-05-24",
+      "holdings": [
+        {
+          "symbol": "NSE:CROMPTON-EQ",
+          "quantity": 17,
+          "average_price": 301.8,
+          "current_value": 5010.75,
+          "unrealized_pnl": -119.8500000000002,
+          "entry_time": "15-May-2026 15:09:59"
+        },
+        {
+          "symbol": "NSE:BHARTIARTL-EQ",
+          "quantity": 2,
+          "average_price": 1907.7,
+          "current_value": 3742.8,
+          "unrealized_pnl": -72.59999999999991,
+          "entry_time": "15-May-2026 15:09:58"
+        },
+        {
+          "symbol": "NSE:CHAMBLFERT-EQ",
+          "quantity": 11,
+          "average_price": 445.95,
+          "current_value": 5001.7,
+          "unrealized_pnl": 96.25,
+          "entry_time": "15-May-2026 15:10:00"
+        },
+        {
+          "symbol": "NSE:ASHOKLEY-EQ",
+          "quantity": 12,
+          "average_price": 154.35,
+          "current_value": 1898.52,
+          "unrealized_pnl": 46.320000000000164,
+          "entry_time": "14-May-2026 15:10:03"
+        },
+        {
+          "symbol": "NSE:BANKBARODA-EQ",
+          "quantity": 1,
+          "average_price": 266.55,
+          "current_value": 265.4,
+          "unrealized_pnl": -1.150000000000034,
+          "entry_time": "14-May-2026 15:10:02"
+        },
+        {
+          "symbol": "NSE:BERGEPAINT-EQ",
+          "quantity": 9,
+          "average_price": 530.7,
+          "current_value": 4510.349999999999,
+          "unrealized_pnl": -265.9500000000006,
+          "entry_time": "14-May-2026 15:10:04"
+        },
+        {
+          "symbol": "NSE:MEDANTA-EQ",
+          "quantity": 4,
+          "average_price": 1234.05,
+          "current_value": 4952.4,
+          "unrealized_pnl": 16.199999999999818,
+          "entry_time": "15-May-2026 15:09:57"
+        },
+        {
+          "symbol": "NSE:BIKAJI-EQ",
+          "quantity": 4,
+          "average_price": 676.3,
+          "current_value": 2612.8,
+          "unrealized_pnl": -92.39999999999964,
+          "entry_time": "15-May-2026 15:09:57"
+        },
+        {
+          "symbol": "NSE:CHALET-EQ",
+          "quantity": 6,
+          "average_price": 784.35,
+          "current_value": 4770.299999999999,
+          "unrealized_pnl": 64.19999999999959,
+          "entry_time": "15-May-2026 15:09:59"
+        }
+      ],
+      "closed_positions": [],
+      "updated_at": "2026-05-24T13:13:57.842606+05:30"
+    },
+    "2026-05-25": {
+      "date": "2026-05-25",
+      "holdings": [
+        {
+          "symbol": "NSE:CROMPTON-EQ",
+          "normalized_symbol": "CROMPTON",
+          "quantity": 17,
+          "average_price": 301.8,
+          "current_value": 4989.5,
+          "unrealized_pnl": -141.1000000000002,
+          "entry_time": "15-May-2026 15:09:59"
+        },
+        {
+          "symbol": "NSE:BERGEPAINT-EQ",
+          "normalized_symbol": "BERGEPAINT",
+          "quantity": 9,
+          "average_price": 530.7,
+          "current_value": 4543.650000000001,
+          "unrealized_pnl": -232.6500000000002,
+          "entry_time": "14-May-2026 15:10:04"
+        },
+        {
+          "symbol": "NSE:MEDANTA-EQ",
+          "normalized_symbol": "MEDANTA",
+          "quantity": 4,
+          "average_price": 1234.05,
+          "current_value": 4997.2,
+          "unrealized_pnl": 61.0,
+          "entry_time": "15-May-2026 15:09:57"
+        },
+        {
+          "symbol": "NSE:CHAMBLFERT-EQ",
+          "normalized_symbol": "CHAMBLFERT",
+          "quantity": 11,
+          "average_price": 445.95,
+          "current_value": 5097.95,
+          "unrealized_pnl": 192.5,
+          "entry_time": "15-May-2026 15:10:00"
+        },
+        {
+          "symbol": "NSE:ASHOKLEY-EQ",
+          "normalized_symbol": "ASHOKLEY",
+          "quantity": 12,
+          "average_price": 154.35,
+          "current_value": 1968.96,
+          "unrealized_pnl": 116.76000000000022,
+          "entry_time": "14-May-2026 15:10:03"
+        },
+        {
+          "symbol": "NSE:CHALET-EQ",
+          "normalized_symbol": "CHALET",
+          "quantity": 6,
+          "average_price": 784.35,
+          "current_value": 4769.4,
+          "unrealized_pnl": 63.29999999999973,
+          "entry_time": "15-May-2026 15:09:59"
+        },
+        {
+          "symbol": "NSE:BANKBARODA-EQ",
+          "normalized_symbol": "BANKBARODA",
+          "quantity": 1,
+          "average_price": 266.55,
+          "current_value": 272.25,
+          "unrealized_pnl": 5.699999999999989,
+          "entry_time": "14-May-2026 15:10:02"
+        }
+      ],
+      "closed_positions": [
+        {
+          "symbol": "NSE:BHARTIARTL-EQ",
+          "normalized_symbol": "BHARTIARTL",
+          "quantity": 2,
+          "entry_price": 1907.7,
+          "exit_price": 1873.5,
+          "realised_pnl": -68.4,
+          "exit_time": "25-May-2026 11:07:16",
+          "type": "delivery_sell",
+          "entry_time": "15-May-2026 15:09:58"
+        },
+        {
+          "symbol": "NSE:BIKAJI-EQ",
+          "normalized_symbol": "BIKAJI",
+          "quantity": 4,
+          "entry_price": 676.3,
+          "exit_price": 637.55,
+          "realised_pnl": -155.0,
+          "exit_time": "25-May-2026 11:08:29",
+          "type": "delivery_sell",
+          "entry_time": "15-May-2026 15:09:57"
+        }
+      ],
+      "updated_at": "2026-05-25T22:14:55.581854+05:30"
     }
   }
 }

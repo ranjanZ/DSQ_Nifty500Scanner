@@ -5,7 +5,7 @@ backtest:
   strategy_name: "Support_Resistance"   # strategy to scan with
   target_profit_pct: 0.08           # 8%
   stop_loss_pct: 0.04               # 4%
-  max_holding_days: 10
+  max_holding_days: 14
   # capital allocation weights for top-ranked buy signals (must sum to 1.0)
   # top 1 gets 50%, top 2 gets 30%, top 3 gets 20%
   position_weights:
