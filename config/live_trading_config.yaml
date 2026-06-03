@@ -2,8 +2,8 @@ live_trading:
   # Market hours (IST - Indian Standard Time)
   market_open: "9:15"      # 9:15 AM
   market_close: "15:30"     # 3:20 PM
-  position_refresh_time: "15:01"     # 3:15 PM - refresh state & time exits
-  scan_time: "15:07"                 # 3:18 PM - update DB & scan signals
+  position_refresh_time: "23:43"     # 3:15 PM - refresh state & time exits
+  scan_time: "15:14"                 # 3:18 PM - update DB & scan signals
 
   timezone: "Asia/Kolkata"
   
@@ -11,7 +11,7 @@ live_trading:
 
   # Trading parameters
   initial_capital: 10000
-  operating_capital: 100000             # Capital allocated for trading (80% of total)
+  operating_capital: 20000             # Capital allocated for trading (80% of total)
   max_positions: 3
   max_position_size: 5000           # Max capital per position
   risk_per_trade: 0.02              # 2% risk per trade

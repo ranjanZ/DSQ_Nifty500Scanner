@@ -348,22 +348,23 @@ class SwingTradingEngine:
     def _manual_close_position(self, symbol: str, exit_price: float, reason: str):
         """Manually close a position with market sell order"""
         with self.state_lock:
-            # pos = self.state_manager.get_position(symbol)
-            # if not pos:
-            #     logger.warning(f"Position not found for {symbol}")
-            #     return
+            pos = self.state_manager.get_holding_position(symbol)
+            if not pos:
+                logger.warning(f"Position not found for {symbol}")
+                return
             
-            # try:
-            #     exit_price = float(exit_price)
-            # except (ValueError, TypeError):
-            #     logger.error(f"Invalid exit price for {symbol}: {exit_price}")
-            #     return
+            try:
+                exit_price = float(exit_price)
+            except (ValueError, TypeError):
+                logger.error(f"Invalid exit price for {symbol}: {exit_price}")
+                return
                 
+            
             # Place market sell order
             try:
                 order_id = self.broker.place_order(
                     symbol=symbol,
-                    qty=pos.quantity,
+                    qty=pos['quantity'],
                     side="SELL",
                     type="MARKET",
                     price=exit_price
@@ -373,12 +374,14 @@ class SwingTradingEngine:
                 else:
                     logger.error(f"SELL order failed for {symbol}")
                     return
+                
+
             except Exception as e:
                 logger.error(f"Error placing sell order for {symbol}: {e}")
                 return
             
-            pnl = (exit_price - pos.entry_price) * pos.quantity
-            pnl_pct = ((exit_price - pos.entry_price) / pos.entry_price) * 100
+            pnl = (exit_price - pos['average_price']) * pos.quantity
+            pnl_pct = ((exit_price - pos['average_price']) / pos['average_price']) * 100
             updates = {
                 'status': 'CLOSED',
                 'exit_price': exit_price,
@@ -589,7 +592,7 @@ class SwingTradingEngine:
 
         logger.info(f"Placing position: {symbol} | Entry: {entry_price:.2f} | Qty: {quantity} | SL: {stop_loss_price:.2f} | TP: {target_price:.2f}")
         
-        return True # TESTING: Skip actual order placement for now
+        #return True # TESTING: Skip actual order placement for now
 
         # BROKER HANDLES FULL SEQUENCE: entry → wait → GTT
         result = self.broker.place_swing_oco(

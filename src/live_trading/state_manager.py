@@ -312,21 +312,29 @@ class StateManager:
             return None
         return self.current_session.orders.get(order_id)
     
+    def get_all_current_holdings(self) -> Dict[str, PositionState]:
+        """Get all current holdings (open positions) from the latest portfolio snapshot."""
+        print(f"++++++++++++++++++++++Portfolio history contains {len(self.current_session.portfolio_history)} snapshots.")
+        self.current_session.portfolio_history = self.fill_entry_times(self.current_session.portfolio_history)
+        currwnt_date=datetime.now().strftime("%Y-%m-%d")
+        return self.current_session.portfolio_history.get(currwnt_date, {}).get('holdings', {})
+
+    def get_holding_position(self, symbol: str) -> Optional[PositionState]:
+        """Retrieve a position by symbol from the latest portfolio snapshot."""
+        all_holdings=self.get_all_current_holdings()
+        for holding in all_holdings:
+            if holding['symbol']==symbol:
+                return  holding
+        return None
+    
+
+
     def get_all_positions(self) -> Dict[str, PositionState]:
         """Get all open positions."""
         if self.current_session is None:
             return {}
         return self.current_session.positions.copy()
     
-    def get_all_current_holdings(self) -> Dict[str, PositionState]:
-        
-
-        print(f"++++++++++++++++++++++Portfolio history contains {len(self.current_session.portfolio_history)} snapshots.")
-        self.current_session.portfolio_history = self.fill_entry_times(self.current_session.portfolio_history)
-        currwnt_date=datetime.now().strftime("%Y-%m-%d")
-        return self.current_session.portfolio_history.get(currwnt_date, {}).get('holdings', {})
-
-
 
 
     def get_all_orders(self) -> Dict[str, OrderState]:
