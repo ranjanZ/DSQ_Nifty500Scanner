@@ -1,6 +1,6 @@
 from typing import Dict, Any
 import pandas as pd
-from src.strategy.strategy_base import TradingStrategy
+from ...strategy_base import TradingStrategy
 import numpy as np
 
 class MovingAverageCrossoverStrategy(TradingStrategy):

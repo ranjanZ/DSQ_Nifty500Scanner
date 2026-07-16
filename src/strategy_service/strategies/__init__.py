@@ -1,5 +1,6 @@
 """
 All trading strategies available in the system
+Each strategy is now in its own folder with config.yaml
 """
 
 from .madam_strategy import SupportResistanceStrategy
@@ -8,8 +9,8 @@ from .crossover_strategy import MovingAverageCrossoverStrategy
 
 # Strategy registry for easy lookup
 STRATEGY_REGISTRY = {
-    'Support_Resistance': SupportResistanceStrategy,
-    'RSI_W_Pattern': RSIWPatternStrategy,
+    'SupportResistance': SupportResistanceStrategy,
+    'RSI_WPattern': RSIWPatternStrategy,
     'MA_Crossover': MovingAverageCrossoverStrategy,
 }
 

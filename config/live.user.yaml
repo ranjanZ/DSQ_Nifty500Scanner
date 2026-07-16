@@ -1,0 +1,34 @@
+# Live Trading Service Configuration - User Overrides
+# Copy this file and modify only what you need to override
+
+live_trading_service:
+  # Enable/disable live trading
+  enabled: true
+  
+  # Trading capital
+  initial_capital: 20000
+  max_positions: 3
+  max_position_size: 5000
+  
+  # Risk management
+  risk_per_trade: 0.02
+  target_profit_pct: 0.05
+  stop_loss_pct: 0.02
+  
+  # Market hours (IST)
+  market_open: "09:15"
+  market_close: "15:30"
+  
+  # Data refresh intervals (seconds)
+  data_refresh_interval: 5
+  price_update_interval: 5
+
+agent_service:
+  # Enable Telegram notifications
+  enabled: true
+  
+  # Notification types
+  trade_alerts: true
+  pnl_updates: true
+  error_alerts: true
+  daily_summary: true

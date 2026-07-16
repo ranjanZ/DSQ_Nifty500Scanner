@@ -1,0 +1,103 @@
+# Default Configuration Template - DO NOT EDIT
+# Copy this file to config.yaml and modify as needed
+
+# Broker Service Configuration
+broker_service:
+  default_broker: "fyers"
+  brokers:
+    fyers:
+      enabled: true
+      client_id_env: "FYERS_CLIENT_ID"
+      secret_key_env: "FYERS_SECRET_KEY"
+      access_token_env: "FYERS_ACCESS_TOKEN"
+
+# Data Service Configuration
+data_service:
+  primary_source: "broker"
+  cache_enabled: true
+  cache_ttl_seconds: 300
+  database:
+    enabled: false
+    type: "sqlite"
+    path: "data/market_data.db"
+
+# Strategy Service Configuration
+strategy_service:
+  # Only specify which strategy to use here
+  active_strategy: "SupportResistance"
+  # Strategies are configured in their own folders under src/strategy_service/strategies/
+
+# Backtest Service Configuration
+backtest_service:
+  initial_capital: 100000
+  max_positions: 5
+  max_per_sector: 2
+  # Sector allocation for diversification
+  sector_allocation:
+    Banking: 0.3
+    IT: 0.25
+    Energy: 0.15
+    Others: 0.3
+  redistribute_unused: true
+  # Output directories
+  plots_dir: "plots/backtest"
+  metrics_file: "data/backtest_metrics.csv"
+
+# Optimization Service Configuration
+optimization_service:
+  default_method: "bayesian"
+  plots_dir: "plots/optimization"
+  results_file: "data/optimization_results.csv"
+  bayesian:
+    n_iterations: 50
+    metric: "sharpe_ratio"
+  grid_search:
+    metric: "sharpe_ratio"
+    parallel_jobs: 4
+
+# Live Trading Service Configuration
+live_trading_service:
+  enabled: true
+  market_hours:
+    timezone: "Asia/Kolkata"
+    open: "09:15"
+    close: "15:30"
+  trading_params:
+    initial_capital: 20000
+    max_positions: 3
+    max_position_size: 5000
+    risk_per_trade: 0.02
+    target_profit_pct: 0.05
+    stop_loss_pct: 0.02
+  data_refresh_interval: 5
+  price_update_interval: 5
+  state_dir: "data/trading_state"
+  session_dir: "data/session"
+
+# Agent Service (Telegram) Configuration
+agent_service:
+  enabled: true
+  bot_token_env: "TELEGRAM_BOT_TOKEN"
+  chat_id_env: "TELEGRAM_CHAT_ID"
+  notifications:
+    trade_alerts: true
+    pnl_updates: true
+    error_alerts: true
+    daily_summary: true
+  commands:
+    - "/start"
+    - "/help"
+    - "/status"
+    - "/positions"
+    - "/balance"
+    - "/pnl"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/trading_system.log"
+  console: true
+  rotation:
+    max_bytes: 10485760  # 10MB
+    backup_count: 5
