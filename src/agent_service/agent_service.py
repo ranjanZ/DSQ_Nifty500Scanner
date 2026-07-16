@@ -1,14 +1,11 @@
 """
-Agent Service - Telegram bot integration
-Handles notifications and interactive commands
+Agent Service - Telegram integration for trading notifications and commands
 """
 
 import os
 import sys
 import logging
-import asyncio
-from typing import Dict, List, Optional, Any
-from datetime import datetime
+from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,198 +14,149 @@ logger = logging.getLogger(__name__)
 
 
 class AgentService:
-    """Service for Telegram bot interactions"""
+    """Telegram bot service for trading interactions"""
     
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
-        self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-        self.chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+        self.bot_token = config.get('telegram_bot_token') or os.getenv('TELEGRAM_BOT_TOKEN')
+        self.chat_id = config.get('telegram_chat_id') or os.getenv('TELEGRAM_CHAT_ID')
+        
         self.bot = None
-        self.is_running = False
+        self.connected = False
         
-        # Services to interact with
-        self.trading_service = None
-        self.strategy_service = None
-        self.backtest_service = None
+        self.logger = logging.getLogger("AgentService")
     
-    def initialize(self) -> bool:
-        """Initialize the Telegram bot"""
-        if not self.bot_token:
-            logger.warning("TELEGRAM_BOT_TOKEN not found in environment")
+    def connect(self) -> bool:
+        """Connect to Telegram Bot API"""
+        try:
+            import requests
+            
+            if not self.bot_token:
+                self.logger.error("Telegram bot token not configured")
+                return False
+            
+            # Test connection
+            url = f"https://api.telegram.org/bot{self.bot_token}/getMe"
+            response = requests.get(url)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('ok'):
+                    self.connected = True
+                    self.logger.info(f"✅ Connected to Telegram as @{result['result']['username']}")
+                    return True
+            
+            self.logger.error(f"❌ Telegram connection failed: {response.text}")
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error connecting to Telegram: {e}")
+            return False
+    
+    def send_message(self, message: str, parse_mode: str = "HTML") -> bool:
+        """Send a message to configured chat"""
+        if not self.connected:
+            self.logger.warning("Not connected to Telegram")
             return False
         
         try:
-            from telebot import TeleBot
-            self.bot = TeleBot(self.bot_token)
-            self._setup_handlers()
-            logger.info("Telegram bot initialized successfully")
-            return True
-        except ImportError:
-            logger.error("telebot library not installed. Run: pip install pyTelegramBotAPI")
+            import requests
+            
+            url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+            data = {
+                'chat_id': self.chat_id,
+                'text': message,
+                'parse_mode': parse_mode
+            }
+            
+            response = requests.post(url, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('ok'):
+                    self.logger.debug(f"✅ Message sent")
+                    return True
+            
+            self.logger.error(f"❌ Message failed: {response.text}")
             return False
+            
         except Exception as e:
-            logger.error(f"Failed to initialize bot: {e}")
+            self.logger.error(f"❌ Error sending message: {e}")
             return False
     
-    def _setup_handlers(self):
-        """Setup command handlers"""
+    def send_trade_notification(self, action: str, symbol: str, price: float, 
+                                qty: int, pnl: float = None):
+        """Send trade notification"""
+        emoji = "🟢" if action == "BUY" else "🔴" if action == "SELL" else "⚪"
         
-        @self.bot.message_handler(commands=['start'])
-        def send_welcome(message):
-            self.bot.reply_to(message, 
-                '👋 Trading Bot Here!\n\n'
-                'Available commands:\n'
-                '/status - Get trading status\n'
-                '/positions - Current positions\n'
-                '/help - Show help')
+        message = f"""
+{emoji} <b>Trade Alert</b>
+
+<b>Action:</b> {action}
+<b>Symbol:</b> {symbol}
+<b>Price:</b> ₹{price:.2f}
+<b>Quantity:</b> {qty}
+<b>Value:</b> ₹{price * qty:,.2f}
+"""
         
-        @self.bot.message_handler(commands=['help'])
-        def send_help(message):
-            help_text = (
-                '📊 *Trading Bot Commands*\n\n'
-                '/start - Start the bot\n'
-                '/status - Get current trading status\n'
-                '/positions - View open positions\n'
-                '/balance - Check account balance\n'
-                '/pnl - View P&L summary\n'
-                '/help - Show this help message\n\n'
-                '_Built for Indian Stock Market_'
-            )
-            self.bot.reply_to(message, help_text, parse_mode='Markdown')
+        if pnl is not None:
+            pnl_emoji = "📈" if pnl > 0 else "📉" if pnl < 0 else "➖"
+            message += f"\n{pnl_emoji} <b>P&L:</b> {pnl_emoji} ₹{pnl:.2f} ({pnl*100:.2f}%)"
         
-        @self.bot.message_handler(commands=['status'])
-        def send_status(message):
-            if self.trading_service:
-                status = self.trading_service.get_status()
-                text = (
-                    f'📈 *Trading Status*\n\n'
-                    f'Running: {status.get("is_running", False)}\n'
-                    f'Positions: {status.get("positions_count", 0)}\n'
-                    f'Orders: {status.get("orders_count", 0)}\n'
-                    f'Market Open: {status.get("market_open", False)}'
-                )
-                self.bot.reply_to(message, text, parse_mode='Markdown')
-            else:
-                self.bot.reply_to(message, 'Trading service not connected')
-        
-        @self.bot.message_handler(commands=['positions'])
-        def send_positions(message):
-            if self.trading_service:
-                positions = self.trading_service.positions
-                if positions:
-                    text = '📊 *Current Positions*\n\n'
-                    for symbol, pos in positions.items():
-                        text += f'{symbol}: Qty={pos.get("quantity", 0)}\n'
-                    self.bot.reply_to(message, text, parse_mode='Markdown')
-                else:
-                    self.bot.reply_to(message, 'No open positions')
-            else:
-                self.bot.reply_to(message, 'Trading service not connected')
+        self.send_message(message)
     
-    def start_polling(self):
-        """Start the bot polling loop"""
-        if not self.bot:
-            logger.error("Bot not initialized")
-            return
-        
-        logger.info("Starting Telegram bot polling...")
-        self.is_running = True
-        
-        try:
-            self.bot.polling(non_stop=True)
-        except Exception as e:
-            logger.error(f"Polling error: {e}")
-            self.is_running = False
+    def send_daily_summary(self, summary: Dict[str, Any]):
+        """Send daily trading summary"""
+        message = f"""
+📊 <b>Daily Trading Summary</b>
+
+<b>Date:</b> {summary.get('date', 'N/A')}
+<b>Total Trades:</b> {summary.get('total_trades', 0)}
+<b>Wins:</b> {summary.get('wins', 0)}
+<b>Losses:</b> {summary.get('losses', 0)}
+<b>P&L:</b> ₹{summary.get('total_pnl', 0):,.2f}
+<b>Win Rate:</b> {summary.get('win_rate', 0):.1f}%
+"""
+        self.send_message(message)
     
-    def stop_polling(self):
-        """Stop the bot polling"""
-        logger.info("Stopping Telegram bot...")
-        self.is_running = False
-        
-        if self.bot:
-            try:
-                self.bot.stop_polling()
-            except Exception as e:
-                logger.error(f"Error stopping bot: {e}")
+    def send_alert(self, title: str, message_text: str):
+        """Send alert message"""
+        message = f"🚨 <b>{title}</b>\n\n{message_text}"
+        self.send_message(message)
     
-    def send_notification(self, message: str, parse_mode: str = None):
-        """Send a notification message"""
-        if not self.bot or not self.chat_id:
-            logger.warning("Cannot send notification: bot or chat_id not configured")
-            return False
-        
-        try:
-            self.bot.send_message(self.chat_id, message, parse_mode=parse_mode)
-            logger.info(f"Notification sent: {message[:50]}...")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to send notification: {e}")
-            return False
-    
-    def send_trade_alert(self, action: str, symbol: str, qty: int, 
-                        price: float = 0.0):
-        """Send a trade alert notification"""
-        emoji = "🟢" if action == "BUY" else "🔴"
-        message = (
-            f'{emoji} *Trade Alert*\n\n'
-            f'Action: {action}\n'
-            f'Symbol: {symbol}\n'
-            f'Quantity: {qty}\n'
-            f'Price: ₹{price:.2f}'
-        )
-        return self.send_notification(message, parse_mode='Markdown')
-    
-    def send_pnl_update(self, pnl: float, pnl_pct: float):
-        """Send P&L update notification"""
-        emoji = "📈" if pnl >= 0 else "📉"
-        message = (
-            f'{emoji} *P&L Update*\n\n'
-            f'Profit/Loss: ₹{pnl:.2f}\n'
-            f'Return: {pnl_pct:.2f}%'
-        )
-        return self.send_notification(message, parse_mode='Markdown')
-    
-    def set_trading_service(self, service):
-        """Set the trading service reference"""
-        self.trading_service = service
-    
-    def set_strategy_service(self, service):
-        """Set the strategy service reference"""
-        self.strategy_service = service
-    
-    def set_backtest_service(self, service):
-        """Set the backtest service reference"""
-        self.backtest_service = service
+    def disconnect(self):
+        """Disconnect from Telegram"""
+        self.connected = False
+        self.logger.info("Disconnected from Telegram")
 
 
 def run_test():
-    """Test function for agent service"""
-    print("Testing Agent Service...")
+    """Test agent service"""
+    print("Testing Agent Service (Telegram)")
+    print("=" * 50)
     
     service = AgentService()
-    print(f"Bot token configured: {'Yes' if service.bot_token else 'No'}")
-    print(f"Chat ID configured: {'Yes' if service.chat_id else 'No'}")
     
-    # Test initialization (will fail without valid token)
-    if service.initialize():
-        print("✓ Bot initialized successfully")
+    if service.connect():
+        print("✅ Connected to Telegram")
+        
+        # Send test message
+        if service.send_message("🤖 Trading Bot Test Message"):
+            print("✅ Test message sent")
+        
+        # Send sample trade notification
+        service.send_trade_notification("BUY", "SBIN", 750.50, 100)
+        
+        service.disconnect()
+        print("\n✅ Test completed")
     else:
-        print("✗ Bot initialization failed (expected if no token)")
-    
-    # Test notification methods (won't actually send without valid bot)
-    print("\nTesting notification methods:")
-    print("  - send_notification: method exists")
-    print("  - send_trade_alert: method exists")
-    print("  - send_pnl_update: method exists")
-    
-    print("\nAgent Service test complete!")
+        print("❌ Connection failed")
+        print("Note: Make sure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set in .env")
 
 
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         run_test()
     else:
-        print("Agent Service Module")
-        print("Usage: python -m src.agent_service.agent_service test")
-        run_test()
+        print("Agent Service (Telegram Integration)")
+        print("Run with 'test' argument to test: python agent_service.py test")

@@ -1,132 +1,151 @@
 """
-Data Service - Handles all data operations
-Fetches, stores, and retrieves market data
+Data Service - Unified data access layer
+Provides historical and real-time market data
 """
 
-import os
-import sys
-import logging
 import pandas as pd
-from typing import Dict, List, Optional, Any
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
-
-load_dotenv()
+import logging
 
 logger = logging.getLogger(__name__)
 
 
 class DataService:
-    """Central service for all data operations"""
+    """Unified data access service"""
     
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
-        self.db_config = self.config.get('database', {})
-        self.data_sources = {}
+        self.logger = logging.getLogger("DataService")
         
-    def register_source(self, name: str, source):
-        """Register a data source"""
-        self.data_sources[name] = source
-        logger.info(f"Registered data source: {name}")
-    
-    def get_historical_data(self, symbol: str, from_date: str, 
-                           to_date: str, interval: str = "1",
-                           source: str = None) -> Optional[pd.DataFrame]:
+    def get_historical_data(self, symbol: str, start_date: str, end_date: str, 
+                           interval: str = "1D", source: str = "db") -> Optional[pd.DataFrame]:
         """
-        Get historical data for a symbol
+        Get historical OHLCV data
+        
         Args:
             symbol: Stock symbol
-            from_date: Start date (YYYY-MM-DD)
-            to_date: End date (YYYY-MM-DD)
-            interval: Candle interval (1, 5, 15, etc.)
-            source: Data source name (uses default if None)
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            interval: Data interval (1D, 1h, 5m, etc.)
+            source: Data source ('db', 'broker', 'file')
+        
         Returns:
             DataFrame with OHLCV data
         """
-        if source:
-            if source not in self.data_sources:
-                logger.error(f"Unknown data source: {source}")
+        try:
+            if source == "db":
+                return self._get_from_db(symbol, start_date, end_date)
+            elif source == "broker":
+                return self._get_from_broker(symbol, start_date, end_date, interval)
+            else:
+                self.logger.error(f"Unknown data source: {source}")
                 return None
-            return self.data_sources[source].get_historical_data(
-                symbol, from_date, to_date, interval
-            )
-        
-        # Default: try broker sources first, then database
-        for name, src in self.data_sources.items():
-            if hasattr(src, 'get_historical_data'):
-                df = src.get_historical_data(symbol, from_date, to_date, interval)
-                if df is not None and not df.empty:
-                    return df
-        
-        logger.warning(f"No data found for {symbol}")
-        return None
-    
-    def get_latest_data(self, symbol: str, bars: int = 100, 
-                       source: str = None) -> Optional[pd.DataFrame]:
-        """Get latest N bars of data"""
-        to_date = datetime.now().strftime("%Y-%m-%d")
-        from_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-        return self.get_historical_data(symbol, from_date, to_date, "1", source)
-    
-    def store_data(self, symbol: str, data: pd.DataFrame, 
-                   source: str = None) -> bool:
-        """Store data to database"""
-        raise NotImplementedError("Database storage not yet implemented")
-    
-    def update_data(self, symbols: List[str], source: str = None) -> Dict[str, bool]:
-        """Update data for multiple symbols"""
-        results = {}
-        for symbol in symbols:
-            try:
-                df = self.get_latest_data(symbol, source=source)
-                if df is not None and not df.empty:
-                    results[symbol] = True
-                else:
-                    results[symbol] = False
-            except Exception as e:
-                logger.error(f"Failed to update {symbol}: {e}")
-                results[symbol] = False
-        return results
-
-
-class BrokerDataSource:
-    """Data source that fetches from a broker"""
-    
-    def __init__(self, broker):
-        self.broker = broker
-    
-    def get_historical_data(self, symbol: str, from_date: str, 
-                           to_date: str, interval: str = "1") -> Optional[pd.DataFrame]:
-        """Fetch historical data from broker"""
-        if not self.broker.is_connected():
-            logger.warning("Broker not connected")
+        except Exception as e:
+            self.logger.error(f"Error fetching data: {e}")
             return None
+    
+    def _get_from_db(self, symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+        """Get data from database"""
+        try:
+            from src.data_pipeline.db_utils import get_table_content
+            
+            # Convert symbol to table name format
+            table_name = f"{symbol.lower().replace(':', '_').replace('-', '_')}_eq"
+            
+            df = get_table_content(
+                db_name=self.config.get('db_name', 'spot_db_anamika'),
+                table_name=table_name,
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            if df is not None and not df.empty:
+                self.logger.info(f"Fetched {len(df)} records for {symbol} from DB")
+            
+            return df
+        except Exception as e:
+            self.logger.error(f"DB fetch error: {e}")
+            return None
+    
+    def _get_from_broker(self, symbol: str, start_date: str, end_date: str, 
+                         interval: str) -> Optional[pd.DataFrame]:
+        """Get data from broker"""
+        try:
+            from src.broker_service.fyers.fyers_broker_impl import FyersBroker
+            
+            broker = FyersBroker()
+            if not broker.connect():
+                return None
+            
+            df = broker.get_historical_data(symbol, start_date, end_date, interval)
+            broker.disconnect()
+            
+            return df
+        except Exception as e:
+            self.logger.error(f"Broker fetch error: {e}")
+            return None
+    
+    def get_stock_list(self, watchlist: str = "nifty_500") -> List[Dict[str, str]]:
+        """Get list of stocks from a watchlist"""
+        try:
+            import yaml
+            with open(self.config.get('stock_list_path', 'config/stock_list.yaml'), 'r') as f:
+                stock_config = yaml.safe_load(f)
+            
+            if watchlist in stock_config:
+                return stock_config[watchlist]
+            return []
+        except Exception as e:
+            self.logger.error(f"Error loading stock list: {e}")
+            return []
+    
+    def validate_data(self, df: pd.DataFrame) -> bool:
+        """Validate data quality"""
+        required_cols = ['time', 'open', 'high', 'low', 'close', 'volume']
         
-        return self.broker.get_historical_data(symbol, from_date, to_date, interval)
+        if df is None or df.empty:
+            return False
+        
+        missing = [col for col in required_cols if col not in df.columns]
+        if missing:
+            self.logger.error(f"Missing columns: {missing}")
+            return False
+        
+        # Check for NaN values
+        if df[required_cols].isnull().any().any():
+            self.logger.warning("Data contains NaN values")
+        
+        return True
 
 
 def run_test():
-    """Test function for data service"""
-    print("Testing Data Service...")
+    """Test data service"""
+    print("Testing Data Service")
+    print("=" * 50)
     
-    service = DataService()
-    print(f"Data service initialized")
-    print(f"Available sources: {list(service.data_sources.keys())}")
+    service = DataService({'db_name': 'spot_db_anamika'})
     
-    # Test with mock data
-    test_df = pd.DataFrame({
-        'time': pd.date_range('2024-01-01', periods=10),
-        'open': [100 + i for i in range(10)],
-        'high': [105 + i for i in range(10)],
-        'low': [95 + i for i in range(10)],
-        'close': [102 + i for i in range(10)],
-        'volume': [1000 + i*100 for i in range(10)]
-    })
+    # Test getting stock list
+    stocks = service.get_stock_list()
+    print(f"Available stocks: {len(stocks)}")
     
-    print(f"\nSample data shape: {test_df.shape}")
-    print(test_df.head())
+    if stocks:
+        symbol = stocks[0]['symbol']
+        print(f"Testing with symbol: {symbol}")
+        
+        # Test historical data
+        end_date = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        df = service.get_historical_data(symbol, start_date, end_date)
+        if df is not None:
+            print(f"✅ Retrieved {len(df)} candles")
+            print(df.head())
+        else:
+            print("❌ Failed to retrieve data")
     
-    print("\nData service test complete!")
+    print("\n✅ Data service test completed")
 
 
 if __name__ == "__main__":
@@ -135,5 +154,4 @@ if __name__ == "__main__":
         run_test()
     else:
         print("Data Service Module")
-        print("Usage: python -m src.data_service.data_service test")
-        run_test()
+        print("Run with 'test' argument: python data_service.py test")
