@@ -8,13 +8,12 @@ from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
-from src.strategy.market_scanner import MarketScanner
-from src.data_pipeline.db_utils import get_table_content
+from src.data_service.data_service import DataService
 
 # Import the concrete strategy classes (add more as needed)
-from src.strategy.crossover_strategy import MovingAverageCrossoverStrategy
-from src.strategy.madam_strategy import SupportResistanceStrategy
-# from src.strategy.volume_price_strategy import VolumePriceStrategy   # if you have one
+from src.strategy_service.strategies.crossover_strategy import MovingAverageCrossoverStrategy
+from src.strategy_service.strategies.madam_strategy import SupportResistanceStrategy
+from src.strategy_service.strategies.rsi_w_strategy import RSIWPatternStrategy
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 STRATEGY_CLASSES = {
     "MA_Crossover": MovingAverageCrossoverStrategy,
     "Support_Resistance": SupportResistanceStrategy,
-    # "Volume_Price": VolumePriceStrategy,
+    "RSI_W_Pattern": RSIWPatternStrategy,
 }
 
 

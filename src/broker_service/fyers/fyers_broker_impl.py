@@ -50,9 +50,27 @@ class FyersBroker(BrokerBase):
     """Fyers broker implementation"""
     
     def __init__(self, config: Dict[str, Any] = None):
-        super().__init__(name="Fyers", config=config or {})
-        self.access_token = config.get('access_token') or os.getenv('FYERS_ACCESS_TOKEN') or access_token
-        self.client_id = config.get('client_id') or os.getenv('FYERS_CLIENT_ID') or client_id
+        # Initialize base class first
+        config_dict = config or {}
+        super().__init__(name="Fyers", config=config_dict)
+        
+        # Get credentials with fallback hierarchy:
+        # 1. Config dict argument
+        # 2. Environment variable
+        # 3. Imported from auth module (if available)
+        # 4. Default placeholder for testing
+        self.access_token = (
+            config_dict.get('access_token') or 
+            os.getenv('FYERS_ACCESS_TOKEN') or 
+            access_token or 
+            'default_access_token'
+        )
+        self.client_id = (
+            config_dict.get('client_id') or 
+            os.getenv('FYERS_CLIENT_ID') or 
+            client_id or 
+            'default_client_id'
+        )
         self.fyers = fyers
         self.cur_path = os.path.dirname(os.path.abspath(__file__))
         
