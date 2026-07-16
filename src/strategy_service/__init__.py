@@ -2,7 +2,7 @@
 Strategy Service - Manages all trading strategies
 """
 
-from .strategy_base import StrategyBase
+from .strategy_base import TradingStrategy
 from .strategies import (
     SupportResistanceStrategy,
     RSIWPatternStrategy,
@@ -13,7 +13,7 @@ from .strategies import (
 )
 
 __all__ = [
-    'StrategyBase',
+    'TradingStrategy',
     'SupportResistanceStrategy',
     'RSIWPatternStrategy',
     'MovingAverageCrossoverStrategy',

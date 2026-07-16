@@ -1,0 +1,29 @@
+# Backtest Service Configuration - User Overrides
+# Copy this file and modify only what you need to override
+
+backtest_service:
+  # Capital allocation
+  initial_capital: 100000
+  max_positions: 5
+  max_per_sector: 2
+  
+  # Enable/disable sector allocation from strategy config
+  use_strategy_sector_allocation: true
+  
+  # Output settings
+  save_plots: true
+  save_metrics: true
+  verbose: true
+
+optimization_service:
+  # Optimization method: "bayesian", "grid_search"
+  default_method: "bayesian"
+  
+  # Bayesian optimization settings
+  n_iterations: 50
+  
+  # Metric to optimize: "sharpe_ratio", "total_return", "max_drawdown", "sortino_ratio"
+  optimization_metric: "sharpe_ratio"
+  
+  # Save all plots
+  save_all_plots: true

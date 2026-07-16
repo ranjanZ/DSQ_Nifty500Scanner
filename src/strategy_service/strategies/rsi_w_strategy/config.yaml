@@ -1,0 +1,63 @@
+# RSI W-Pattern Strategy Configuration
+strategy_name: "RSI_WPattern"
+class_name: "RSIWPatternStrategy"
+
+# Strategy Parameters
+params:
+  rsi_period: 14
+  rsi_oversold: 30
+  rsi_overbought: 70
+  w_pattern_lookback: 5
+  confirmation_candles: 2
+
+# Sector-specific investment allocation for this strategy
+sector_allocation:
+  Banking:
+    enabled: true
+    max_positions: 2
+    allocation_pct: 0.30
+    symbols:
+      - "HDFCBANK"
+      - "ICICIBANK"
+      - "KOTAKBANK"
+  IT:
+    enabled: true
+    max_positions: 2
+    allocation_pct: 0.25
+    symbols:
+      - "TCS"
+      - "INFY"
+      - "HCLTECH"
+  Energy:
+    enabled: false
+    max_positions: 0
+    allocation_pct: 0.0
+    symbols: []
+  Others:
+    enabled: true
+    max_positions: 2
+    allocation_pct: 0.45
+    symbols:
+      - "TATAMOTORS"
+      - "SBIN"
+      - "BAJFINANCE"
+
+# Backtest specific settings for this strategy
+backtest:
+  start_date: "2023-01-01"
+  end_date: "2024-01-01"
+  initial_capital: 100000
+  commission_pct: 0.05
+  slippage_pct: 0.01
+
+# Optimization ranges for this strategy
+optimization_ranges:
+  rsi_period: [10, 20]
+  rsi_oversold: [20, 40]
+  rsi_overbought: [60, 80]
+  w_pattern_lookback: [3, 10]
+
+# Live trading overrides (optional)
+live_trading:
+  max_positions: 3
+  risk_per_trade: 0.02

@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Tuple
 from scipy.stats import gaussian_kde
 from scipy.signal import find_peaks
 from datetime import datetime, timedelta
-from src.strategy.strategy_base import TradingStrategy  
+from ...strategy_base import TradingStrategy  
 
 
 class SupportResistanceStrategy(TradingStrategy):
