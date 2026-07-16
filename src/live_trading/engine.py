@@ -211,9 +211,7 @@ class LiveTradingEngine:
     def is_market_open(self) -> bool:
         """Check if Indian market is currently open"""
         now = datetime.now(self.tz)
-        return True
-    
-    
+        
         # Market closed on weekends
         if now.weekday() >= 5:  # Saturday=5, Sunday=6
             logger.info("Market closed on weekends")
@@ -830,7 +828,7 @@ class LiveTradingEngine:
 
 
 def main():
-    """Main entry point"""
+    """Main entry point for live trading"""
     try:
         # Initialize engine
         engine = LiveTradingEngine(
@@ -848,5 +846,54 @@ def main():
         traceback.print_exc()
 
 
+def run_test():
+    """Test function to verify engine initialization without running the trading loop"""
+    try:
+        logger.info("Running test initialization...")
+        
+        # Initialize engine without recovery
+        engine = LiveTradingEngine(
+            config_path="config/live_trading_config.yaml",
+            recover=False
+        )
+        
+        # Print configuration
+        logger.info(f"Session ID: {engine.session_id}")
+        logger.info(f"Initial Capital: {engine.trading_config['initial_capital']}")
+        logger.info(f"Max Positions: {engine.trading_config['max_positions']}")
+        logger.info(f"Strategy: {type(engine.strategy).__name__}")
+        
+        # Test market status check
+        market_status = engine.is_market_open()
+        logger.info(f"Market Open: {market_status}")
+        
+        # Test capital functions
+        available = engine.get_available_capital()
+        used = engine.get_used_capital()
+        total = engine.get_total_capital()
+        utilisation = engine.get_utilisation_pct()
+        
+        logger.info(f"Capital - Total: {total}, Available: {available}, Used: {used}, Utilisation: {utilisation:.2%}")
+        
+        # Test scanner
+        stocks = engine.scanner.get_stock_symbols()
+        logger.info(f"Scanner loaded {len(stocks)} stocks")
+        
+        logger.info("✅ Test completed successfully!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Test failed: {e}")
+        traceback.print_exc()
+        return False
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "test":
+        # Run test mode
+        run_test()
+    else:
+        # Run live trading
+        main()

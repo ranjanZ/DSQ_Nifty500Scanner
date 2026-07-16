@@ -1,34 +1,44 @@
-# Python
-__pycache__/
-*.py[cod]
-*.so
-.Python
+```
+# Environment
+.env
+.env.local
+.env.*
 
+# Dependencies
 .venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
+# Logs and temp files
+*.log
+*.tmp
+*.swp
 
-# IDE
+# Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Data files
-data/raw/
+# Build artifacts
+dist/
+build/
+target/
+*.so
+*.dylib
+*.dll
 
-# Logs
-*.log
+# Coverage reports
+.coverage
+coverage/
+htmlcov/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# Testing
+.pytest_cache/
+.mypy_cache/
 
-# OS
+# OS specific
 .DS_Store
 Thumbs.db
-
-# Secrets
-*.secret.yaml
-*.secret.yml
-
+```
