@@ -12,10 +12,6 @@ broker_service:
       client_id_env: "FYERS_CLIENT_ID"
       secret_key_env: "FYERS_SECRET_KEY"
       access_token_env: "FYERS_ACCESS_TOKEN"
-    zerodha:
-      enabled: false
-      api_key_env: "ZERODHA_API_KEY"
-      access_token_env: "ZERODHA_ACCESS_TOKEN"
 
 # Data Service Configuration
 data_service:
@@ -33,15 +29,22 @@ strategy_service:
   available_strategies:
     - name: "SupportResistance"
       class: "SupportResistanceStrategy"
-      module: "src.strategy_service.madam_strategy"
+      module: "strategies.madam_strategy"
       params:
         volume_ema_period: 20
         volume_threshold: 1.3
         kde_bandwidth: 0.2
         num_levels: 10
+    - name: "RSI_WPattern"
+      class: "RSIWPatternStrategy"
+      module: "strategies.rsi_w_strategy"
+      params:
+        rsi_period: 14
+        rsi_oversold: 30
+        rsi_overbought: 70
     - name: "MA_Crossover"
       class: "MovingAverageCrossoverStrategy"
-      module: "src.strategy_service.crossover_strategy"
+      module: "strategies.crossover_strategy"
       params:
         fast_period: 20
         slow_period: 50
