@@ -31,7 +31,14 @@ except ImportError:
     HAS_PLT = False
 
 # Import your backtest engine (adjust if needed)
-from src.backtesting.backtest_offline import BacktestEngine
+BacktestEngine = None
+try:
+    from src.backtesting_service.backtest_service import BacktestEngine
+except ImportError:
+    try:
+        from src.backtesting.backtest_offline import BacktestEngine
+    except ImportError:
+        logger.warning("Could not import BacktestEngine. It will be unavailable until the backtesting module is installed.")
 
 # ----------------------------------------------------------------------
 # Logging
