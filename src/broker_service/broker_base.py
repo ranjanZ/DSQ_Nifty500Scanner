@@ -1,27 +1,27 @@
 """
-Broker Service - Abstract base class for all brokers
-Supports multiple brokers (Fyers, Zerodha, etc.)
+Broker Service - Abstract Base and Registry
+Supports multiple broker implementations
 """
 
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
-import pandas as pd
+from datetime import datetime
 import logging
-from dotenv import load_dotenv
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 
 class BrokerBase(ABC):
-    """Abstract base class for all broker implementations"""
+    """
+    Abstract base class for all broker implementations
+    """
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, name: str, config: Dict[str, Any] = None):
+        self.name = name
         self.config = config or {}
-        self.name = "BaseBroker"
         self.connected = False
-        
+        self.logger = logging.getLogger(f"Broker.{name}")
+    
     @abstractmethod
     def connect(self) -> bool:
         """Connect to broker API"""
@@ -33,113 +33,90 @@ class BrokerBase(ABC):
         pass
     
     @abstractmethod
-    def place_order(self, symbol: str, qty: int, side: str, 
-                    type: str = "MARKET", price: float = 0.0, 
-                    product_type: str = "INTRADAY") -> Optional[str]:
-        """Place an order and return order ID"""
+    def get_historical_data(self, symbol: str, from_date: str, to_date: str, interval: str) -> Optional[Any]:
+        """Fetch historical candle data"""
         pass
     
     @abstractmethod
-    def cancel_order(self, order_id: str) -> bool:
+    def get_ltp(self, symbol: str) -> float:
+        """Get Last Traded Price"""
+        pass
+    
+    @abstractmethod
+    def place_order(self, order_params: Dict[str, Any]) -> Dict[str, Any]:
+        """Place an order"""
+        pass
+    
+    @abstractmethod
+    def cancel_order(self, order_id: str) -> Dict[str, Any]:
         """Cancel an order"""
         pass
     
     @abstractmethod
-    def get_positions(self) -> Dict[str, Any]:
-        """Get current positions"""
+    def get_order_status(self, order_id: str) -> Dict[str, Any]:
+        """Get order status"""
         pass
     
     @abstractmethod
-    def get_orders(self) -> Dict[str, Any]:
-        """Get current orders"""
+    def get_positions(self) -> List[Dict[str, Any]]:
+        """Get all positions"""
         pass
     
     @abstractmethod
-    def get_holdings(self) -> Dict[str, Any]:
-        """Get current holdings"""
-        pass
-    
-    @abstractmethod
-    def get_historical_data(self, symbol: str, from_date: str, 
-                           to_date: str, interval: str = "1") -> pd.DataFrame:
-        """Get historical candle data"""
-        pass
-    
-    @abstractmethod
-    def get_quotes(self, symbols: List[str]) -> Dict[str, Any]:
-        """Get real-time quotes for symbols"""
+    def get_funds(self) -> Dict[str, Any]:
+        """Get available funds"""
         pass
     
     def is_connected(self) -> bool:
         """Check if broker is connected"""
         return self.connected
     
-    def validate_credentials(self) -> bool:
-        """Validate broker credentials"""
-        raise NotImplementedError("Subclasses must implement this method")
+    def is_market_open(self) -> bool:
+        """Check if market is currently open"""
+        now = datetime.now()
+        # Indian market hours: 9:15 AM - 3:30 PM IST
+        if now.weekday() >= 5:  # Weekend
+            return False
+        market_open = now.replace(hour=9, minute=15, second=0, microsecond=0)
+        market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
+        return market_open <= now <= market_close
 
 
-class BrokerFactory:
-    """Factory class to create broker instances"""
+class BrokerRegistry:
+    """Registry for broker implementations"""
     
-    _brokers = {}
+    _brokers: Dict[str, type] = {}
     
     @classmethod
-    def register_broker(cls, name: str, broker_class):
+    def register(cls, name: str, broker_class: type):
         """Register a broker implementation"""
         cls._brokers[name.lower()] = broker_class
         logger.info(f"Registered broker: {name}")
     
     @classmethod
-    def create_broker(cls, name: str, config: Dict[str, Any] = None) -> BrokerBase:
-        """Create a broker instance"""
+    def get_broker(cls, name: str, config: Dict[str, Any] = None) -> BrokerBase:
+        """Get broker instance by name"""
         broker_class = cls._brokers.get(name.lower())
         if not broker_class:
             raise ValueError(f"Unknown broker: {name}. Available: {list(cls._brokers.keys())}")
         return broker_class(config=config)
     
     @classmethod
-    def get_available_brokers(cls) -> List[str]:
-        """Get list of available brokers"""
+    def list_brokers(cls) -> List[str]:
+        """List all registered brokers"""
         return list(cls._brokers.keys())
 
 
-# Register default brokers
-try:
-    from src.broker_service.fyers.fyers_broker_impl import FyersBroker
-    BrokerFactory.register_broker("fyers", FyersBroker)
-    logger.info("Fyers broker registered")
-except ImportError as e:
-    logger.warning(f"Could not register Fyers broker: {e}")
-
-try:
-    from src.broker_service.zerodha.zerodha_broker_impl import ZerodhaBroker
-    BrokerFactory.register_broker("zerodha", ZerodhaBroker)
-    logger.info("Zerodha broker registered")
-except ImportError as e:
-    logger.warning(f"Could not register Zerodha broker: {e}")
-
-
-def run_test():
-    """Test function for broker service"""
-    print("Testing Broker Service...")
-    print(f"Available brokers: {BrokerFactory.get_available_brokers()}")
-    
-    # Test factory creation
-    try:
-        broker = BrokerFactory.create_broker("fyers")
-        print(f"Created broker: {broker.name}")
-    except Exception as e:
-        print(f"Expected error (no credentials): {e}")
-    
-    print("Broker service test complete!")
+def register_broker(name: str):
+    """Decorator to register broker implementations"""
+    def decorator(broker_class: type):
+        BrokerRegistry.register(name, broker_class)
+        return broker_class
+    return decorator
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "test":
-        run_test()
-    else:
-        print("Broker Service Module")
-        print("Usage: python -m src.broker_service.broker_base test")
-        run_test()
+    print("Testing Broker Base Module")
+    print("=" * 50)
+    print(f"Available brokers: {BrokerRegistry.list_brokers()}")
+    print("✅ Broker base module loaded successfully")
