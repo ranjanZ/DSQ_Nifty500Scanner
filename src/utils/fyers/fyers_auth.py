@@ -11,6 +11,11 @@ import base64
 import requests
 from urllib.parse import parse_qs,urlparse
 from time import sleep
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 ################
 """
@@ -31,17 +36,17 @@ totp_token="A2YB2RMZUEBXOJU5VQ6QKPEX6F7IMQP5"
 #client_id="27IH6OKCVZ-100"
 #secret_key="OV2B621AGP"
 
-client_id="8ZU1YKGMVT-200"
-secret_key="c9YkxN1yj5TEnz1p"
+client_id=os.getenv("FYERS_CLIENT_ID", "8ZU1YKGMVT-200")
+secret_key=os.getenv("FYERS_SECRET_KEY", "c9YkxN1yj5TEnz1p")
 #redirect_uri="https://trade.fyers.in/api-login/redirect-uri/index.html"
-redirect_uri="https://www.google.com"
+redirect_uri=os.getenv("FYERS_REDIRECT_URI", "https://www.google.com")
 #redirect_uri="https://127.0.0.1:5000/"
-response_type = "code"  
-grant_type = "authorization_code"  
-state = "sample_state"
-fyers_id="YC00531"
-pin="1234"
-totp_token="Y3VGJV7N553V5XU6LHWG4ANV67UVTLVP"
+response_type = os.getenv("FYERS_RESPONSE_TYPE", "code")
+grant_type = os.getenv("FYERS_GRANT_TYPE", "authorization_code")
+state = os.getenv("FYERS_STATE", "sample_state")
+fyers_id=os.getenv("FYERS_ID", "YC00531")
+pin=os.getenv("FYERS_PIN", "1234")
+totp_token=os.getenv("FYERS_TOTP_TOKEN", "Y3VGJV7N553V5XU6LHWG4ANV67UVTLVP")
 #"""
 
 

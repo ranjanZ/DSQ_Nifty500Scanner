@@ -12,6 +12,10 @@ import datetime
 import logging
 import re
 from collections import defaultdict
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -793,8 +797,11 @@ class fyers_API:
         
         logger.warning(f"⏱️ Order {order_id} PENDING after {max_wait_seconds}s")
         return False
-if __name__ == "__main__":
-    from src.utils.fyers.fyers_broker import *
+
+
+def run_test():
+    """Test function to verify broker initialization and basic functions"""
+    from src.utils.fyers.fyers_broker import fyers_API
     print("✅ Fyers API initialized")
     print("👉 Make sure your app has ALGO permissions and IP whitelisted.\n")
 
@@ -817,69 +824,98 @@ if __name__ == "__main__":
     else:
         print("   ❌ Quote failed.")
 
-    # 3. Test place_order (small quantity, market)
-    #    Only run if you confirm (dangerous)
-    print("\n3. Testing place_order (MARKET) with tiny quantity...")
-    symbol_test = "NSE:SBIN-EQ"
-    qty_test = 1
-    if input(f"Place {qty_test} share MARKET BUY order for {symbol_test}? (y/N): ").lower() == 'y':
-        order_id = api.place_order(symbol_test, qty_test, "BUY", "MARKET")
-        if order_id:
-            print(f"   Order placed: {order_id}")
-            # Cancel it immediately (optional)
-            if input("Cancel the order? (y/N): ").lower() == 'y':
-                api.cancel_order(order_id)
+    print("\n✅ Basic test suite finished (skipping order placement tests).")
+    return True
+
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "test":
+        # Run basic test without placing orders
+        run_test()
+    else:
+        # Run full interactive test suite with order placement
+        from src.utils.fyers.fyers_broker import *
+        print("✅ Fyers API initialized")
+        print("👉 Make sure your app has ALGO permissions and IP whitelisted.\n")
+
+        api = fyers_API()
+
+        # 1. Test get_his_candle_data
+        print("\n1. Testing get_his_candle_data()...")
+        df = api.get_his_candle_data("NSE:SBIN-EQ", "2025-04-01", "2025-04-10", "D")
+        if not df.empty:
+            print(f"   Retrieved {len(df)} candles. Sample:\n{df.head(2)}")
         else:
-            print("   ❌ Order failed.")
-    else:
-        print("   Skipped.")
+            print("   ❌ No data or error.")
 
-    # 4. Test stoploss order (simulated)
-    print("\n4. Testing place_stoploss_order (limit order with trigger)...")
-    if input("Place a SELL STOP_LOSS_LIMIT order for 1 share NSE:SBIN-EQ (trigger 10% below LTP)? (y/N): ").lower() == 'y':
-        ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
-        trigger = round(ltp * 0.90, 2)
-        sl_id = api.place_stoploss_order(symbol_test, 1, trigger, trigger)
-        if sl_id:
-            print(f"   Stop-loss order placed: {sl_id}")
-            if input("Cancel it? (y/N): ").lower() == 'y':
-                api.cancel_order(sl_id)
+        # 2. Test get_quotes
+        print("\n2. Testing get_quotes()...")
+        quotes = api.get_quotes("NSE:SBIN-EQ")
+        if quotes and 'd' in quotes:
+            ltp = quotes['d'][0]['v']['lp']
+            print(f"   LTP of SBIN: {ltp}")
         else:
-            print("   ❌ SL order failed.")
-    else:
-        print("   Skipped.")
+            print("   ❌ Quote failed.")
 
-    # 5. Test OCO bracket emulation
-    print("\n5. Testing OCO bracket (entry + SL + TP)...")
-    if input("Place OCO bracket for 1 share (BUY) with SL -5%, TP +5%? (y/N): ").lower() == 'y':
-        ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
-        entry_price = ltp
-        sl_price = round(entry_price * 0.95, 2)
-        tp_price = round(entry_price * 1.05, 2)
-        result = api.place_true_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
-        result = api.place_swing_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+        # 3. Test place_order (small quantity, market)
+        #    Only run if you confirm (dangerous)
+        print("\n3. Testing place_order (MARKET) with tiny quantity...")
+        symbol_test = "NSE:SBIN-EQ"
+        qty_test = 1
+        if input(f"Place {qty_test} share MARKET BUY order for {symbol_test}? (y/N): ").lower() == 'y':
+            order_id = api.place_order(symbol_test, qty_test, "BUY", "MARKET")
+            if order_id:
+                print(f"   Order placed: {order_id}")
+                # Cancel it immediately (optional)
+                if input("Cancel the order? (y/N): ").lower() == 'y':
+                    api.cancel_order(order_id)
+            else:
+                print("   ❌ Order failed.")
+        else:
+            print("   Skipped.")
 
-        print(f"   OCO result: {result}")
-        if result['parent']:
-            print("   Cancelling all orders from this bracket...")
-            for k, oid in result.items():
-                if oid:
-                    api.cancel_order(oid)
-    else:
-        print("   Skipped.")
+        # 4. Test stoploss order (simulated)
+        print("\n4. Testing place_stoploss_order (limit order with trigger)...")
+        if input("Place a SELL STOP_LOSS_LIMIT order for 1 share NSE:SBIN-EQ (trigger 10% below LTP)? (y/N): ").lower() == 'y':
+            ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
+            trigger = round(ltp * 0.90, 2)
+            sl_id = api.place_stoploss_order(symbol_test, 1, trigger, trigger)
+            if sl_id:
+                print(f"   Stop-loss order placed: {sl_id}")
+                if input("Cancel it? (y/N): ").lower() == 'y':
+                    api.cancel_order(sl_id)
+            else:
+                print("   ❌ SL order failed.")
+        else:
+            print("   Skipped.")
+
+        # 5. Test OCO bracket emulation
+        print("\n5. Testing OCO bracket (entry + SL + TP)...")
+        if input("Place OCO bracket for 1 share (BUY) with SL -5%, TP +5%? (y/N): ").lower() == 'y':
+            ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
+            entry_price = ltp
+            sl_price = round(entry_price * 0.95, 2)
+            tp_price = round(entry_price * 1.05, 2)
+            result = api.place_true_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+            result = api.place_swing_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+
+            print(f"   OCO result: {result}")
+            if result['parent']:
+                print("   Cancelling all orders from this bracket...")
+                for k, oid in result.items():
+                    if oid:
+                        api.cancel_order(oid)
+        else:
+            print("   Skipped.")
 
 
-    # ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
-    # entry_price = ltp
-    # sl_price = round(entry_price * 0.9991, 2)
-    # tp_price = round(entry_price * 1.0009, 2)
-    # result = api.place_swing_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
+        # ltp = quotes['d'][0]['v']['lp'] if quotes and 'd' else 500
+        # entry_price = ltp
+        # sl_price = round(entry_price * 0.9991, 2)
+        # tp_price = round(entry_price * 1.0009, 2)
+        # result = api.place_swing_oco(symbol_test, 1, "BUY", entry_price, sl_price, tp_price)
 
 
-    print("\n✅ Test suite finished.")
-
-
-
-
-
-
+        print("\n✅ Full test suite finished.")
