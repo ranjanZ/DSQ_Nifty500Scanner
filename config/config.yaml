@@ -1,7 +1,5 @@
-"""
-Main configuration file for all services
-Centralized YAML-based configuration
-"""
+# Main configuration file for all services
+# Centralized YAML-based configuration
 
 # Broker Service Configuration
 broker_service:
