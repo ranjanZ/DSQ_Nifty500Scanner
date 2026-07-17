@@ -117,6 +117,15 @@ def register_broker(name: str):
 
 if __name__ == "__main__":
     # Import fyers broker to register it
+    import os
+    import sys
+    # Add the current directory and its parent to path so we can import fyers.fyers_broker_impl
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    if script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
+    if '.' not in sys.path:
+        sys.path.insert(0, '.')
+    
     try:
         from fyers.fyers_broker_impl import FyersBroker
     except Exception as e:
