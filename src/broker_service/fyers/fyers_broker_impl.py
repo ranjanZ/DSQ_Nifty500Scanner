@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+load_dotenv(os.environ.get('DEEFAULT_ENV_PATH'))
 
 # Import base class
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -58,18 +58,15 @@ class FyersBroker(BrokerBase):
         # 3. Default hardcoded values (from config)
         self.client_id = (
             config_dict.get('client_id') or 
-            os.getenv('FYERS_CLIENT_ID') or 
-            '8ZU1YKGMVT-200'
+            os.getenv('FYERS_CLIENT_ID')
         )
         self.secret_key = (
             config_dict.get('secret_key') or 
-            os.getenv('FYERS_SECRET_KEY') or 
-            'c9YkxN1yj5TEnz1p'
+            os.getenv('FYERS_SECRET_KEY') 
         )
         self.access_token = (
             config_dict.get('access_token') or 
-            os.getenv('FYERS_ACCESS_TOKEN') or 
-            None
+            os.getenv('FYERS_ACCESS_TOKEN')
         )
         
         # Additional Fyers auth params

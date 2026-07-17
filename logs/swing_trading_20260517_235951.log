@@ -1,0 +1,22 @@
+2026-05-17 23:59:52,170 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-05-17 23:59:54,846 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-13T19:24:20.890347+05:30', 'open_positions': 0, 'total_orders': 0, 'total_pnl': -13.0, 'closed_positions': 1, 'portfolio_snapshots': 4, 'capital_available': 10000, 'capital_used': 0}
+2026-05-17 23:59:54,846 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-05-17 23:59:54,846 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-05-17 23:59:54,846 - SwingTradingEngine - INFO - Signal scan: 15:07 (after DB update)
+2026-05-17 23:59:54,846 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-05-17 23:59:54,846 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=2026-05-15, scan=2026-05-15
+2026-05-17 23:59:54,846 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=2026-05-15, last_scan=2026-05-15
+2026-05-18 00:00:50,803 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-05-18 00:00:50,803 - SwingTradingEngine - INFO - Stopping engine...
+2026-05-18 00:00:53,341 - SwingTradingEngine - INFO - Engine stopped
+2026-05-18 00:11:06,024 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-05-18 00:11:08,761 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-13T19:24:20.890347+05:30', 'open_positions': 0, 'total_orders': 0, 'total_pnl': -13.0, 'closed_positions': 1, 'portfolio_snapshots': 5, 'capital_available': 10000, 'capital_used': 0}
+2026-05-18 00:11:08,761 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-05-18 00:11:08,761 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-05-18 00:11:08,761 - SwingTradingEngine - INFO - Signal scan: 15:07 (after DB update)
+2026-05-18 00:11:08,761 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-05-18 00:11:08,762 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=2026-05-15, scan=2026-05-15
+2026-05-18 00:11:08,762 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=2026-05-15, last_scan=2026-05-15
+2026-05-18 00:11:10,232 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-05-18 00:11:10,232 - SwingTradingEngine - INFO - Stopping engine...
+2026-05-18 00:11:12,956 - SwingTradingEngine - INFO - Engine stopped
