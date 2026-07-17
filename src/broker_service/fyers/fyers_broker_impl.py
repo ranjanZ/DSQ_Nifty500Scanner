@@ -30,6 +30,19 @@ except ImportError as e:
     fyersModel = None
     FYERS_SDK_AVAILABLE = False
 
+# Import auth utility
+try:
+    # Add src directory to path for utils import
+    src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+    from utils.fyers.fyers_auth import generate_access_token
+    AUTH_UTIL_AVAILABLE = True
+except ImportError as e:
+    logging.debug(f"Fyers auth utility not available: {e}")
+    generate_access_token = None
+    AUTH_UTIL_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -96,6 +109,25 @@ class FyersBroker(BrokerBase):
             return
         
         try:
+            # If we don't have an access token, try to generate one
+            if not self.access_token and AUTH_UTIL_AVAILABLE:
+                logger.info("No access token found, attempting to generate one...")
+                token_result = generate_access_token(
+                    client_id=self.client_id,
+                    secret_key=self.secret_key,
+                    fyers_id=self.fyers_id,
+                    pin=self.pin,
+                    totp_token=self.totp_token,
+                    redirect_uri=self.redirect_uri
+                )
+                
+                if token_result.get('success'):
+                    self.access_token = token_result['access_token']
+                    logger.info("✅ Access token generated successfully")
+                else:
+                    logger.warning(f"⚠️  Could not generate access token: {token_result.get('error')}")
+                    logger.warning("Running in demo mode")
+            
             self.fyers = fyersModel.FyersModel(
                 client_id=self.client_id,
                 is_async=False,
