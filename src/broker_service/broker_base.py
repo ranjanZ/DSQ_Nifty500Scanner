@@ -119,15 +119,14 @@ if __name__ == "__main__":
     # Import fyers broker to register it
     import os
     import sys
-    # Add the current directory and its parent to path so we can import fyers.fyers_broker_impl
+    # Add the broker_service directory to path
     script_dir = os.path.dirname(os.path.abspath(__file__))
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
-    if '.' not in sys.path:
-        sys.path.insert(0, '.')
     
     try:
         from fyers.fyers_broker_impl import FyersBroker
+        print("✅ Fyers broker imported and registered")
     except Exception as e:
         print(f"Note: Could not import Fyers broker: {e}")
     
@@ -141,3 +140,30 @@ if __name__ == "__main__":
         print("⚠️  No brokers registered (import fyers.fyers_broker_impl to register)")
     
     print("✅ Broker base module loaded successfully")
+
+
+def load_brokers():
+    """Load and register all available brokers"""
+    import os
+    import sys
+    
+    # Add broker_service directory to path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    if script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
+    
+    # Try to import each broker implementation
+    brokers_dir = os.path.join(script_dir, 'fyers')
+    if os.path.exists(brokers_dir):
+        try:
+            # Import using absolute path from broker_service
+            from fyers.fyers_broker_impl import FyersBroker
+        except Exception as e:
+            logger.debug(f"Could not load Fyers broker: {e}")
+    
+    return BrokerRegistry.list_brokers()
+
+
+# Auto-load brokers when module is imported
+load_brokers()
