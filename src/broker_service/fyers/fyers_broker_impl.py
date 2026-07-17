@@ -19,7 +19,14 @@ load_dotenv()
 
 # Import base class
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from broker_base import BrokerBase, register_broker
+from broker_base import BrokerBase, BrokerRegistry
+
+def register_broker(name: str):
+    """Decorator to register broker implementations"""
+    def decorator(broker_class: type):
+        BrokerRegistry.register(name, broker_class)
+        return broker_class
+    return decorator
 
 # Fyers imports
 try:

@@ -20,6 +20,12 @@ except ImportError as e:
     FYERS_SDK_AVAILABLE = False
     fyersModel = None
 
+try:
+    import pyotp
+    PYOTP_AVAILABLE = True
+except ImportError:
+    PYOTP_AVAILABLE = False
+
 
 def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redirect_uri="https://www.google.com"):
     """
@@ -42,8 +48,18 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
     try:
         print(f"🔄 Generating auth token for client_id: {client_id}")
         
-        # Step 1: Generate auth code using TOTP
-        app_session = fyersModel.AppSession(
+        # Generate current TOTP code
+        if PYOTP_AVAILABLE:
+            totp = pyotp.TOTP(totp_token)
+            current_totp = totp.now()
+        else:
+            # Fallback: use the provided totp_token directly if it's already a code
+            current_totp = totp_token
+        
+        print(f"🔑 Using TOTP: {current_totp}")
+        
+        # Step 1: Create session model with credentials
+        session = fyersModel.SessionModel(
             client_id=client_id,
             secret_key=secret_key,
             redirect_uri=redirect_uri,
@@ -51,13 +67,39 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
             grant_type="authorization_code"
         )
         
-        # Generate TOTP-based auth code
-        auth_code_response = app_session.generate_totp(
-            fy_id=fyers_id,
-            pin=pin,
-            totp=totp_token
-        )
+        # Generate authorization URL and extract parameters needed for API call
+        auth_url = session.generate_authcode()
+        print(f"📝 Auth URL: {auth_url}")
         
+        # Step 2: Make direct API call to generate auth code with TOTP
+        import requests
+        auth_api_url = "https://api-t1.fyers.in/api/v3/generate-authcode"
+        auth_payload = {
+            "fy_id": fyers_id,
+            "app_id": client_id.split('-')[0],  # Extract part before dash
+            "app_type": "web",
+            "redirect_uri": redirect_uri,
+            "state": "sample_state",
+            "scope": "",
+            "nonce": "",
+            "response_type": "code",
+            "create_cookie": True,
+            "password": pin,
+            "totp": current_totp
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(auth_api_url, json=auth_payload, headers=headers, timeout=30)
+        
+        print(f"📝 Auth code API response status: {response.status_code}")
+        
+        if response.status_code != 200:
+            return {
+                "success": False,
+                "error": f"Auth API returned status {response.status_code}: {response.text[:200]}"
+            }
+        
+        auth_code_response = response.json()
         print(f"📝 Auth code response: {json.dumps(auth_code_response, indent=2)}")
         
         if auth_code_response.get('s') != 'ok':
@@ -75,9 +117,9 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
         
         print(f"✅ Auth code generated successfully")
         
-        # Step 2: Exchange auth code for access token
-        app_session.set_token(auth_code)
-        token_response = app_session.generate_token()
+        # Step 3: Exchange auth code for access token
+        session.set_token(auth_code)
+        token_response = session.generate_token()
         
         print(f"📝 Token response: {json.dumps(token_response, indent=2)}")
         
