@@ -116,7 +116,19 @@ def register_broker(name: str):
 
 
 if __name__ == "__main__":
+    # Import fyers broker to register it
+    try:
+        from fyers.fyers_broker_impl import FyersBroker
+    except Exception as e:
+        print(f"Note: Could not import Fyers broker: {e}")
+    
     print("Testing Broker Base Module")
     print("=" * 50)
     print(f"Available brokers: {BrokerRegistry.list_brokers()}")
+    
+    if BrokerRegistry.list_brokers():
+        print("✅ Brokers registered successfully")
+    else:
+        print("⚠️  No brokers registered (import fyers.fyers_broker_impl to register)")
+    
     print("✅ Broker base module loaded successfully")
