@@ -1,0 +1,203 @@
+# Stock List Configuration
+database_config:
+  db_name: "spot_db_anamika"
+  user: "postgres"
+  password: "123"
+  host: "localhost"
+  port: "5432"
+
+fyers_stocks_config:
+  api_provider: "Fyers"
+  exchange: "NSE"
+  market_segment: "NSE Capital Market"
+  symbol_format: "NSE:SYMBOL-EQ"
+
+watchlists:
+  nifty_top_5:
+    - name: "Reliance Industries Limited"
+      fyers_symbol: "NSE:RELIANCE-EQ"
+      sector: "Energy"
+      market_cap: "Large Cap"
+    
+    - name: "Tata Consultancy Services Limited"
+      fyers_symbol: "NSE:TCS-EQ"
+      sector: "Information Technology"
+      market_cap: "Large Cap"
+    
+    - name: "HDFC Bank Limited"
+      fyers_symbol: "NSE:HDFCBANK-EQ"
+      sector: "Financial Services"
+      market_cap: "Large Cap"
+      
+    - name: "Infosys Limted"
+      fyers_symbol: "NSE:INFY-EQ"
+      sector: "Information Technology"
+      market_cap: "Large Cap"
+    
+    - name: "ICICI Bank Limited"
+      fyers_symbol: "NSE:ICICIBANK-EQ"
+      sector: "Financial Services"
+      market_cap: "Large Cap"
+    
+  bank_stocks:
+    - name: "HDFC Bank Limited"
+      fyers_symbol: "NSE:HDFCBANK-EQ"
+      sector: "Financial Services"
+      market_cap: "Large Cap"
+    
+    - name: "ICICI Bank Limited"
+      fyers_symbol: "NSE:ICICIBANK-EQ"
+      sector: "Financial Services"
+      market_cap: "Large Cap"
+    
+    - name: "State Bank of India"
+      fyers_symbol: "NSE:SBIN-EQ"
+      sector: "Financial Services"
+      market_cap: "Large Cap"
+    
+    - name: "Axis Bank Limited"
+      fyers_symbol: "NSE:AXISBANK-EQ"
+      sector: "Financial Services"
+      market_cap: "Large Cap"
+    
+    - name: "Kotak Mahindra Bank Limited"
+      fyers_symbol: "NSE:KOTAKBANK-EQ"
+      sector: "Financial Services"
+      market_cap: "Large Cap"
+
+  it_stocks:
+    - name: "Tata Consultancy Services Limited"
+      fyers_symbol: "NSE:TCS-EQ"
+      sector: "Information Technology"
+      market_cap: "Large Cap"
+    
+    - name: "Infosys Limited"
+      fyers_symbol: "NSE:INFY-EQ"
+      sector: "Information Technology"
+      market_cap: "Large Cap"
+    
+    - name: "HCL Technologies Limited"
+      fyers_symbol: "NSE:HCLTECH-EQ"
+      sector: "Information Technology"
+      market_cap: "Large Cap"
+    
+    - name: "Wipro Limited"
+      fyers_symbol: "NSE:WIPRO-EQ"
+      sector: "Information Technology"
+      market_cap: "Large Cap"
+    
+    - name: "Tech Mahindra Limited"
+      fyers_symbol: "NSE:TECHM-EQ"
+      sector: "Information Technology"
+      market_cap: "Large Cap"
+
+  # Nifty Top 500 stocks (sample - first 15 shown)
+  nifty_top_500:
+    - name: 360 ONE WAM LIMITED
+      fyers_symbol: NSE:360ONE-EQ
+      symbol: 360ONE
+      isin_code: INE466L01038
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: 3M INDIA LIMITED
+      fyers_symbol: NSE:3MINDIA-EQ
+      symbol: 3MINDIA
+      isin_code: INE470A01017
+      sector: Diversified
+      market_cap: Large Cap
+    - name: ABB INDIA LIMITED
+      fyers_symbol: NSE:ABB-EQ
+      symbol: ABB
+      isin_code: INE117A01022
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: ACC LIMITED
+      fyers_symbol: NSE:ACC-EQ
+      symbol: ACC
+      isin_code: INE012A01025
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: ACME SOLAR HOLDINGS LTD
+      fyers_symbol: NSE:ACMESOLAR-EQ
+      symbol: ACMESOLAR
+      isin_code: INE622W01025
+      sector: Power
+      market_cap: Large Cap
+    - name: AIA ENGINEERING LIMITED
+      fyers_symbol: NSE:AIAENG-EQ
+      symbol: AIAENG
+      isin_code: INE212H01026
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: APL APOLLO TUBES LTD
+      fyers_symbol: NSE:APLAPOLLO-EQ
+      symbol: APLAPOLLO
+      isin_code: INE702C01027
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: AU SMALL FINANCE BANK LTD
+      fyers_symbol: NSE:AUBANK-EQ
+      symbol: AUBANK
+      isin_code: INE949L01017
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: AWL AGRI BUSINESS LIMITED
+      fyers_symbol: NSE:AWL-EQ
+      symbol: AWL
+      isin_code: INE699H01024
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: AADHAR HOUSING FINANCE L
+      fyers_symbol: NSE:AADHARHFC-EQ
+      symbol: AADHARHFC
+      isin_code: INE883F01010
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: AARTI INDUSTRIES LTD
+      fyers_symbol: NSE:AARTIIND-EQ
+      symbol: AARTIIND
+      isin_code: INE769A01020
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: AAVAS FINANCIERS LIMITED
+      fyers_symbol: NSE:AAVAS-EQ
+      symbol: AAVAS
+      isin_code: INE216P01012
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ABBOTT INDIA LIMITED
+      fyers_symbol: NSE:ABBOTINDIA-EQ
+      symbol: ABBOTINDIA
+      isin_code: INE358A01014
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ACTION CONST EQUIP LTD
+      fyers_symbol: NSE:ACE-EQ
+      symbol: ACE
+      isin_code: INE731H01025
+      sector: Capital Goods
+      market_cap: Large Cap
+
+fyers_api_config:
+  base_url: "https://api.fyers.in"
+  data_url: "https://api-t1.fyers.in"
+  socket_url: "wss://socket.fyers.in"
+  symbol_format: "exchange:symbol-series"
+  supported_series:
+    - "EQ"   # Equity
+    - "BE"   # Book Entry
+    - "N1"   # Nifty Index
+    - "N2"   # Nifty Bank Index
+  
+  market_data_types:
+    - "ohlcv"
+    - "depth"
+    - "symbols"
+  
+  timeframes:
+    - "1"    # 1 minute
+    - "5"    # 5 minutes
+    - "15"   # 15 minutes
+    - "30"   # 30 minutes
+    - "60"   # 60 minutes
+    - "D"    # Daily

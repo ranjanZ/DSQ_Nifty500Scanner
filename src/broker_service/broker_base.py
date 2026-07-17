@@ -136,8 +136,18 @@ if __name__ == "__main__":
     
     if BrokerRegistry.list_brokers():
         print("✅ Brokers registered successfully")
+        for broker_name in BrokerRegistry.list_brokers():
+            print(f"   - {broker_name}")
     else:
         print("⚠️  No brokers registered (import fyers.fyers_broker_impl to register)")
+        print("   Default brokers should be loaded automatically")
+        
+        # Try to load default brokers
+        try:
+            load_brokers()
+            print(f"   After loading: {BrokerRegistry.list_brokers()}")
+        except Exception as e:
+            print(f"   Could not auto-load brokers: {e}")
     
     print("✅ Broker base module loaded successfully")
 
