@@ -132,12 +132,18 @@ class FyersBroker(BrokerBase):
                     logger.warning(f"⚠️  Could not generate access token: {token_result.get('error')}")
                     logger.warning("Running in demo mode")
             
-            self.fyers = fyersModel.FyersModel(
-                client_id=self.client_id,
-                is_async=False,
-                token=self.access_token if self.access_token else '',
-                log_path=os.path.join(self.cur_path, "logs/")
-            )
+            if self.access_token:
+                self.fyers = fyersModel.FyersModel(
+                    client_id=self.client_id,
+                    is_async=False,
+                    token=self.access_token,
+                    log_path=os.path.join(self.cur_path, "logs/")
+                )
+                logger.info("Fyers SDK initialized successfully with access token")
+            else:
+                logger.warning("No access token available - running in demo mode only")
+                self.fyers = None
+
             logger.info("Fyers SDK initialized successfully")
         except Exception as e:
             logger.warning(f"Could not initialize Fyers instance: {e}")

@@ -12,4 +12,5 @@ __pycache__/
 .env
 .env.local
 *.env.*
+src/broker_service/fyers/logs/*
 ```
