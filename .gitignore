@@ -1,16 +1,4 @@
 ```
-# Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-# Logs
-*.log
-
-# Environment
-.env
-.env.local
-*.env.*
-src/broker_service/fyers/logs/*
 ```
