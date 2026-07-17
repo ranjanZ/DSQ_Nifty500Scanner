@@ -1,12 +1,16 @@
 """
 Fyers Authentication Utility
 Generate access token using client_id, secret_key, and TOTP
+Reference: Working auth flow from fyers_broker_impl.py test code
 """
 
 import os
 import sys
 import json
+import base64
+import time
 from datetime import datetime
+from urllib.parse import parse_qs, urlparse
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -26,11 +30,26 @@ try:
 except ImportError:
     PYOTP_AVAILABLE = False
 
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+
+
+def getEncodedString(string):
+    """Encode string to base64"""
+    string = str(string)
+    base64_bytes = base64.b64encode(string.encode("ascii"))
+    return base64_bytes.decode("ascii")
+
 
 def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redirect_uri="https://www.google.com"):
     """
     Generate Fyers access token using TOTP
-
+    
+    Reference implementation based on working code from fyers_broker_impl.py test
+    
     Args:
         client_id: Fyers client ID (e.g., "8ZU1YKGMVT-200")
         secret_key: Fyers secret key
@@ -44,88 +63,131 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
     """
     if not FYERS_SDK_AVAILABLE:
         return {"success": False, "error": "Fyers SDK not installed"}
+    
+    if not REQUESTS_AVAILABLE:
+        return {"success": False, "error": "requests library not available"}
 
     try:
         print(f"🔄 Generating auth token for client_id: {client_id}")
 
-        # Generate current TOTP code
-        if PYOTP_AVAILABLE:
-            totp = pyotp.TOTP(totp_token)
-            current_totp = totp.now()
-        else:
-            # Fallback: use the provided totp_token directly if it's already a code
-            current_totp = totp_token
-
-        print(f"🔑 Using TOTP: {current_totp}")
-
-        # Step 1: Create session model with credentials
+        # Step 1: Create session model to generate initial authcode URL
         session = fyersModel.SessionModel(
             client_id=client_id,
-            secret_key=secret_key,
-            redirect_uri=redirect_uri,
-            response_type="code",
+            secret_key=secret_key, 
+            redirect_uri=redirect_uri, 
+            response_type="code", 
             grant_type="authorization_code"
         )
 
-        # Generate authorization URL and extract parameters needed for API call
+        # This generates the auth URL but we don't use it directly
+        # We need to go through the login flow to get the actual auth code
         auth_url = session.generate_authcode()
-        print(f"📝 Auth URL: {auth_url}")
+        print(f"📝 Initial auth URL generated")
 
-        # Step 2: Make direct API call to generate auth code with TOTP
-        import requests
-        auth_api_url = "https://api-t1.fyers.in/api/v3/generate-authcode"
-        auth_payload = {
-            "fy_id": fyers_id,
+        # Step 2: Send login OTP request
+        URL_SEND_LOGIN_OTP = "https://api-t2.fyers.in/vagator/v2/send_login_otp_v2"
+        res = requests.post(
+            url=URL_SEND_LOGIN_OTP, 
+            json={"fy_id": getEncodedString(fyers_id), "app_id": "2"},
+            timeout=30
+        ).json()
+        
+        if res.get('s') != 'ok':
+            return {"success": False, "error": f"Failed to send login OTP: {res}"}
+        
+        request_key = res.get("request_key")
+        if not request_key:
+            return {"success": False, "error": "No request_key in OTP response"}
+        
+        print(f"📝 Login OTP sent successfully")
+
+        # Wait for TOTP to be valid (avoid edge case near 30-second boundary)
+        if datetime.now().second % 30 > 27:
+            time.sleep(5)
+
+        # Step 3: Verify OTP using TOTP
+        URL_VERIFY_OTP = "https://api-t2.fyers.in/vagator/v2/verify_otp"
+        current_totp = pyotp.TOTP(totp_token).now() if PYOTP_AVAILABLE else totp_token
+        print(f"🔑 Using TOTP: {current_totp}")
+        
+        res2 = requests.post(
+            url=URL_VERIFY_OTP, 
+            json={"request_key": request_key, "otp": current_totp},
+            timeout=30
+        ).json()
+        
+        if res2.get('s') != 'ok':
+            return {"success": False, "error": f"Failed to verify OTP: {res2}"}
+        
+        request_key2 = res2.get("request_key")
+        if not request_key2:
+            return {"success": False, "error": "No request_key in OTP verify response"}
+        
+        print(f"📝 OTP verified successfully")
+
+        # Step 4: Verify PIN
+        ses = requests.Session()
+        URL_VERIFY_PIN = "https://api-t2.fyers.in/vagator/v2/verify_pin_v2"
+        payload2 = {
+            "request_key": request_key2,
+            "identity_type": "pin",
+            "identifier": getEncodedString(pin)
+        }
+        res3 = ses.post(url=URL_VERIFY_PIN, json=payload2, timeout=30).json()
+        
+        if res3.get('s') != 'ok':
+            return {"success": False, "error": f"Failed to verify PIN: {res3}"}
+        
+        access_token_bearer = res3.get('data', {}).get('access_token')
+        if not access_token_bearer:
+            return {"success": False, "error": "No access_token in PIN verify response"}
+        
+        # Set authorization header for next request
+        ses.headers.update({
+            'authorization': f"Bearer {access_token_bearer}"
+        })
+        
+        print(f"📝 PIN verified successfully")
+
+        # Step 5: Get auth code from token endpoint
+        TOKEN_URL = "https://api-t1.fyers.in/api/v3/token"
+        payload3 = {
+            "fyers_id": fyers_id,
             "app_id": client_id.split('-')[0],  # Extract part before dash
-            "app_type": "web",
             "redirect_uri": redirect_uri,
-            "state": "sample_state",
+            "appType": "200",
+            "code_challenge": "",
+            "state": "None",
             "scope": "",
             "nonce": "",
             "response_type": "code",
-            "create_cookie": True,
-            "password": pin,
-            "totp": current_totp
+            "create_cookie": True
         }
-
-        headers = {"Content-Type": "application/json"}
-        response = requests.post(auth_api_url, json=auth_payload, headers=headers, timeout=30)
-
-        print(f"📝 Auth code API response status: {response.status_code}")
-
-        if response.status_code != 200:
-            error_text = response.text[:500] if response.text else "No response text"
-            # Detect Cloudflare blocking
-            if response.status_code == 403 or '<!DOCTYPE html>' in response.text or 'Cloudflare' in response.text:
-                error_text = "CLOUDBLOCK: Fyers auth API is blocked by Cloudflare (403). This is common from cloud/server IPs. Generate token locally instead."
-            return {
-                "success": False,
-                "error": f"Auth API returned status {response.status_code}: {error_text}"
-            }
-
-        auth_code_response = response.json()
-        print(f"📝 Auth code response: {json.dumps(auth_code_response, indent=2)}")
-
-        if auth_code_response.get('s') != 'ok':
-            return {
-                "success": False,
-                "error": f"Auth code generation failed: {auth_code_response}"
-            }
-
-        auth_code = auth_code_response.get('auth_code')
+        
+        res4 = ses.post(url=TOKEN_URL, json=payload3, timeout=30).json()
+        
+        if res4.get('s') != 'ok':
+            return {"success": False, "error": f"Failed to get token URL: {res4}"}
+        
+        url = res4.get('Url')
+        if not url:
+            return {"success": False, "error": "No Url in token response"}
+        
+        # Parse the URL to extract auth_code
+        parsed = urlparse(url)
+        query_params = parse_qs(parsed.query)
+        auth_code = query_params.get('auth_code', [None])[0]
+        
         if not auth_code:
-            return {
-                "success": False,
-                "error": "No auth_code in response"
-            }
+            return {"success": False, "error": "No auth_code in redirect URL"}
+        
+        print(f"✅ Auth code obtained successfully")
 
-        print(f"✅ Auth code generated successfully")
-
-        # Step 3: Exchange auth code for access token
+        # Step 6: Exchange auth code for access token using SDK
         session.set_token(auth_code)
         token_response = session.generate_token()
-
-        print(f"📝 Token response: {json.dumps(token_response, indent=2)}")
+        
+        print(f"📝 Token response status: {token_response.get('s')}")
 
         if token_response.get('s') != 'ok':
             return {
@@ -144,7 +206,7 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
         print(f"\n✅ SUCCESS! Access Token Generated:")
         print(f"   Full token: {access_token}")
 
-        # Extract just the token part (after the colon)
+        # Extract just the token part (after the colon) if present
         if ':' in access_token:
             token_parts = access_token.split(':')
             if len(token_parts) == 2:
@@ -158,6 +220,8 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
         }
 
     except Exception as e:
+        import traceback
+        print(f"❌ Error generating token: {traceback.format_exc()}")
         return {
             "success": False,
             "error": str(e)
