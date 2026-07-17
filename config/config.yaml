@@ -7,9 +7,52 @@ broker_service:
   brokers:
     fyers:
       enabled: true
+      # Direct credentials (fallback if env vars not set)
+      client_id: "8ZU1YKGMVT-200"
+      secret_key: "c9YkxN1yj5TEnz1p"
+      redirect_uri: "https://www.google.com"
+      response_type: "code"
+      grant_type: "authorization_code"
+      state: "sample_state"
+      fyers_id: "YC00531"
+      pin: "1234"
+      totp_token: "Y3VGJV7N553V5XU6LHWG4ANV67UVTLVP"
+      # Environment variable names (preferred method)
       client_id_env: "FYERS_CLIENT_ID"
       secret_key_env: "FYERS_SECRET_KEY"
       access_token_env: "FYERS_ACCESS_TOKEN"
+
+  # Fyers API Configuration
+  fyers_api_config:
+    base_url: "https://api.fyers.in"
+    data_url: "https://api-t1.fyers.in"
+    socket_url: "wss://socket.fyers.in"
+    symbol_format: "exchange:symbol-series"
+    supported_series:
+      - "EQ"   # Equity
+      - "BE"   # Book Entry
+      - "N1"   # Nifty Index
+      - "N2"   # Nifty Bank Index
+    
+    market_data_types:
+      - "ohlcv"
+      - "depth"
+      - "symbols"
+    
+    timeframes:
+      - "1"    # 1 minute
+      - "5"    # 5 minutes
+      - "15"   # 15 minutes
+      - "30"   # 30 minutes
+      - "60"   # 60 minutes
+      - "D"    # Daily
+
+  # Fyers Stocks Configuration
+  fyers_stocks_config:
+    api_provider: "Fyers"
+    exchange: "NSE"
+    market_segment: "NSE Capital Market"
+    symbol_format: "NSE:SYMBOL-EQ"
 
 # Data Service Configuration
 data_service:
