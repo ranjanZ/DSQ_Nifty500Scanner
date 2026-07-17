@@ -1,0 +1,36 @@
+2026-06-09 10:54:45,583 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-06-09 10:54:48,064 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-13T19:24:20.890347+05:30', 'open_positions': 0, 'total_orders': 0, 'total_pnl': 279.6499999999994, 'closed_positions': 14, 'portfolio_snapshots': 22, 'capital_available': 10000, 'capital_used': 0}
+2026-06-09 10:54:48,064 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-06-09 10:54:48,064 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-06-09 10:54:48,064 - SwingTradingEngine - INFO - Signal scan: 15:14 (after DB update)
+2026-06-09 10:54:48,064 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-06-09 10:54:48,064 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=2026-05-27, scan=2026-06-05
+2026-06-09 10:54:48,064 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=2026-05-27, last_scan=2026-06-05
+2026-06-09 10:54:48,064 - SwingTradingEngine - INFO - Market opened
+2026-06-09 15:01:20,608 - SwingTradingEngine - INFO - ⏰ Position refresh trigger (3:00 PM)
+2026-06-09 15:01:20,621 - SwingTradingEngine - INFO - 📊 3:00 PM position refresh – syncing with broker...
+2026-06-09 15:01:23,271 - SwingTradingEngine - INFO - Sync completed: {'timestamp': '2026-06-09T15:01:20.623301+05:30', 'positions': {'added': [], 'updated': [], 'closed_by_gtt': [], 'closed_manual': [], 'conflicts': []}, 'orders': {'filled': [], 'cancelled': [], 'pending': [], 'conflicts': []}, 'success': True, 'portfolio_snapshot': {'date': '2026-06-09', 'snapshot': {'date': '2026-06-09', 'holdings': [{'symbol': 'NSE:BANKBARODA-EQ', 'quantity': 1, 'average_price': 266.55, 'current_value': 273.5, 'unrealized_pnl': 6.949999999999989, 'entry_time': None}, {'symbol': 'NSE:CHALET-EQ', 'quantity': 6, 'average_price': 784.35, 'current_value': 4539.6, 'unrealized_pnl': -166.5, 'entry_time': None}, {'symbol': 'NSE:360ONE-EQ', 'quantity': 26, 'average_price': 1080.43, 'current_value': 27744.6, 'unrealized_pnl': -346.580000000004, 'entry_time': None}, {'symbol': 'NSE:AKUMS-EQ', 'quantity': 10, 'average_price': 555.85, 'current_value': 5479.0, 'unrealized_pnl': -79.50000000000045, 'entry_time': None}, {'symbol': 'NSE:MEDANTA-EQ', 'quantity': 4, 'average_price': 1240.4, 'current_value': 4968.0, 'unrealized_pnl': 6.399999999999636, 'entry_time': None}, {'symbol': 'NSE:ADANIENSOL-EQ', 'quantity': 1, 'average_price': 1577.4, 'current_value': 1583.0, 'unrealized_pnl': 5.599999999999909, 'entry_time': None}, {'symbol': 'NSE:BBTC-EQ', 'quantity': 2, 'average_price': 1529.6, 'current_value': 3043.8, 'unrealized_pnl': -15.399999999999636, 'entry_time': None}], 'closed_positions': [], 'updated_at': '2026-06-09T15:01:23.209320+05:30'}}, 'balance': {'success': True, 'balance': {'equity_available': 49965.01, 'used_margin': 0, 'available_margin': 49965.01, 'net_pnl': 0, 'total_realized_pnl': 0, 'total_unrealized_pnl': 0, 'timestamp': '2026-06-09T15:01:23.271025+05:30'}}}
+2026-06-09 15:01:23,272 - SwingTradingEngine - ERROR - Loop error: 'StateManager' object has no attribute 'get_all_current_holdings'
+2026-06-09 15:14:23,369 - SwingTradingEngine - INFO - ⏰ 3:13 PM – Database update & signal scan
+2026-06-09 15:14:23,374 - SwingTradingEngine - INFO - 🔄 Running database updater...
+2026-06-09 15:17:39,899 - SwingTradingEngine - INFO - ✅ Database update completed successfully
+2026-06-09 15:17:39,900 - SwingTradingEngine - INFO - 🔍 3:13 PM – scanning for new signals...
+2026-06-09 15:20:11,872 - SwingTradingEngine - INFO - Found 17 raw buy signals
+2026-06-09 15:20:11,875 - SwingTradingEngine - INFO - ****** Selected [{'symbol': 'NSE:ABSLAMC-EQ', 'name': 'ADIT BIRL SUN LIF AMC LTD', 'open': 1044.0, 'close': 1062.4, 'sector': 'Financial Services', 'confidence': np.float64(0.2), 'sector_weight': 0.3, 'final_weight': 0.4615384615384615}, {'symbol': 'NSE:ASTERDM-EQ', 'name': 'ASTER DM HEALTHCARE LTD.', 'open': 770.0, 'close': 792.1, 'sector': 'Healthcare', 'confidence': np.float64(0.4), 'sector_weight': 0.2, 'final_weight': 0.3076923076923077}, {'symbol': 'NSE:EIDPARRY-EQ', 'name': 'EID PARRY INDIA LTD', 'open': 721.9, 'close': 733.25, 'sector': 'Fast Moving Consumer Goods', 'confidence': np.float64(0.2), 'sector_weight': 0.15, 'final_weight': 0.23076923076923075}, {'symbol': 'NSE:CERA-EQ', 'name': 'CERA SANITARYWARE LTD', 'open': 5502.0, 'close': 5839.5, 'sector': 'Consumer Durables', 'confidence': np.float64(0.4), 'sector_weight': 0, 'final_weight': 0.0}, {'symbol': 'NSE:ABLBL-EQ', 'name': 'ADITYA BIRLA LIFES BRAN L', 'open': 97.57, 'close': 98.73, 'sector': 'Consumer Services', 'confidence': np.float64(0.2), 'sector_weight': 0, 'final_weight': 0.0}] signals for entry
+2026-06-09 15:20:11,876 - SwingTradingEngine - INFO - Placing position: NSE:ABSLAMC-EQ | Entry: 1062.40 | Qty: 4 | SL: 1019.90 | TP: 1147.39
+2026-06-09 15:20:12,173 - SwingTradingEngine - INFO - ✅ Entry filled + GTT placed
+2026-06-09 15:20:12,176 - SwingTradingEngine - INFO - ✅ Position opened: NSE:ABSLAMC-EQ | Cap: 4249.60 | SL: 1019.90 | TP: 1147.39
+2026-06-09 15:20:12,176 - SwingTradingEngine - INFO - Placing position: NSE:ASTERDM-EQ | Entry: 792.10 | Qty: 3 | SL: 760.42 | TP: 855.47
+2026-06-09 15:20:13,392 - SwingTradingEngine - INFO - ✅ Entry filled + GTT placed
+2026-06-09 15:20:13,396 - SwingTradingEngine - INFO - ✅ Position opened: NSE:ASTERDM-EQ | Cap: 2376.30 | SL: 760.42 | TP: 855.47
+2026-06-09 15:20:13,396 - SwingTradingEngine - INFO - Placing position: NSE:EIDPARRY-EQ | Entry: 733.25 | Qty: 3 | SL: 703.92 | TP: 791.91
+2026-06-09 15:20:13,562 - SwingTradingEngine - INFO - ✅ Entry filled + GTT placed
+2026-06-09 15:20:13,566 - SwingTradingEngine - INFO - ✅ Position opened: NSE:EIDPARRY-EQ | Cap: 2199.75 | SL: 703.92 | TP: 791.91
+2026-06-09 15:20:13,566 - SwingTradingEngine - WARNING - Invalid weight for NSE:CERA-EQ: 0.0
+2026-06-09 15:20:13,566 - SwingTradingEngine - WARNING - Invalid weight for NSE:ABLBL-EQ: 0.0
+2026-06-09 15:20:13,566 - SwingTradingEngine - INFO - 🎯 Scan result: {'success': True, 'signals_found': 17, 'positions_opened': 3}
+2026-06-09 15:20:13,567 - SwingTradingEngine - INFO - 💾 Saved scan_date: 2026-06-09
+2026-06-09 15:20:13,571 - SwingTradingEngine - DEBUG - Timing metadata persisted to disk
+2026-06-09 19:09:55,190 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-06-09 19:09:55,190 - SwingTradingEngine - INFO - Stopping engine...
+2026-06-09 19:09:57,729 - SwingTradingEngine - INFO - Engine stopped

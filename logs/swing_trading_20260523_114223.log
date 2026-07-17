@@ -1,0 +1,27 @@
+2026-05-23 11:42:23,480 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-05-23 11:42:26,288 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-13T19:24:20.890347+05:30', 'open_positions': 0, 'total_orders': 0, 'total_pnl': -13.0, 'closed_positions': 5, 'portfolio_snapshots': 10, 'capital_available': 10000, 'capital_used': 0}
+2026-05-23 11:42:26,288 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-05-23 11:42:26,288 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-05-23 11:42:26,288 - SwingTradingEngine - INFO - Signal scan: 15:07 (after DB update)
+2026-05-23 11:42:26,288 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-05-23 11:42:26,288 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=2026-05-20, scan=2026-05-20
+2026-05-23 11:42:26,288 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=2026-05-20, last_scan=2026-05-20
+2026-05-23 11:42:26,288 - SwingTradingEngine - INFO - Market opened
+2026-05-23 11:47:55,027 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-05-23 11:47:55,027 - SwingTradingEngine - INFO - Stopping engine...
+2026-05-23 11:51:51,168 - SwingTradingEngine - WARNING - Invalid entry price for NSE:SBIN-EQ: 0
+2026-05-23 11:53:25,143 - SwingTradingEngine - WARNING - Invalid entry price for NSE:SBIN-EQ: 0
+2026-05-23 11:53:56,783 - SwingTradingEngine - INFO - Placing position: NSE:SBIN-EQ | Entry: 980.00 | Qty: 1 | SL: 940.80 | TP: 1058.40
+2026-05-23 11:53:56,902 - SwingTradingEngine - ERROR - ✗ OCO placement failed for NSE:SBIN-EQ: {'s': 'error', 'entry_order_id': '26052300000599', 'entry_filled': False, 'gtt_placed': False, 'message': 'Entry did not fill'}
+2026-05-23 11:59:35,123 - SwingTradingEngine - INFO - 🔍 3:13 PM – scanning for new signals...
+2026-05-23 11:59:49,358 - SwingTradingEngine - INFO - Found 8 raw buy signals
+2026-05-23 11:59:49,358 - SwingTradingEngine - INFO - Selected 6 signals for entry
+2026-05-23 11:59:49,358 - SwingTradingEngine - INFO - Placing position: NSE:AIIL-EQ | Entry: 508.35 | Qty: 5 | SL: 488.02 | TP: 549.02
+2026-05-23 11:59:49,472 - SwingTradingEngine - ERROR - ✗ OCO placement failed for NSE:AIIL-EQ: {'s': 'error', 'entry_order_id': '26052300000608', 'entry_filled': False, 'gtt_placed': False, 'message': 'Entry did not fill'}
+2026-05-23 11:59:49,473 - SwingTradingEngine - WARNING - Cannot afford 1 share of NSE:BALKRISIND-EQ
+2026-05-23 11:59:49,473 - SwingTradingEngine - WARNING - Cannot afford 1 share of NSE:DIVISLAB-EQ
+2026-05-23 11:59:49,473 - SwingTradingEngine - WARNING - Cannot afford 1 share of NSE:GVT&D-EQ
+2026-05-23 11:59:49,473 - SwingTradingEngine - INFO - Placing position: NSE:GRAVITA-EQ | Entry: 1777.00 | Qty: 2 | SL: 1705.92 | TP: 1919.16
+2026-05-23 11:59:49,587 - SwingTradingEngine - ERROR - ✗ OCO placement failed for NSE:GRAVITA-EQ: {'s': 'error', 'entry_order_id': '26052300000609', 'entry_filled': False, 'gtt_placed': False, 'message': 'Entry did not fill'}
+2026-05-23 11:59:49,587 - SwingTradingEngine - INFO - Placing position: NSE:GMRAIRPORT-EQ | Entry: 94.59 | Qty: 52 | SL: 90.81 | TP: 102.16
+2026-05-23 11:59:49,706 - SwingTradingEngine - ERROR - ✗ OCO placement failed for NSE:GMRAIRPORT-EQ: {'s': 'error', 'entry_order_id': '26052300000610', 'entry_filled': False, 'gtt_placed': False, 'message': 'Entry did not fill'}

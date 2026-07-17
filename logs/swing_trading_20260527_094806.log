@@ -1,0 +1,21 @@
+2026-05-27 09:48:06,562 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-05-27 09:48:07,956 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-13T19:24:20.890347+05:30', 'open_positions': 0, 'total_orders': 0, 'total_pnl': -13.0, 'closed_positions': 8, 'portfolio_snapshots': 14, 'capital_available': 10000, 'capital_used': 0}
+2026-05-27 09:48:07,956 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-05-27 09:48:07,956 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-05-27 09:48:07,956 - SwingTradingEngine - INFO - Signal scan: 15:13 (after DB update)
+2026-05-27 09:48:07,957 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-05-27 09:48:07,957 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=2026-05-20, scan=2026-05-25
+2026-05-27 09:48:07,957 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=2026-05-20, last_scan=2026-05-25
+2026-05-27 09:48:07,957 - SwingTradingEngine - INFO - Market opened
+2026-05-27 09:48:11,411 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-05-27 09:48:11,411 - SwingTradingEngine - INFO - Stopping engine...
+2026-05-27 09:48:12,726 - SwingTradingEngine - INFO - Engine stopped
+2026-05-27 09:48:23,319 - SwingTradingEngine - INFO - 🔍 3:13 PM – scanning for new signals...
+2026-05-27 09:49:29,869 - SwingTradingEngine - INFO - Found 11 raw buy signals
+2026-05-27 09:49:29,869 - SwingTradingEngine - INFO - ****** Selected [{'symbol': 'NSE:ACMESOLAR-EQ', 'name': 'ACME SOLAR HOLDINGS LTD', 'open': 292.9, 'close': 301.35, 'sector': 'Power', 'confidence': np.float64(0.4), 'sector_weight': 0.12, 'final_weight': 0.17910447761194032}, {'symbol': 'NSE:ARE&M-EQ', 'name': 'AMARA RAJA ENERGY MOB LTD', 'open': 828.55, 'close': 881.8, 'sector': 'Automobile and Auto Components', 'confidence': np.float64(0.2), 'sector_weight': 0.15, 'final_weight': 0.22388059701492538}, {'symbol': 'NSE:ASTRAZEN-EQ', 'name': 'ASTRAZENECA PHARMA IND LT', 'open': 8609.0, 'close': 8799.0, 'sector': 'Healthcare', 'confidence': np.float64(0.2), 'sector_weight': 0.2, 'final_weight': 0.2985074626865672}, {'symbol': 'NSE:FINCABLES-EQ', 'name': 'FINOLEX CABLES LTD', 'open': 1048.0, 'close': 1067.45, 'sector': 'Capital Goods', 'confidence': np.float64(0.2), 'sector_weight': 0.2, 'final_weight': 0.2985074626865672}, {'symbol': 'NSE:GAIL-EQ', 'name': 'GAIL (INDIA) LTD', 'open': 162.92, 'close': 168.8, 'sector': 'Oil Gas & Consumable Fuels', 'confidence': np.float64(0.4), 'sector_weight': 0, 'final_weight': 0.0}, {'symbol': 'NSE:ALOKINDS-EQ', 'name': 'ALOK INDUSTRIES LIMITED', 'open': 12.5, 'close': 12.64, 'sector': 'Textiles', 'confidence': np.float64(0.2), 'sector_weight': 0, 'final_weight': 0.0}] signals for entry
+2026-05-27 09:49:29,870 - SwingTradingEngine - INFO - Placing position: NSE:ACMESOLAR-EQ | Entry: 301.35 | Qty: 5 | SL: 289.30 | TP: 325.46
+2026-05-27 09:49:29,870 - SwingTradingEngine - INFO - Placing position: NSE:ARE&M-EQ | Entry: 881.80 | Qty: 2 | SL: 846.53 | TP: 952.34
+2026-05-27 09:49:29,870 - SwingTradingEngine - WARNING - Cannot afford even 1 share of NSE:ASTRAZEN-EQ  entry_price=8799.00 with alloc_cap=2985.07
+2026-05-27 09:49:29,870 - SwingTradingEngine - INFO - Placing position: NSE:FINCABLES-EQ | Entry: 1067.45 | Qty: 2 | SL: 1024.75 | TP: 1152.85
+2026-05-27 09:49:29,870 - SwingTradingEngine - WARNING - Invalid weight for NSE:GAIL-EQ: 0.0
+2026-05-27 09:49:29,870 - SwingTradingEngine - WARNING - Invalid weight for NSE:ALOKINDS-EQ: 0.0

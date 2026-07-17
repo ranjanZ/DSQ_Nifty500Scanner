@@ -1,0 +1,11 @@
+2026-05-18 00:24:34,568 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-05-18 00:24:37,169 - SwingTradingEngine - WARNING - Broker sync issues: {'timestamp': '2026-05-18T00:24:34.568315+05:30', 'positions': {'added': [], 'updated': [], 'closed_by_gtt': [], 'closed_manual': [], 'conflicts': []}, 'orders': {'filled': [], 'cancelled': [], 'pending': [], 'conflicts': []}, 'success': False, 'portfolio_snapshot': {'error': "StateManager.fill_entry_times() missing 1 required positional argument: 'pos_history'"}, 'balance': {'success': True, 'balance': {'equity_available': 4618.71, 'used_margin': 0, 'available_margin': 4618.71, 'net_pnl': 0, 'total_realized_pnl': 0, 'total_unrealized_pnl': 0, 'timestamp': '2026-05-18T00:24:37.169397+05:30'}}}
+2026-05-18 00:24:37,169 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-13T19:24:20.890347+05:30', 'open_positions': 0, 'total_orders': 0, 'total_pnl': -13.0, 'closed_positions': 1, 'portfolio_snapshots': 5, 'capital_available': 10000, 'capital_used': 0}
+2026-05-18 00:24:37,169 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-05-18 00:24:37,169 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-05-18 00:24:37,169 - SwingTradingEngine - INFO - Signal scan: 15:07 (after DB update)
+2026-05-18 00:24:37,169 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-05-18 00:24:37,169 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=2026-05-15, scan=2026-05-15
+2026-05-18 00:24:37,169 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=2026-05-15, last_scan=2026-05-15
+2026-05-18 00:24:48,949 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-05-18 00:24:48,949 - SwingTradingEngine - INFO - Stopping engine...

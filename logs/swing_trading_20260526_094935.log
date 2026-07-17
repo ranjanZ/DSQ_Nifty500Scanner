@@ -1,0 +1,24 @@
+2026-05-26 09:49:35,575 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-05-26 09:49:36,952 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-13T19:24:20.890347+05:30', 'open_positions': 0, 'total_orders': 0, 'total_pnl': -13.0, 'closed_positions': 7, 'portfolio_snapshots': 13, 'capital_available': 10000, 'capital_used': 0}
+2026-05-26 09:49:36,952 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-05-26 09:49:36,952 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-05-26 09:49:36,952 - SwingTradingEngine - INFO - Signal scan: 15:13 (after DB update)
+2026-05-26 09:49:36,952 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-05-26 09:49:36,952 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=2026-05-20, scan=2026-05-25
+2026-05-26 09:49:36,952 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=2026-05-20, last_scan=2026-05-25
+2026-05-26 09:49:36,952 - SwingTradingEngine - INFO - Market opened
+2026-05-26 09:49:43,962 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-05-26 09:49:43,962 - SwingTradingEngine - INFO - Stopping engine...
+2026-05-26 09:49:45,307 - SwingTradingEngine - INFO - Engine stopped
+2026-05-26 22:08:20,494 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-05-26 22:08:22,638 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-13T19:24:20.890347+05:30', 'open_positions': 1, 'total_orders': 0, 'total_pnl': -13.0, 'closed_positions': 8, 'portfolio_snapshots': 13, 'capital_available': 10000, 'capital_used': 0}
+2026-05-26 22:08:22,638 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-05-26 22:08:22,638 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-05-26 22:08:22,638 - SwingTradingEngine - INFO - Signal scan: 15:13 (after DB update)
+2026-05-26 22:08:22,639 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-05-26 22:08:22,639 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=2026-05-20, scan=2026-05-25
+2026-05-26 22:08:22,639 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=2026-05-20, last_scan=2026-05-25
+2026-05-26 22:08:22,639 - SwingTradingEngine - INFO - Market opened
+2026-05-26 22:08:28,413 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-05-26 22:08:28,414 - SwingTradingEngine - INFO - Stopping engine...
+2026-05-26 22:08:30,084 - SwingTradingEngine - INFO - Engine stopped

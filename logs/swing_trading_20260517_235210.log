@@ -1,0 +1,10 @@
+2026-05-17 23:52:10,954 - SwingTradingEngine - INFO - Recovering session: permanent
+2026-05-17 23:52:13,605 - SwingTradingEngine - INFO - Recovered session: {'session_id': 'permanent', 'start_time': '2026-05-17T23:44:14.951171+05:30', 'open_positions': 0, 'total_orders': 0, 'total_pnl': 0, 'closed_positions': 0, 'portfolio_snapshots': 1, 'capital_available': 0, 'capital_used': 0}
+2026-05-17 23:52:13,605 - SwingTradingEngine - INFO - Swing Trading Engine initialized – Session: permanent
+2026-05-17 23:52:13,605 - SwingTradingEngine - INFO - Position refresh: 15:01
+2026-05-17 23:52:13,605 - SwingTradingEngine - INFO - Signal scan: 15:07 (after DB update)
+2026-05-17 23:52:13,605 - SwingTradingEngine - INFO - Starting live swing trading loop
+2026-05-17 23:52:13,605 - SwingTradingEngine - INFO - 📅 Loaded timing metadata: position_refresh=None, scan=None
+2026-05-17 23:52:13,605 - SwingTradingEngine - INFO - 🔄 Recovered timing state: Last position_refresh=None, last_scan=None
+2026-05-17 23:53:01,962 - SwingTradingEngine - INFO - Swing trading loop stopped
+2026-05-17 23:53:01,963 - SwingTradingEngine - INFO - Stopping engine...
