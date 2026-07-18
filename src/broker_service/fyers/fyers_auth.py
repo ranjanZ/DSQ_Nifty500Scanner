@@ -1,7 +1,7 @@
 """
 Fyers Authentication Utility
 Generate access token using client_id, secret_key, and TOTP
-Reference: Working auth flow from fyers_broker_impl.py test code
+Fixed Version: Uses FULL client_id for SDK, SHORT app_id for API payload
 """
 
 import os
@@ -11,9 +11,6 @@ import base64
 import time
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
-
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 try:
     from fyers_apiv3 import fyersModel
@@ -28,12 +25,14 @@ try:
     import pyotp
     PYOTP_AVAILABLE = True
 except ImportError:
+    print("❌ pyotp not installed. Install it with: pip install pyotp")
     PYOTP_AVAILABLE = False
 
 try:
     import requests
     REQUESTS_AVAILABLE = True
 except ImportError:
+    print("❌ requests not installed. Install it with: pip install requests")
     REQUESTS_AVAILABLE = False
 
 
@@ -44,11 +43,9 @@ def getEncodedString(string):
     return base64_bytes.decode("ascii")
 
 
-def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redirect_uri="https://www.google.com"):
+def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redirect_uri, response_type="code", grant_type="authorization_code", state="sample_state"):
     """
     Generate Fyers access token using TOTP
-    
-    Reference implementation based on working code from fyers_broker_impl.py test
     
     Args:
         client_id: Fyers client ID (e.g., "8ZU1YKGMVT-200")
@@ -57,34 +54,39 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
         pin: Fyers PIN
         totp_token: TOTP token from Fyers
         redirect_uri: Redirect URI configured in Fyers
+        response_type: Usually "code"
+        grant_type: Usually "authorization_code"
+        state: State string (e.g., "sample_state")
 
     Returns:
         dict: Response containing access_token or error message
     """
-    if not FYERS_SDK_AVAILABLE:
-        return {"success": False, "error": "Fyers SDK not installed"}
+    if not FYERS_SDK_AVAILABLE or not REQUESTS_AVAILABLE or not PYOTP_AVAILABLE:
+        return {"success": False, "error": "Missing required libraries (fyers, requests, pyotp)"}
     
-    if not REQUESTS_AVAILABLE:
-        return {"success": False, "error": "requests library not available"}
-
     try:
         print(f"🔄 Generating auth token for client_id: {client_id}")
 
-        # Step 1: Create session model to generate initial authcode URL
+        # =====================================================================
+        # STEP 1: Create session model (SDK requires the FULL client_id)
+        # =====================================================================
         session = fyersModel.SessionModel(
-            client_id=client_id,
+            client_id=client_id,               # ✅ FULL client_id (e.g., "8ZU1YKGMVT-200")
             secret_key=secret_key, 
             redirect_uri=redirect_uri, 
-            response_type="code", 
-            grant_type="authorization_code"
+            response_type="code",                  # ✅ Added with default
+            grant_type="authorization_code",       # ✅ Added with default
+            state="sample_state"                   # ✅ Added with default
+
         )
 
-        # This generates the auth URL but we don't use it directly
-        # We need to go through the login flow to get the actual auth code
+        # This generates the auth URL internally for the SDK state
         auth_url = session.generate_authcode()
-        print(f"📝 Initial auth URL generated")
+        print(f"📝 Step 1: Initial SDK session created")
 
-        # Step 2: Send login OTP request
+        # =====================================================================
+        # STEP 2: Send login OTP request
+        # =====================================================================
         URL_SEND_LOGIN_OTP = "https://api-t2.fyers.in/vagator/v2/send_login_otp_v2"
         res = requests.post(
             url=URL_SEND_LOGIN_OTP, 
@@ -99,16 +101,19 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
         if not request_key:
             return {"success": False, "error": "No request_key in OTP response"}
         
-        print(f"📝 Login OTP sent successfully")
+        print(f"📝 Step 2: Login OTP request sent successfully")
 
         # Wait for TOTP to be valid (avoid edge case near 30-second boundary)
         if datetime.now().second % 30 > 27:
+            print("⏳ Waiting 5 seconds to avoid TOTP boundary edge case...")
             time.sleep(5)
 
-        # Step 3: Verify OTP using TOTP
+        # =====================================================================
+        # STEP 3: Verify OTP using TOTP
+        # =====================================================================
         URL_VERIFY_OTP = "https://api-t2.fyers.in/vagator/v2/verify_otp"
-        current_totp = pyotp.TOTP(totp_token).now() if PYOTP_AVAILABLE else totp_token
-        print(f"🔑 Using TOTP: {current_totp}")
+        current_totp = pyotp.TOTP(totp_token).now()
+        print(f"🔑 Step 3: Using generated TOTP: {current_totp}")
         
         res2 = requests.post(
             url=URL_VERIFY_OTP, 
@@ -123,9 +128,11 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
         if not request_key2:
             return {"success": False, "error": "No request_key in OTP verify response"}
         
-        print(f"📝 OTP verified successfully")
+        print(f"📝 Step 3: OTP verified successfully")
 
-        # Step 4: Verify PIN
+        # =====================================================================
+        # STEP 4: Verify PIN
+        # =====================================================================
         ses = requests.Session()
         URL_VERIFY_PIN = "https://api-t2.fyers.in/vagator/v2/verify_pin_v2"
         payload2 = {
@@ -147,13 +154,19 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
             'authorization': f"Bearer {access_token_bearer}"
         })
         
-        print(f"📝 PIN verified successfully")
+        print(f"📝 Step 4: PIN verified successfully")
 
-        # Step 5: Get auth code from token endpoint
+        # =====================================================================
+        # STEP 5: Get auth code from token endpoint
+        # =====================================================================
         TOKEN_URL = "https://api-t1.fyers.in/api/v3/token"
+        
+        # NOTE: The API payload expects the SHORT app_id (without the -200 suffix)
+        short_app_id = client_id.split("-")[0] 
+        
         payload3 = {
             "fyers_id": fyers_id,
-            "app_id": client_id.split('-')[0],  # Extract part before dash
+            "app_id": short_app_id,          # ✅ SHORT app_id (e.g., "8ZU1YKGMVT")
             "redirect_uri": redirect_uri,
             "appType": "200",
             "code_challenge": "",
@@ -179,16 +192,16 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
         auth_code = query_params.get('auth_code', [None])[0]
         
         if not auth_code:
-            return {"success": False, "error": "No auth_code in redirect URL"}
+            return {"success": False, "error": f"No auth_code in redirect URL. URL was: {url}"}
         
-        print(f"✅ Auth code obtained successfully")
+        print(f"✅ Step 5: Auth code obtained successfully")
 
-        # Step 6: Exchange auth code for access token using SDK
+        # =====================================================================
+        # STEP 6: Exchange auth code for access token using SDK
+        # =====================================================================
         session.set_token(auth_code)
         token_response = session.generate_token()
         
-        print(f"📝 Token response status: {token_response.get('s')}")
-
         if token_response.get('s') != 'ok':
             return {
                 "success": False,
@@ -202,16 +215,8 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
                 "error": "No access_token in response"
             }
 
-        # The access_token format is typically: "client_id:access_token_string"
         print(f"\n✅ SUCCESS! Access Token Generated:")
         print(f"   Full token: {access_token}")
-
-        # Extract just the token part (after the colon) if present
-        if ':' in access_token:
-            token_parts = access_token.split(':')
-            if len(token_parts) == 2:
-                token_only = token_parts[1]
-                print(f"   Token only: {token_only}")
 
         return {
             "success": True,
@@ -231,20 +236,15 @@ def generate_access_token(client_id, secret_key, fyers_id, pin, totp_token, redi
 def save_token_to_env(access_token, env_file_path=".env"):
     """Save access token to .env file"""
     try:
-        # Read existing .env file if it exists
         env_content = ""
         if os.path.exists(env_file_path):
             with open(env_file_path, 'r') as f:
                 env_content = f.read()
 
-        # Remove existing FYERS_ACCESS_TOKEN line if present
         lines = env_content.split('\n')
         new_lines = [line for line in lines if not line.startswith('FYERS_ACCESS_TOKEN=')]
+        new_lines.append(f'FYERS_ACCESS_TOKEN="{access_token}"')
 
-        # Add new token
-        new_lines.append(f'FYERS_ACCESS_TOKEN={access_token}')
-
-        # Write back
         with open(env_file_path, 'w') as f:
             f.write('\n'.join(new_lines))
 
@@ -261,18 +261,21 @@ def main():
     print("FYERS ACCESS TOKEN GENERATOR")
     print("=" * 60)
 
-    if not FYERS_SDK_AVAILABLE:
-        print("\n❌ Fyers SDK is not installed.")
-        print("   Install it with: pip install fyers")
+    if not FYERS_SDK_AVAILABLE or not REQUESTS_AVAILABLE or not PYOTP_AVAILABLE:
+        print("\n❌ Missing required libraries.")
+        print("   Install them with: pip install fyers pyotp requests")
         sys.exit(1)
 
-    # Default credentials (can be overridden by environment variables)
-    client_id = os.getenv('FYERS_CLIENT_ID', '8ZU1YKGMVT-100')
+    # Load credentials from environment variables with fallback defaults
+    client_id = os.getenv('FYERS_CLIENT_ID', '8ZU1YKGMVT-200')
     secret_key = os.getenv('FYERS_SECRET_KEY', 'c9YkxN1yj5TEnz1p')
     fyers_id = os.getenv('FYERS_ID', 'YC00531')
     pin = os.getenv('FYERS_PIN', '1234')
     totp_token = os.getenv('FYERS_TOTP_TOKEN', 'Y3VGJV7N553V5XU6LHWG4ANV67UVTLVP')
     redirect_uri = os.getenv('FYERS_REDIRECT_URI', 'https://www.google.com')
+    response_type = os.getenv('FYERS_RESPONSE_TYPE', 'code')
+    grant_type = os.getenv('FYERS_GRANT_TYPE', 'authorization_code')
+    state = os.getenv('FYERS_STATE', 'sample_state')
 
     print(f"\n📋 Configuration:")
     print(f"   Client ID: {client_id}")
@@ -288,7 +291,10 @@ def main():
         fyers_id=fyers_id,
         pin=pin,
         totp_token=totp_token,
-        redirect_uri=redirect_uri
+        redirect_uri=redirect_uri,
+        response_type=response_type,
+        grant_type=grant_type,
+        state=state
     )
 
     if result.get('success'):
@@ -297,14 +303,14 @@ def main():
 
         # Ask if user wants to save to .env
         save_choice = input("\n💾 Save token to .env file? (y/n): ").strip().lower()
-        if save_choice == 'y':
-            save_token_to_env(access_token)
-            print(f"\n📝 Remember to restart your application to load the new token!")
+        # if save_choice == 'y':
+        #     save_token_to_env(access_token)
+        #     print(f"\n📝 Remember to restart your application to load the new token!")
 
         print(f"\n🔑 Your Access Token:")
         print(f"   {access_token}")
         print(f"\n   Or set environment variable:")
-        print(f"   export FYERS_ACCESS_TOKEN={access_token}")
+        print(f"   export FYERS_ACCESS_TOKEN='{access_token}'")
 
     else:
         print(f"\n❌ Failed to generate token:")

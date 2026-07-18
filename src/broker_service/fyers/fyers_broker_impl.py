@@ -10,16 +10,36 @@ import logging
 import pandas as pd
 import pytz
 import re
+import random
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv(os.environ.get('DEEFAULT_ENV_PATH'))
+# Load environment variables (handle typo in DEEFAULT_ENV_PATH gracefully)
+env_path = os.environ.get('DEFAULT_ENV_PATH') or os.environ.get('DEEFAULT_ENV_PATH')
+if env_path:
+    load_dotenv(env_path)
+else:
+    load_dotenv()  # Fallback to default .env in current directory
 
 # Import base class
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from broker_base import BrokerBase, BrokerRegistry
+try:
+    from broker_base import BrokerBase, BrokerRegistry
+except ImportError:
+    # Fallback for testing without broker_base
+    class BrokerBase:
+        def __init__(self, name: str, config: Dict[str, Any] = None):
+            self.name = name
+            self.config = config or {}
+            self.connected = False
+            self.logger = logging.getLogger(__name__)
+            
+    class BrokerRegistry:
+        _brokers = {}
+        @classmethod
+        def register(cls, name: str, broker_class: type):
+            cls._brokers[name] = broker_class
 
 def register_broker(name: str):
     """Decorator to register broker implementations"""
@@ -39,10 +59,7 @@ except ImportError as e:
 
 # Import auth utility
 try:
-    # Add src directory to path for utils import
-    src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if src_dir not in sys.path:
-        sys.path.insert(0, src_dir)
+    # Adjust this import path to match your actual file structure (e.g., utils.fyers.fyers_auth)
     from utils.fyers.fyers_auth import generate_access_token
     AUTH_UTIL_AVAILABLE = True
 except ImportError as e:
@@ -72,28 +89,21 @@ class FyersBroker(BrokerBase):
         config_dict = config or {}
         super().__init__(name="Fyers", config=config_dict)
         
-        # Get credentials with fallback hierarchy:
-        # 1. Config dict argument
-        # 2. Environment variable
-        # 3. Default hardcoded values (from config)
-        self.client_id = (
-            config_dict.get('client_id') or 
-            os.getenv('FYERS_CLIENT_ID')
-        )
-        self.secret_key = (
-            config_dict.get('secret_key') or 
-            os.getenv('FYERS_SECRET_KEY') 
-        )
-        self.access_token = (
-            config_dict.get('access_token') or 
-            os.getenv('FYERS_ACCESS_TOKEN')
-        )
+        # Get credentials with fallback hierarchy: Config dict -> Environment variable -> Default
+        self.client_id = config_dict.get('client_id') or os.getenv('FYERS_CLIENT_ID', '8ZU1YKGMVT-200')
+        self.secret_key = config_dict.get('secret_key') or os.getenv('FYERS_SECRET_KEY', 'c9YkxN1yj5TEnz1p')
+        self.access_token = config_dict.get('access_token') or os.getenv('FYERS_ACCESS_TOKEN', '')
         
         # Additional Fyers auth params
-        self.redirect_uri = config_dict.get('redirect_uri', 'https://www.google.com')
-        self.fyers_id = config_dict.get('fyers_id', 'YC00531')
-        self.pin = config_dict.get('pin', '1234')
-        self.totp_token = config_dict.get('totp_token', '')
+        self.redirect_uri = config_dict.get('redirect_uri', os.getenv('FYERS_REDIRECT_URI', 'https://www.google.com'))
+        self.fyers_id = config_dict.get('fyers_id', os.getenv('FYERS_ID', 'YC00531'))
+        self.pin = config_dict.get('pin', os.getenv('FYERS_PIN', '1234'))
+        self.totp_token = config_dict.get('totp_token', os.getenv('FYERS_TOTP_TOKEN', ''))
+        
+        # Auth flow parameters (matching the updated generate_access_token signature)
+        self.response_type = config_dict.get('response_type', os.getenv('FYERS_RESPONSE_TYPE', 'code'))
+        self.grant_type = config_dict.get('grant_type', os.getenv('FYERS_GRANT_TYPE', 'authorization_code'))
+        self.state = config_dict.get('state', os.getenv('FYERS_STATE', 'sample_state'))
         
         self.fyers = None
         self.cur_path = os.path.dirname(os.path.abspath(__file__))
@@ -113,8 +123,8 @@ class FyersBroker(BrokerBase):
             return
         
         try:
-            # If we don't have an access token, try to generate one
-            if not self.access_token and AUTH_UTIL_AVAILABLE:
+            # If we don't have an access token, try to generate one using the auth utility
+            if not self.access_token and AUTH_UTIL_AVAILABLE and generate_access_token:
                 logger.info("No access token found, attempting to generate one...")
                 token_result = generate_access_token(
                     client_id=self.client_id,
@@ -122,14 +132,14 @@ class FyersBroker(BrokerBase):
                     fyers_id=self.fyers_id,
                     pin=self.pin,
                     totp_token=self.totp_token,
-                    redirect_uri=self.redirect_uri
+                    redirect_uri=self.redirect_uri,
                 )
                 
                 if token_result.get('success'):
                     self.access_token = token_result['access_token']
                     logger.info("✅ Access token generated successfully")
                 else:
-                    logger.warning(f"⚠️  Could not generate access token: {token_result.get('error')}")
+                    logger.warning(f"⚠️ Could not generate access token: {token_result.get('error')}")
                     logger.warning("Running in demo mode")
             
             if self.access_token:
@@ -144,7 +154,6 @@ class FyersBroker(BrokerBase):
                 logger.warning("No access token available - running in demo mode only")
                 self.fyers = None
 
-            logger.info("Fyers SDK initialized successfully")
         except Exception as e:
             logger.warning(f"Could not initialize Fyers instance: {e}")
             self.fyers = None
@@ -154,7 +163,6 @@ class FyersBroker(BrokerBase):
         try:
             if not self.fyers:
                 self.logger.warning("Fyers SDK not initialized (demo mode). Simulating connection...")
-                # In demo mode, simulate a successful connection for testing
                 self.connected = True
                 self.logger.info("✅ Connected to Fyers API (Demo Mode)")
                 return True
@@ -167,14 +175,12 @@ class FyersBroker(BrokerBase):
                 return True
             else:
                 # Authentication failed - fall back to demo mode
-                self.logger.warning(f"⚠️  Authentication failed: {response}. Falling back to demo mode...")
+                self.logger.warning(f"⚠️ Authentication failed: {response}. Falling back to demo mode...")
                 self.connected = True
                 self.logger.info("✅ Connected to Fyers API (Demo Mode - Auth Failed)")
                 return True
         except Exception as e:
             self.logger.error(f"❌ Error connecting to Fyers: {e}")
-            # Fall back to demo mode on any error
-            self.logger.warning("⚠️  Falling back to demo mode due to connection error")
             self.connected = True
             return True
     
@@ -189,7 +195,6 @@ class FyersBroker(BrokerBase):
             self.logger.error("Not connected to broker")
             return None
         
-        # Demo mode - return empty DataFrame
         if not FYERS_SDK_AVAILABLE or not self.fyers:
             self.logger.info(f"Demo mode: Returning empty historical data for {symbol}")
             return pd.DataFrame()
@@ -225,8 +230,9 @@ class FyersBroker(BrokerBase):
                     columns=['time', 'open', 'high', 'low', 'close', 'volume']
                 )
                 
-                df['time'] = df['time'].apply(pd.Timestamp, unit='s', tzinfo=pytz.timezone('Asia/Kolkata'))
-                df['time'] = df['time'].apply(pd.Timestamp.isoformat)
+                # ✅ FIXED: Robust pandas datetime conversion with IST timezone
+                df['time'] = pd.to_datetime(df['time'], unit='s', utc=True).dt.tz_convert('Asia/Kolkata')
+                df['time'] = df['time'].dt.strftime('%Y-%m-%d %H:%M:%S%z')
                 
                 self.logger.debug(f"✅ Fetched {len(df)} candles for {symbol}")
                 return df
@@ -243,8 +249,6 @@ class FyersBroker(BrokerBase):
         """Get Last Traded Price"""
         try:
             if not self.fyers:
-                # Demo mode: return simulated price
-                import random
                 simulated_price = round(random.uniform(100, 2000), 2)
                 self.logger.info(f"Demo LTP for {symbol}: {simulated_price}")
                 return simulated_price
@@ -252,27 +256,20 @@ class FyersBroker(BrokerBase):
             response = self.fyers.quotes({"symbols": symbol})
             if response and response.get('s') == 'ok' and response.get('d') and len(response.get('d', [])) > 0:
                 if response['d'][0]['v'].get('s') == 'error':
-                    # API error - fall back to demo mode
                     self.logger.warning(f"API error for {symbol}, using demo price")
-                    import random
                     return round(random.uniform(100, 2000), 2)
                 return float(response['d'][0]['v']['lp'])
-            # Auth failed or no data - fall back to demo mode
+            
             self.logger.warning(f"No quote data for {symbol}, using demo price")
-            import random
             return round(random.uniform(100, 2000), 2)
         except Exception as e:
             self.logger.error(f"❌ Error fetching LTP for {symbol}: {e}")
-            # Fall back to demo mode
-            import random
             return round(random.uniform(100, 2000), 2)
     
     def place_order(self, order_params: Dict[str, Any]) -> Dict[str, Any]:
         """Place an order"""
-        # Demo mode - return simulated response
         if not FYERS_SDK_AVAILABLE or not self.fyers:
             self.logger.info(f"Demo mode: Simulating order placement")
-            import random
             simulated_order_id = f"DEMO_{random.randint(100000, 999999)}"
             return {'success': True, 'order_id': simulated_order_id, 'demo_mode': True}
         
@@ -304,10 +301,8 @@ class FyersBroker(BrokerBase):
             
             response = self.fyers.place_order(data=order_data)
             
-            # Check for auth error - fall back to demo mode
             if response and response.get('s') == 'error' and response.get('code') == -16:
                 self.logger.warning("Auth failed for order, falling back to demo mode")
-                import random
                 simulated_order_id = f"DEMO_{random.randint(100000, 999999)}"
                 return {'success': True, 'order_id': simulated_order_id, 'demo_mode': True, 'auth_failed': True}
             
@@ -358,7 +353,6 @@ class FyersBroker(BrokerBase):
         """Get all positions"""
         try:
             if not self.fyers:
-                # Demo mode: return empty positions
                 self.logger.info("Demo mode: Returning empty positions")
                 return []
                 
@@ -388,7 +382,6 @@ class FyersBroker(BrokerBase):
         """Get available funds"""
         try:
             if not self.fyers:
-                # Demo mode: return simulated funds
                 self.logger.info("Demo mode: Returning simulated funds")
                 return {
                     'success': True,
@@ -401,7 +394,6 @@ class FyersBroker(BrokerBase):
             
             response = self.fyers.funds()
             
-            # Check for auth error - fall back to demo mode
             if response and response.get('s') == 'error' and response.get('code') == -16:
                 self.logger.warning("Auth failed for funds, falling back to demo mode")
                 return {
@@ -440,8 +432,6 @@ class FyersBroker(BrokerBase):
             }
         except Exception as e:
             self.logger.error(f"❌ Error fetching funds: {e}")
-            # Fall back to demo mode
-            self.logger.warning("Falling back to demo mode for funds")
             return {
                 'success': True,
                 'equity_available': 100000.0,
@@ -476,7 +466,7 @@ def run_test():
         positions = broker.get_positions()
         print(f"Positions: {len(positions)}")
         
-        # Test get_historical_data (demo mode returns empty)
+        # Test get_historical_data
         print("\n--- Testing get_historical_data ---")
         hist_data = broker.get_historical_data("NSE:SBIN-EQ", "2026-01-01", "2026-01-10", "D")
         if hist_data is not None:
@@ -484,8 +474,8 @@ def run_test():
         else:
             print("Historical data: None (not connected or error)")
         
-        # Test place_order (demo mode)
-        print("\n--- Testing place_order (demo) ---")
+        # Test place_order
+        print("\n--- Testing place_order ---")
         order_result = broker.place_order({
             'symbol': 'NSE:SBIN-EQ',
             'qty': 10,
