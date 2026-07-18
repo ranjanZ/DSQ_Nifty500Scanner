@@ -90,7 +90,7 @@ class DataService:
         """Get list of stocks from a watchlist"""
         try:
             import yaml
-            with open(self.config.get('stock_list_path', 'config/stock_list.yaml'), 'r') as f:
+            with open(self.config.get('stock_list_path', 'config/default/stock_list.yaml'), 'r') as f:
                 stock_config = yaml.safe_load(f)
             
             if watchlist in stock_config:

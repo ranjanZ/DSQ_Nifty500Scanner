@@ -1,4 +1,4 @@
-```
 __pycache__/
 *.pyc
-```
+src/broker_service/fyers/logs/
+*.log

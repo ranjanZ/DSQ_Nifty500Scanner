@@ -60,7 +60,7 @@ except ImportError as e:
 # Import auth utility
 try:
     # Adjust this import path to match your actual file structure (e.g., utils.fyers.fyers_auth)
-    from utils.fyers.fyers_auth import generate_access_token
+    from broker_service.fyers.fyers_auth import generate_access_token
     AUTH_UTIL_AVAILABLE = True
 except ImportError as e:
     logging.debug(f"Fyers auth utility not available: {e}")
@@ -125,29 +125,40 @@ class FyersBroker(BrokerBase):
         try:
             # If we don't have an access token, try to generate one using the auth utility
             if not self.access_token and AUTH_UTIL_AVAILABLE and generate_access_token:
-                logger.info("No access token found, attempting to generate one...")
-                token_result = generate_access_token(
-                    client_id=self.client_id,
-                    secret_key=self.secret_key,
-                    fyers_id=self.fyers_id,
-                    pin=self.pin,
-                    totp_token=self.totp_token,
-                    redirect_uri=self.redirect_uri,
-                )
-                
-                if token_result.get('success'):
-                    self.access_token = token_result['access_token']
-                    logger.info("✅ Access token generated successfully")
+                # Ensure we have the necessary credentials to generate a token
+                if self.totp_token and self.fyers_id and self.pin:
+                    logger.info("No access token found, attempting to generate one...")
+                    token_result = generate_access_token(
+                        client_id=self.client_id,
+                        secret_key=self.secret_key,
+                        fyers_id=self.fyers_id,
+                        pin=self.pin,
+                        totp_token=self.totp_token,
+                        redirect_uri=self.redirect_uri,
+                        response_type=self.response_type,
+                        grant_type=self.grant_type,
+                        state=self.state
+                    )
+                    
+                    if token_result.get('success'):
+                        self.access_token = token_result['access_token']
+                        logger.info("✅ Access token generated successfully")
+                    else:
+                        logger.warning(f"⚠️ Could not generate access token: {token_result.get('error')}")
+                        logger.warning("Running in demo mode")
                 else:
-                    logger.warning(f"⚠️ Could not generate access token: {token_result.get('error')}")
-                    logger.warning("Running in demo mode")
+                    logger.warning("⚠️ Missing TOTP token, Fyers ID, or PIN. Cannot generate access token. Running in demo mode.")
             
             if self.access_token:
+                # Ensure log directory exists to prevent SDK crash
+                log_dir = os.path.join(self.cur_path, "logs")
+                os.makedirs(log_dir, exist_ok=True)
+                
                 self.fyers = fyersModel.FyersModel(
                     client_id=self.client_id,
                     is_async=False,
                     token=self.access_token,
-                    log_path=os.path.join(self.cur_path, "logs/")
+                    log_path=log_dir + "/"
                 )
                 logger.info("Fyers SDK initialized successfully with access token")
             else:
@@ -169,7 +180,7 @@ class FyersBroker(BrokerBase):
             
             # Test connection
             response = self.fyers.funds()
-            if response and response.get('s') == 'ok':
+            if response and isinstance(response, dict) and response.get('s') == 'ok':
                 self.connected = True
                 self.logger.info("✅ Connected to Fyers API")
                 return True
@@ -215,13 +226,17 @@ class FyersBroker(BrokerBase):
                 
                 response = self.fyers.history(data=data)
                 
-                if response and response.get('s') == 'error' and response.get('code') == 429:
+                if not isinstance(response, dict):
+                    self.logger.warning(f"Invalid response format for {symbol}")
+                    return pd.DataFrame()
+                    
+                if response.get('s') == 'error' and response.get('code') == 429:
                     delay = base_delay * (2 ** attempt)
                     self.logger.warning(f"Rate limit reached. Retrying in {delay}s...")
                     time.sleep(delay)
                     continue
                 
-                if response is None or 'candles' not in response or not response.get('candles'):
+                if 'candles' not in response or not response.get('candles'):
                     self.logger.warning(f"No candle data for {symbol}")
                     return pd.DataFrame()
                 
@@ -230,8 +245,11 @@ class FyersBroker(BrokerBase):
                     columns=['time', 'open', 'high', 'low', 'close', 'volume']
                 )
                 
-                # ✅ FIXED: Robust pandas datetime conversion with IST timezone
-                df['time'] = pd.to_datetime(df['time'], unit='s', utc=True).dt.tz_convert('Asia/Kolkata')
+                # ✅ FIXED: Robust pandas datetime conversion handling both timestamps and strings
+                if pd.api.types.is_numeric_dtype(df['time']):
+                    df['time'] = pd.to_datetime(df['time'], unit='s', utc=True).dt.tz_convert('Asia/Kolkata')
+                else:
+                    df['time'] = pd.to_datetime(df['time'], utc=True).dt.tz_convert('Asia/Kolkata')
                 df['time'] = df['time'].dt.strftime('%Y-%m-%d %H:%M:%S%z')
                 
                 self.logger.debug(f"✅ Fetched {len(df)} candles for {symbol}")
@@ -254,11 +272,15 @@ class FyersBroker(BrokerBase):
                 return simulated_price
             
             response = self.fyers.quotes({"symbols": symbol})
-            if response and response.get('s') == 'ok' and response.get('d') and len(response.get('d', [])) > 0:
-                if response['d'][0]['v'].get('s') == 'error':
-                    self.logger.warning(f"API error for {symbol}, using demo price")
-                    return round(random.uniform(100, 2000), 2)
-                return float(response['d'][0]['v']['lp'])
+            if response and isinstance(response, dict) and response.get('s') == 'ok' and response.get('d') and len(response.get('d', [])) > 0:
+                quote_data = response['d'][0]
+                if isinstance(quote_data, dict) and 'v' in quote_data and isinstance(quote_data['v'], dict):
+                    if quote_data['v'].get('s') == 'error':
+                        self.logger.warning(f"API error for {symbol}, using demo price")
+                        return round(random.uniform(100, 2000), 2)
+                    lp = quote_data['v'].get('lp')
+                    if lp is not None:
+                        return float(lp)
             
             self.logger.warning(f"No quote data for {symbol}, using demo price")
             return round(random.uniform(100, 2000), 2)
@@ -281,32 +303,33 @@ class FyersBroker(BrokerBase):
             price = order_params.get('price', 0.0)
             product_type = order_params.get('product_type', 'INTRADAY')
             
-            fyers_type = 2 if order_type.upper() == "MARKET" else 1
-            side_int = 1 if side.upper() == "BUY" else -1
+            # Fyers API v3 type mapping: 1=LIMIT, 2=MARKET, 3=STOPLOSS LIMIT, 4=STOPLOSS MARKET
+            fyers_type = 2 if str(order_type).upper() == "MARKET" else 1
+            side_int = 1 if str(side).upper() == "BUY" else -1
             
             order_data = {
                 "symbol": symbol,
-                "qty": qty,
+                "qty": int(qty),
                 "type": fyers_type,
                 "side": side_int,
-                "productType": product_type,
-                "limitPrice": price if order_type.upper() == "LIMIT" else 0,
-                "stopPrice": 0,
+                "productType": str(product_type).upper(),
+                "limitPrice": float(price) if str(order_type).upper() == "LIMIT" else 0.0,
+                "stopPrice": 0.0,
                 "validity": "DAY",
                 "disclosedQty": 0,
                 "offlineOrder": False,
-                "stopLoss": 0,
-                "takeProfit": 0
+                "stopLoss": 0.0,
+                "takeProfit": 0.0
             }
             
             response = self.fyers.place_order(data=order_data)
             
-            if response and response.get('s') == 'error' and response.get('code') == -16:
+            if response and isinstance(response, dict) and response.get('s') == 'error' and response.get('code') == -16:
                 self.logger.warning("Auth failed for order, falling back to demo mode")
                 simulated_order_id = f"DEMO_{random.randint(100000, 999999)}"
                 return {'success': True, 'order_id': simulated_order_id, 'demo_mode': True, 'auth_failed': True}
             
-            if response and response.get('s') == 'ok':
+            if response and isinstance(response, dict) and response.get('s') == 'ok':
                 order_id = response.get('id', '')
                 self.logger.info(f"✅ Order placed: {order_id}")
                 return {'success': True, 'order_id': order_id, 'response': response}
@@ -321,8 +344,10 @@ class FyersBroker(BrokerBase):
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
         """Cancel an order"""
         try:
+            if not self.fyers:
+                return {'success': True, 'demo_mode': True, 'message': 'Demo cancel'}
             response = self.fyers.cancel_order(data={"id": order_id})
-            if response and response.get('s') == 'ok':
+            if response and isinstance(response, dict) and response.get('s') == 'ok':
                 return {'success': True, 'response': response}
             return {'success': False, 'error': response}
         except Exception as e:
@@ -333,17 +358,18 @@ class FyersBroker(BrokerBase):
         """Get order status"""
         try:
             response = self.fyers.orderbook()
-            if response and response.get('s') == 'ok':
+            if response and isinstance(response, dict) and response.get('s') == 'ok':
                 order_list = response.get('orderBook', response.get('orders', []))
-                for order in order_list:
-                    if order.get('id') == order_id or order.get('orderId') == order_id:
-                        return {
-                            'success': True,
-                            'status': order.get('status'),
-                            'filled_qty': order.get('filledQty', 0),
-                            'avg_price': order.get('avgPrice', 0),
-                            'order': order
-                        }
+                if isinstance(order_list, list):
+                    for order in order_list:
+                        if order.get('id') == order_id or order.get('orderId') == order_id:
+                            return {
+                                'success': True,
+                                'status': order.get('status'),
+                                'filled_qty': float(order.get('filledQty', 0)),
+                                'avg_price': float(order.get('avgPrice', 0)),
+                                'order': order
+                            }
             return {'success': False, 'error': 'Order not found'}
         except Exception as e:
             self.logger.error(f"❌ Error fetching order status: {e}")
@@ -357,21 +383,35 @@ class FyersBroker(BrokerBase):
                 return []
                 
             response = self.fyers.positions()
-            if response and response.get('s') == 'ok':
+            if response and isinstance(response, dict) and response.get('s') == 'ok':
                 positions = []
                 net_positions = response.get('netPositions', [])
-                for pos in net_positions:
-                    symbol = pos.get('symbol', '')
-                    if not symbol:
-                        continue
-                    positions.append({
-                        'symbol': symbol,
-                        'quantity': int(pos.get('netQty', 0)),
-                        'entry_price': float(pos.get('buyAvg', 0)),
-                        'ltp': float(pos.get('marketValue', 0)),
-                        'pnl': float(pos.get('pnl', 0)),
-                        'raw': pos
-                    })
+                if isinstance(net_positions, list):
+                    for pos in net_positions:
+                        symbol = pos.get('symbol', '')
+                        if not symbol:
+                            continue
+                        
+                        # Safely convert to numeric types to prevent TypeError
+                        try:
+                            net_qty = float(pos.get('netQty', 0))
+                            buy_avg = float(pos.get('buyAvg', 0))
+                            market_value = float(pos.get('marketValue', 0))
+                            pnl = float(pos.get('pnl', 0))
+                        except (ValueError, TypeError):
+                            net_qty = 0.0
+                            buy_avg = 0.0
+                            market_value = 0.0
+                            pnl = 0.0
+
+                        positions.append({
+                            'symbol': symbol,
+                            'quantity': int(net_qty),
+                            'entry_price': buy_avg,
+                            'ltp': market_value,
+                            'pnl': pnl,
+                            'raw': pos
+                        })
                 return positions
             return []
         except Exception as e:
@@ -394,7 +434,7 @@ class FyersBroker(BrokerBase):
             
             response = self.fyers.funds()
             
-            if response and response.get('s') == 'error' and response.get('code') == -16:
+            if response and isinstance(response, dict) and response.get('s') == 'error' and response.get('code') == -16:
                 self.logger.warning("Auth failed for funds, falling back to demo mode")
                 return {
                     'success': True,
@@ -408,26 +448,30 @@ class FyersBroker(BrokerBase):
             
             fund_data = response.get("fund_limit", [])
             
-            equity_available = 0
-            used_margin = 0
-            available_margin = 0
+            equity_available = 0.0
+            used_margin = 0.0
+            available_margin = 0.0
             
-            for item in fund_data:
-                title = item.get("title", "").lower()
-                amount = item.get("equityAmount", 0)
-                if "total balance" in title:
-                    equity_available = amount
-                elif "used margin" in title or "utilized" in title:
-                    used_margin = amount
-                elif "available margin" in title or "available" in title:
-                    available_margin = amount
+            if isinstance(fund_data, list):
+                for item in fund_data:
+                    if not isinstance(item, dict):
+                        continue
+                    title = str(item.get("title", "")).lower()
+                    # Handle potential None values for equityAmount safely
+                    amount = float(item.get("equityAmount", 0.0) or 0.0)
+                    if "total balance" in title:
+                        equity_available = amount
+                    elif "used margin" in title or "utilized" in title:
+                        used_margin = amount
+                    elif "available margin" in title or "available" in title:
+                        available_margin = amount
             
             return {
                 'success': True,
                 'equity_available': equity_available,
                 'used_margin': used_margin,
                 'available_margin': available_margin,
-                'net_pnl': response.get("netPnl", 0),
+                'net_pnl': float(response.get("netPnl", 0.0) or 0.0),
                 'timestamp': datetime.now(pytz.timezone("Asia/Kolkata")).isoformat()
             }
         except Exception as e:
