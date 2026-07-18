@@ -16,29 +16,36 @@ backtest:
     max_per_sector: 1
     # Weights proportional to sector size (total = ~500 stocks)
     sector_allocation:
-      "Financial Services": 0.3
-      "Capital Goods": 0.2
-      "Healthcare": 0.2
-      "Automobile and Auto Components": 0.15
-      "Information Technology": 0.0
-      "Fast Moving Consumer Goods": 0.15
-      "Consumer Services": 0
-      "Chemicals": 0
-      "Oil Gas & Consumable Fuels": 0
-      "Consumer Durables": 0
-      "Power": 0.12
-      "Metals & Mining": 0
-      "Services": 0
-      "Construction": 0
-      "Construction Materials": 0
-      "Realty": 0
-      "Telecommunication": 0
-      "Textiles": 0
-      "Diversified": 0
-      "Media Entertainment & Publication": 0
-      "Energy": 0
-      "Forest Materials": 0
+      "Financial Services": 0.1
+      "Capital Goods": 0.1
+      "Healthcare": 0.1
+      "Automobile and Auto Components": 0.1
+      "Information Technology": 0.1
+      "Fast Moving Consumer Goods": 0.1
+      "Consumer Services": 0.1
+      "Chemicals": 0.1
+      "Oil Gas & Consumable Fuels": 0.1
+      "Consumer Durables": 0.1
+      "Power": 0.1
+      "Metals & Mining": 0.1
+      "Services": 0.1
+      "Construction": 0.1
+      "Construction Materials": 0.1
+      "Realty": 0.1
+      "Telecommunication": 0.1
+      "Textiles": 0.1
+      "Diversified": 0.1
+      "Media Entertainment & Publication": 0.1
+      "Energy": 0.1
+      "Forest Materials": 0.1
 
   # days of historical data used for signal generation
   lookback_days: 100
   watchlist: ["nifty_top_500"]
+
+
+  
+  # Output settings
+  save_plots: true
+  save_metrics: true
+  verbose: true

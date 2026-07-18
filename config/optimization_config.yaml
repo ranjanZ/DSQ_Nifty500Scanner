@@ -78,7 +78,7 @@ optimization:
   algorithm:
     name: "bayesian"            # grid | random | fast | bayesian | genetic
     n_trials: 50               # for random, bayesian, fast
-    n_jobs: 1                   # parallel trials (bayesian only, requires Optuna)
+    n_jobs: 6                   # parallel trials (bayesian only, requires Optuna)
 
     # Genetic-specific
     population_size: 20
@@ -93,4 +93,4 @@ optimization:
   output:
     save_all_results: true
     save_plots: true
-    output_dir: "data/outputs/backtest_results"
+    output_dir: "data/outputs/optimization_results/"
