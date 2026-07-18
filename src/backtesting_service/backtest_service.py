@@ -12,7 +12,7 @@ from src.data_service.data_service import DataService
 
 # Import the concrete strategy classes (add more as needed)
 from src.strategy_service.strategies.crossover_strategy import MovingAverageCrossoverStrategy
-from src.strategy_service.strategies.madam_strategy import SupportResistanceStrategy
+from src.strategy_service.strategies.volume_support_resistance_strategy import SupportResistanceStrategy
 from src.strategy_service.strategies.rsi_w_strategy import RSIWPatternStrategy
 
 logging.basicConfig(level=logging.INFO)

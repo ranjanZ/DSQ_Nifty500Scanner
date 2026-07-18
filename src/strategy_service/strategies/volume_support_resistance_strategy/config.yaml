@@ -1,0 +1,48 @@
+# Volume Support/Resistance Strategy Configuration
+strategy_name: "VolumeSupportResistance"
+class_name: "VolumeSupportResistanceStrategy"
+
+# ── Strategy Parameters (no backtesting params) ──
+params:
+  volume_ema_period: 20
+  volume_threshold: 1.3
+  kde_bandwidth: 0.2
+  num_levels: 10
+  level_tolerance: 0.02
+  use_pivot_points: true
+  min_touch_count: 1
+  merge_tolerance: 0.005
+  max_history_days: null
+  min_history_candles: 2
+  adaptive_kde: true
+  exponential_weighting: true
+  weight_decay_factor: 0.99
+
+# ── Data Source (DB pull config) ──
+data_source:
+  symbol: "aubank_eq"           # DB table name / symbol
+  db_name: "spot_db_anamika"    # Database name
+  days_back: 120                # How many days of history to fetch
+  num_back_signals: 30          # Only generate signals for last N candles
+
+# ── Chart Display ──
+chart_display:
+  # Max 2 indicators shown on charts
+  indicators:
+    - column: "volume_ema"
+      label: "Volume EMA"
+      color: "#f0883e"
+      line_style: "-"
+      line_width: 1.5
+    - column: "volume_ratio"
+      label: "Volume Ratio"
+      color: "#58a6ff"
+      line_style: "--"
+      line_width: 1.2
+
+  # Snapshot settings: zoomed charts around each signal
+  snapshot:
+    enabled: true
+    window: 25                  # candles before & after signal
+    max_snapshots: 3            # max number of signal snapshots to save
+    output_dir: "data/outputs/strategy_plots"

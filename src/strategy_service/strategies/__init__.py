@@ -3,7 +3,7 @@ All trading strategies available in the system
 Each strategy is now in its own folder with config.yaml
 """
 
-from .madam_strategy import SupportResistanceStrategy
+from .volume_support_resistance_strategy import SupportResistanceStrategy
 from .rsi_w_strategy import RSIWPatternStrategy
 from .crossover_strategy import MovingAverageCrossoverStrategy
 
