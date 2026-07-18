@@ -1,0 +1,96 @@
+# ──────────────────────────────────────────────────────────────────────
+# Strategy Parameter Optimization Configuration
+# ──────────────────────────────────────────────────────────────────────
+
+optimization:
+  # Strategy to optimize (must exist in src/strategy_service/strategies/)
+  strategy_name: "volume_support_resistance"
+  strategy_folder: "volume_support_resistance_strategy"
+  strategy_config_path: "src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml"
+
+  # ── Parameter Space ──
+  # Each param must match a key in the strategy's config.yaml -> params
+  # Types: int, float, categorical
+  #
+  # For GRID search:
+  #   int   -> needs: low, high, step
+  #   float -> needs: low, high, n_points
+  #
+  # For RANDOM / BAYESIAN / GENETIC / FAST:
+  #   int   -> needs: low, high  (step is ignored)
+  #   float -> needs: low, high  (n_points is ignored)
+  #   categorical -> needs: choices
+
+  param_space:
+    volume_ema_period:
+      type: "int"
+      low: 10
+      high: 50
+      step: 5                 # Grid only: 10, 15, 20, ..., 50
+
+    volume_threshold:
+      type: "float"
+      low: 1.0
+      high: 3.0
+      n_points: 5             # Grid only: 5 evenly spaced values
+
+    kde_bandwidth:
+      type: "float"
+      low: 0.05
+      high: 0.5
+      n_points: 10
+
+    num_levels:
+      type: "int"
+      low: 5
+      high: 20
+      step: 1
+
+    level_tolerance:
+      type: "float"
+      low: 0.005
+      high: 0.05
+      n_points: 10
+
+    merge_tolerance:
+      type: "float"
+      low: 0.001
+      high: 0.02
+      n_points: 10
+
+    # Example categorical param:
+    # use_pivot_points:
+    #   type: "categorical"
+    #   choices: [true, false]
+
+  # ── Constraints ──
+  # Python expressions evaluated against param values
+  constraints:
+    - "volume_threshold > 1.0"
+    - "level_tolerance > merge_tolerance"
+
+  # ── Objective ──
+  objective:
+    metric: "sharpe_ratio"      # Options: sharpe_ratio, sortino_ratio, total_return, max_drawdown, win_rate, profit_factor
+    direction: "maximize"      # "maximize" or "minimize" (use minimize for drawdown)
+
+  # ── Algorithm ──
+  algorithm:
+    name: "bayesian"            # grid | random | fast | bayesian | genetic
+    n_trials: 50               # for random, bayesian, fast
+    n_jobs: 1                   # parallel trials (bayesian only, requires Optuna)
+
+    # Genetic-specific
+    population_size: 20
+    generations: 20
+    mutation_prob: 0.15
+    elite_ratio: 0.2
+
+    # Fast-specific
+    early_stop_patience: 15    # stop if no improvement for N trials
+
+  # ── Output ──
+  output:
+    save_all_results: true
+    save_plots: true
+    output_dir: "data/outputs/backtest_results"
