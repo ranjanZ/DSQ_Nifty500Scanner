@@ -48,8 +48,4 @@ backtest:
       "Forest Materials": 0
 
 
-  
-  # Output settings
-  save_plots: true
-  save_metrics: true
-  verbose: true
+

@@ -6,7 +6,7 @@ from .backtest_service import BacktestEngine
 
 # OptimizationEngine might not exist in all versions
 try:
-    from .optimization_service import Optimizer as OptimizationEngine
+    from .optimization_engine import Optimizer as OptimizationEngine
 except ImportError:
     OptimizationEngine = None
 
