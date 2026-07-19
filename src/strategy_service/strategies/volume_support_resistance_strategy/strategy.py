@@ -42,6 +42,7 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
             'max_age_candles': 100,
             'broken_level_cooldown': 20,
             'min_history_candles': 10,
+            'max_candle_size_atr': 2.0
         }
 
         if params:

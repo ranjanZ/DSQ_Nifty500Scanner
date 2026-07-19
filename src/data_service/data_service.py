@@ -304,6 +304,37 @@ class DataService:
         
         self.logger.info(f"Update complete: {success_count} succeeded, {fail_count} failed (total: {total})")
     
+
+    def delete_all_stocks_new_data(self, num_days, batch_delay=0.001):
+        """Delete old data for all stocks in watchlists"""
+        try:
+            stocks = self.get_stock_list()
+            
+            for stock in stocks:
+                symbol = stock['fyers_symbol']
+                table_name = self._symbol_to_table_name(symbol)
+
+                self.logger.info(f"Deleting new data for: {stock['name']} ({symbol}) from watchlist: {stock['watchlist']}")
+                
+                rows_deleted = delete_old_data(
+                    db_name=self.db_name,
+                    table_name=table_name,
+                    num_days=num_days
+                )
+                
+                if rows_deleted is not None:
+                    self.logger.info(f"Successfully deleted {rows_deleted} rows for: {stock['name']}")
+                else:
+                    self.logger.error(f"Failed to delete old data for: {stock['name']}")
+                
+                time.sleep(batch_delay)
+            
+            self.logger.info("All stock old data deletion completed")
+            
+        except Exception as e:
+            self.logger.error(f"Error deleting old data for all stocks: {e}")
+    
+
     def get_stock_list(self, watchlist: str = None) -> List[Dict[str, Any]]:
         try:
             if not os.path.exists(self.stock_list_path):

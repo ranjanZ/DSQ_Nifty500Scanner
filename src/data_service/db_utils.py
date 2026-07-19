@@ -357,7 +357,7 @@ def get_table_content(db_name, table_name, schema_name="public", start_date=None
 
 
 def delete_old_data(db_name, table_name, num_days, schema_name="public"):
-    """Delete data older than num_days from current date"""
+    """Delete data newer than num_days from current date"""
     conn = None
     try:
         conn = create_connection(db_name=db_name)
@@ -365,7 +365,7 @@ def delete_old_data(db_name, table_name, num_days, schema_name="public"):
 
         query = f"""
         DELETE FROM {schema_name}.\"{table_name}\"
-        WHERE time < CURRENT_DATE - INTERVAL '{num_days} days'
+        WHERE time > CURRENT_DATE - INTERVAL '{num_days} days'
         """
 
         cursor.execute(query)
@@ -376,7 +376,7 @@ def delete_old_data(db_name, table_name, num_days, schema_name="public"):
         return rows_deleted
 
     except Exception as e:
-        logger.error(f"Error deleting old data from {table_name}: {e}")
+        logger.error(f"Error new  data from {table_name}: {e}")
         if conn:
             conn.rollback()
         return None

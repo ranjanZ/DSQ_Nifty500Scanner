@@ -321,6 +321,11 @@ class LiveTradingService:
 
                 # SCAN: find signals on ALL stocks, then allocate capital
                 if self.scan_time and current_minute == self.scan_time and last_scan_minute != current_minute:
+                    self.logger.info(f"Updating the database at {now.strftime('%H:%M:%S')}...")
+                    self.data_service.delete_all_stocks_new_data(self, num_days=1)
+                    self.data_service.update_all_stocks()
+
+
                     self.logger.info(f"🔍 Scanning for signals at {now.strftime('%H:%M:%S')}...")
                     raw_signals = self._scan_for_signals()
                     self._pending_signals = self._allocate_capital_to_signals(raw_signals)
@@ -392,7 +397,7 @@ class LiveTradingService:
             if df is None or df.empty:
                 continue
 
-            signal_df = self.strategy.generate_signals(df)
+            signal_df = self.strategy.generate_signals(df, num_back_signals=4)
             if signal_df is not None and not signal_df.empty:
                 latest = signal_df.iloc[-1]
                 if latest.get('signal') == 1:
@@ -901,6 +906,6 @@ if __name__ == "__main__":
 
         service = LiveTradingService()
         service.initialize()
-        raw_signals=service._scan_for_signals()
+        raw_signals=service._scan_for_signals(num_days_back=200)
         signal=service._allocate_capital_to_signals(raw_signals)
         service._process_signals(signal)
