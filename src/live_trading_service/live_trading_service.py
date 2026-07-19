@@ -15,19 +15,10 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import pytz
 
-# ═══════════════════════════════════════════════════════════════════════
-# FIX: Add project root (parent of src/) to sys.path so 'src.*' imports work
-# ═══════════════════════════════════════════════════════════════════════
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-logger = logging.getLogger(__name__)
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Strategy loader (same robust logic as backtest engine)
-# ═══════════════════════════════════════════════════════════════════════
 
 def _load_module_from_file(module_name: str, file_path: str):
     spec = importlib.util.spec_from_file_location(module_name, file_path)
@@ -66,7 +57,6 @@ def load_strategy_class(strategy_name: str, project_root: str):
         else:
             raise ValueError(f"Strategy folder not found: {strategy_name} (looked in {strategies_dir})")
 
-    # Read class name from config.yaml
     config_file = os.path.join(strategy_folder, "config.yaml")
     class_name = None
     if os.path.exists(config_file):
@@ -78,7 +68,6 @@ def load_strategy_class(strategy_name: str, project_root: str):
         parts = folder.replace("_strategy", "").split("_")
         class_name = "".join(p.capitalize() for p in parts) + "Strategy"
 
-    # Pre-load strategy_base for relative imports
     base_file = os.path.join(project_root, "src", "strategy_service", "strategy_base.py")
     _load_module_from_file("src.strategy_service.strategy_base", base_file)
     _ensure_package("src.strategy_service")
@@ -104,7 +93,6 @@ class LiveTradingService:
     """Main live trading service orchestrator"""
 
     def __init__(self, config_path: Optional[str] = None):
-        # Initialize logger FIRST — before anything that can fail
         self.logger = logging.getLogger("LiveTradingService")
         if not self.logger.handlers:
             handler = logging.StreamHandler()
@@ -115,31 +103,28 @@ class LiveTradingService:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
 
-        # Auto-detect config path if not provided
         if config_path is None:
             config_path = self._find_config_path()
 
         self.config = self._load_config(config_path)
         self.trading_config = self.config.get('live_trading_service', self.config.get('live_trading', {}))
 
-        # Initialize services
         self.broker = None
         self.strategy = None
         self.data_service = None
 
-        # Trading state
         self.is_running = False
-        self.positions = {}          # symbol -> position dict
-        self.orders = {}             # order_id -> order dict
-        self._pending_signals = []   # signals stored between scan_time and trade_time
+        self.positions = {}
+        self.orders = {}
+        self._pending_signals = []
         self.daily_stats = {
             'trades_today': 0,
             'pnl_today': 0.0,
             'date': None
         }
 
-        # Extract config values with defaults matching the config file
         self.enabled = self.trading_config.get('enabled', False)
         self.initial_capital = self.trading_config.get('initial_capital', 20000)
         self.risk_per_trade = self.trading_config.get('risk_per_trade', 0.02)
@@ -150,18 +135,16 @@ class LiveTradingService:
         self.market_open = self.trading_config.get('market_open', '09:15')
         self.market_close = self.trading_config.get('market_close', '15:30')
 
-        self.scan_time = self.trading_config.get('scan_time')      # e.g. "09:30"
-        self.trade_time = self.trading_config.get('trade_time')    # e.g. "09:34"
+        self.scan_time = self.trading_config.get('scan_time')
+        self.trade_time = self.trading_config.get('trade_time')
 
         self.price_update_interval = self.trading_config.get('price_update_interval', 5)
 
         self.position_weights = self.trading_config.get('position_weights', {})
 
-        # Sector cache (same as backtest engine)
-        self._sector_cache = None
+        self._sector_lookup: Dict[str, str] = {}
 
     def _find_config_path(self) -> str:
-        """Auto-detect config file from common locations."""
         candidates = [
             os.path.join(_PROJECT_ROOT, "config", "live.user.yaml"),
             os.path.join(_PROJECT_ROOT, "config", "live_trading_config.yaml"),
@@ -172,16 +155,13 @@ class LiveTradingService:
             "config/live.user.yaml",
             "config/live_trading_config.yaml",
         ]
-
         for path in candidates:
             if os.path.exists(path):
                 self.logger.info(f"Auto-detected config: {path}")
                 return path
-
         return os.path.join(_PROJECT_ROOT, "config", "live.user.yaml")
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
-        """Load configuration from YAML"""
         try:
             with open(config_path, 'r') as f:
                 return yaml.safe_load(f) or {}
@@ -189,112 +169,86 @@ class LiveTradingService:
             self.logger.error(f"Error loading config from '{config_path}': {e}")
             raise
 
+    def _build_sector_lookup(self, stocks: List[Dict[str, Any]]):
+        """Build symbol->sector mapping from stock list."""
+        self._sector_lookup = {}
+        for stock in stocks:
+            sym = stock.get('fyers_symbol', '')
+            sector = stock.get('sector', 'Unknown')
+            if sym:
+                self._sector_lookup[sym] = sector
+
     def _get_sector(self, symbol: str) -> str:
-        """Lookup sector for a symbol. Try cache first, fallback to hardcoded map."""
-        if self._sector_cache is None:
-            cache_path = os.path.join(_PROJECT_ROOT, "data", "sector_cache.json")
-            if os.path.exists(cache_path):
-                try:
-                    with open(cache_path, "r") as f:
-                        self._sector_cache = json.load(f)
-                except Exception:
-                    self._sector_cache = {}
-            else:
-                self._sector_cache = {}
+        return self._sector_lookup.get(symbol, "Unknown")
 
-        if symbol in self._sector_cache:
-            return self._sector_cache[symbol]
-
-        sector_map = {
-            "aubank_eq": "Financial Services",
-            "hdfcbank_eq": "Financial Services",
-            "icicibank_eq": "Financial Services",
-            "sbin_eq": "Financial Services",
-            "kotakbank_eq": "Financial Services",
-            "reliance_eq": "Oil Gas & Consumable Fuels",
-            "infy_eq": "Information Technology",
-            "tcs_eq": "Information Technology",
-            "wipro_eq": "Information Technology",
-            "hcltech_eq": "Information Technology",
-            "lt_eq": "Capital Goods",
-            "sunpharma_eq": "Healthcare",
-            "drreddy_eq": "Healthcare",
-            "maruti_eq": "Automobile and Auto Components",
-            "tatamotors_eq": "Automobile and Auto Components",
-            "hindunilvr_eq": "Fast Moving Consumer Goods",
-            "itc_eq": "Fast Moving Consumer Goods",
-            "nestleind_eq": "Fast Moving Consumer Goods",
-            "powergrid_eq": "Power",
-            "ntpc_eq": "Power",
-            "adaniports_eq": "Services",
-            "dlf_eq": "Realty",
-        }
-        return sector_map.get(symbol, "Unknown")
-
-    def _allocate_capital(self, symbols: List[str]) -> Dict[str, float]:
+    def _allocate_capital_to_signals(self, signals: List[Dict]) -> List[Dict]:
         """
-        Allocate capital per symbol based on sector allocation config.
-        Returns: {symbol: capital_amount}
+        Allocate capital ONLY to stocks that generated signals.
+        Returns: signals with 'allocated_capital' injected.
         """
+        if not signals:
+            return []
+
         pw = self.position_weights
         if not pw or pw.get("method") != "sector_based":
-            return {sym: self.initial_capital / max(len(symbols), 1) for sym in symbols}
+            per_signal = self.initial_capital / max(len(signals), 1)
+            for s in signals:
+                s['allocated_capital'] = per_signal
+            return signals
 
         sector_alloc = pw.get("sector_allocation", {})
-        max_positions = pw.get("max_positions", len(symbols))
+        max_positions = pw.get("max_positions", len(signals))
         max_per_sector = pw.get("max_per_sector", 1)
 
-        sector_symbols: Dict[str, List[str]] = {}
-        for sym in symbols:
-            sector = self._get_sector(sym)
-            sector_symbols.setdefault(sector, []).append(sym)
+        # Group signals by sector
+        sector_signals: Dict[str, List[Dict]] = {}
+        for sig in signals:
+            sector_signals.setdefault(sig.get('sector', 'Unknown'), []).append(sig)
 
-        selected_symbols = []
-        for sector, syms in sector_symbols.items():
-            selected = syms[:max_per_sector]
-            selected_symbols.extend(selected)
+        # Pick top N per sector (by signal strength)
+        selected = []
+        for sector, sigs in sector_signals.items():
+            sigs.sort(key=lambda x: x.get('strength', 0), reverse=True)
+            selected.extend(sigs[:max_per_sector])
 
-        if len(selected_symbols) > max_positions:
-            def sector_weight(sym):
-                return sector_alloc.get(self._get_sector(sym), 0)
-            selected_symbols.sort(key=sector_weight, reverse=True)
-            selected_symbols = selected_symbols[:max_positions]
-
-        total_weight = sum(
-            sector_alloc.get(self._get_sector(sym), 0)
-            for sym in selected_symbols
+        # Sort by sector weight → strength, then cap total positions
+        selected.sort(
+            key=lambda s: (sector_alloc.get(s.get('sector', 'Unknown'), 0),
+                           s.get('strength', 0)),
+            reverse=True
         )
+        selected = selected[:max_positions]
+
+        # Allocate capital proportional to sector weight
+        total_weight = sum(sector_alloc.get(s.get('sector', 'Unknown'), 0) for s in selected)
         if total_weight <= 0:
-            return {sym: self.initial_capital / max(len(selected_symbols), 1) for sym in selected_symbols}
+            per_signal = self.initial_capital / max(len(selected), 1)
+            for s in selected:
+                s['allocated_capital'] = per_signal
+        else:
+            for s in selected:
+                weight = sector_alloc.get(s.get('sector', 'Unknown'), 0)
+                s['allocated_capital'] = self.initial_capital * (weight / total_weight)
 
-        allocations = {}
-        for sym in selected_symbols:
-            weight = sector_alloc.get(self._get_sector(sym), 0)
-            allocations[sym] = self.initial_capital * (weight / total_weight)
-
-        return allocations
+        return selected
 
     def initialize(self):
-        """Initialize all required services"""
         try:
             if not self.enabled:
                 self.logger.warning("⚠️  Live trading is DISABLED in config. Set enabled: true to trade.")
                 return False
 
-            # ── Broker ──
             from src.broker_service.fyers.fyers_broker_impl import FyersBroker
             self.broker = FyersBroker()
             if not self.broker.connect():
                 raise Exception("Failed to connect to broker")
             self.logger.info("✅ Broker connected")
 
-            # ── Strategy (use same loader as backtest engine) ──
             strategy_name = self.trading_config.get('strategy_type', 'Support_Resistance')
             StrategyClass = load_strategy_class(strategy_name, _PROJECT_ROOT)
             self.strategy = StrategyClass()
             self.logger.info(f"✅ Strategy initialized: {self.strategy.name}")
 
-            # ── Data Service ──
             from src.data_service import DataService
             self.data_service = DataService({
                 'db_name': self.config.get('database', {}).get('db_name', 'spot_db_anamika'),
@@ -305,13 +259,11 @@ class LiveTradingService:
             self.logger.info(f"🎯 Target: {self.target_profit_pct*100:.1f}% | Stop: {self.stop_loss_pct*100:.1f}% | Max Hold: {self.max_holding_days}d")
 
             return True
-
         except Exception as e:
             self.logger.error(f"Initialization failed: {e}")
             return False
 
     def start(self):
-        """Start live trading loop"""
         if not self.enabled:
             self.logger.error("❌ Cannot start: live trading is disabled in config")
             return
@@ -328,7 +280,6 @@ class LiveTradingService:
             try:
                 now = datetime.now(tz)
 
-                # Reset daily stats at market open
                 if self.daily_stats['date'] != now.date():
                     self.daily_stats = {
                         'trades_today': 0,
@@ -338,7 +289,6 @@ class LiveTradingService:
                     self._pending_signals = []
                     self.logger.info(f"📅 New trading day: {now.date()}")
 
-                # Check market hours
                 if not self._is_market_open(now):
                     self.logger.info("Market closed, waiting...")
                     time.sleep(60)
@@ -346,18 +296,18 @@ class LiveTradingService:
 
                 current_minute = now.strftime("%H:%M")
 
-                # --- PRICE MONITORING (frequent) ---
                 if time.time() - last_price_check >= self.price_update_interval:
                     self._monitor_positions()
                     last_price_check = time.time()
 
-                # --- SCAN CYCLE (at configured scan_time) ---
+                # SCAN: find signals on ALL stocks, then allocate capital
                 if self.scan_time and current_minute == self.scan_time and last_scan_minute != current_minute:
                     self.logger.info(f"🔍 Scanning for signals at {now.strftime('%H:%M:%S')}...")
-                    self._pending_signals = self._scan_for_signals()
+                    raw_signals = self._scan_for_signals()
+                    self._pending_signals = self._allocate_capital_to_signals(raw_signals)
                     last_scan_minute = current_minute
 
-                # --- TRADE CYCLE (at configured trade_time) ---
+                # TRADE: execute on allocated signals
                 if self.trade_time and current_minute == self.trade_time and last_trade_minute != current_minute:
                     if self._pending_signals:
                         self.logger.info(f"📤 Executing trades at {now.strftime('%H:%M:%S')}...")
@@ -367,7 +317,6 @@ class LiveTradingService:
                         self.logger.info("No pending signals to execute")
                     last_trade_minute = current_minute
 
-                # Sleep briefly — just for price monitoring cadence
                 time.sleep(max(self.price_update_interval, 1))
 
             except KeyboardInterrupt:
@@ -379,36 +328,36 @@ class LiveTradingService:
                 time.sleep(60)
 
     def stop(self):
-        """Stop live trading"""
         self.is_running = False
         if self.broker:
             self.broker.disconnect()
         self.logger.info("⏹️  Live trading stopped")
 
     def _is_market_open(self, now: datetime) -> bool:
-        """Check if market is open"""
-        if now.weekday() >= 7:
+        if now.weekday() >= 7:  # FIX: Saturday=5, Sunday=6
             return False
         market_open = datetime.strptime(self.market_open, '%H:%M').time()
         market_close = datetime.strptime(self.market_close, '%H:%M').time()
         return market_open <= now.time() <= market_close
 
-    def _scan_for_signals(self,num_days_back=10) -> List[Dict]:
-        """Scan stocks for trading signals"""
+    def _scan_for_signals(self, num_days_back: int = 10) -> List[Dict]:
+        """
+        Scan ALL stocks for signals. No capital allocation here.
+        Returns raw signals sorted by strength.
+        """
         signals = []
         stocks = self.data_service.get_stock_list()
         if not stocks:
             self.logger.warning("No stocks in watchlist")
             return signals
 
-        self.logger.info(f"🔍 Scanning for signals from {len(stocks)}  stocks")
+        self._build_sector_lookup(stocks)
+        self.logger.info(f"🔍 Scanning ALL {len(stocks)} stocks for signals")
 
-        print(stocks[0])
-        capital_alloc = self._allocate_capital([s['fyers_symbol'] for s in stocks])
-        active_symbols = list(capital_alloc.keys())
-        self.logger.info(f"Scanning {len(active_symbols)} symbols (sector-based allocation)")
-
-        for symbol in active_symbols:
+        for stock in stocks:
+            symbol = stock.get('fyers_symbol')
+            if not symbol:
+                continue
             if symbol in self.positions:
                 continue
 
@@ -429,16 +378,14 @@ class LiveTradingService:
                         'price': latest.get('close', 0),
                         'strength': latest.get('signal_strength', 0),
                         'timestamp': latest.get('time', datetime.now().isoformat()),
-                        'sector': self._get_sector(symbol),
-                        'allocated_capital': capital_alloc.get(symbol, self.initial_capital / max(len(active_symbols), 1))
+                        'sector': stock.get('sector', 'Unknown'),
                     })
 
         signals.sort(key=lambda x: x.get('strength', 0), reverse=True)
-        self.logger.info(f"Found {len(signals)} buy signals")
+        self.logger.info(f"Found {len(signals)} raw buy signals")
         return signals
 
     def _process_signals(self, signals: List[Dict]):
-        """Process buy signals with sector-aware allocation"""
         if not signals:
             return
 
@@ -447,14 +394,15 @@ class LiveTradingService:
             if symbol in self.positions:
                 continue
 
-            allocated_capital = signal.get('allocated_capital', self.initial_capital * self.risk_per_trade)
+            #allocated_capital = signal.get('allocated_capital', self.initial_capital * self.risk_per_trade)
+            allocated_capital = signal['allocated_capital']
+
             price = signal['price']
 
             if price <= 0:
                 self.logger.warning(f"Invalid price for {symbol}: {price}")
                 continue
 
-            # Risk-based sizing
             risk_amount = allocated_capital * self.risk_per_trade
             stop_distance = price * self.stop_loss_pct
 
@@ -496,7 +444,6 @@ class LiveTradingService:
                 self.logger.error(f"❌ Order failed for {symbol}: {result.get('error')}")
 
     def _monitor_positions(self):
-        """Monitor and manage existing positions"""
         if not self.positions:
             return
 
@@ -511,29 +458,24 @@ class LiveTradingService:
             pnl_pct = (ltp - pos['entry_price']) / pos['entry_price']
             pnl_amount = (ltp - pos['entry_price']) * pos['quantity']
 
-            # 1. Target hit
             if pnl_pct >= self.target_profit_pct:
                 self._exit_position(symbol, f"Target hit (+{pnl_pct*100:.1f}%)", ltp)
                 continue
 
-            # 2. Stoploss hit
             if pnl_pct <= -self.stop_loss_pct:
                 self._exit_position(symbol, f"Stoploss hit ({pnl_pct*100:.1f}%)", ltp)
                 continue
 
-            # 3. Max holding days exceeded
             holding_days = (datetime.now() - pos['entry_time']).days
             if holding_days >= self.max_holding_days:
                 self._exit_position(symbol, f"Max hold days ({holding_days}d)", ltp)
                 continue
 
-            # Log position status periodically (every ~5 min)
             if int(time.time()) % 300 < self.price_update_interval:
                 self.logger.info(f"📊 {symbol}: LTP ₹{ltp:.2f} | P&L: {pnl_pct*100:+.1f}% (₹{pnl_amount:,.0f}) | "
                                  f"Hold: {holding_days}d | Sector: {pos.get('sector', 'Unknown')}")
 
     def _exit_position(self, symbol: str, reason: str, exit_price: Optional[float] = None):
-        """Exit a position"""
         pos = self.positions.get(symbol)
         if not pos:
             return
@@ -568,7 +510,6 @@ class LiveTradingService:
             self.logger.error(f"❌ Exit failed for {symbol}: {result.get('error')}")
 
     def get_status(self) -> Dict[str, Any]:
-        """Get current trading status"""
         return {
             'enabled': self.enabled,
             'is_running': self.is_running,
@@ -596,7 +537,6 @@ class LiveTradingService:
 
 
 def run_test():
-    """Test live trading service initialization"""
     print("Testing Live Trading Service")
     print("=" * 50)
 
@@ -628,5 +568,7 @@ if __name__ == "__main__":
         print("Run without arguments to start live trading")
 
         service = LiveTradingService()
-        if service.initialize():
-            service.start()
+        service.initialize()
+        raw_signals=service._scan_for_signals()
+        signal=service._allocate_capital_to_signals(raw_signals)
+        service._process_signals(signal)
