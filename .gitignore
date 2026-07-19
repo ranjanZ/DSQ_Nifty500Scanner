@@ -1,7 +1,20 @@
+```
+# Python
 __pycache__/
 *.pyc
-src/broker_service/fyers/logs/
-*.log
+*.pyo
+*.pyd
 
-src/broker_service/fyers/logs/*
-data/outputs/
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Dependencies
+.venv/
+venv/
+```

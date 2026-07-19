@@ -385,6 +385,26 @@ class FyersBroker(BrokerBase):
             logger.error(f"Error canceling order: {e}")
             return {'success': False, 'error': str(e)}
 
+    def cancel_gtt(self, gtt_id: str) -> Dict[str, Any]:
+        """Cancel a GTT order"""
+        if not self.connected:
+            raise RuntimeError("Not connected to broker. Call connect() first.")
+
+        try:
+            if not self.fyers:
+                raise RuntimeError("Fyers SDK not initialized")
+            response = self.fyers.cancel_gtt(data={"id": gtt_id})
+            if response and isinstance(response, dict) and response.get('s') == 'ok':
+                self.logger.info(f"✅ GTT cancelled: {gtt_id}")
+                return {'success': True, 'response': response}
+            else:
+                error_msg = response.get('message', 'Unknown error') if isinstance(response, dict) else str(response)
+                self.logger.warning(f"⚠️ GTT cancel failed: {error_msg}")
+                return {'success': False, 'error': error_msg}
+        except Exception as e:
+            logger.error(f"Error canceling GTT: {e}")
+            return {'success': False, 'error': str(e)}
+
     def get_order_status(self, order_id: str) -> Dict[str, Any]:
         """Get order status"""
         if not self.connected:
