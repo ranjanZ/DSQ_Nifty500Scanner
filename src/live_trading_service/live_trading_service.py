@@ -394,9 +394,7 @@ class LiveTradingService:
             if symbol in self.positions:
                 continue
 
-            #allocated_capital = signal.get('allocated_capital', self.initial_capital * self.risk_per_trade)
             allocated_capital = signal['allocated_capital']
-
             price = signal['price']
 
             if price <= 0:
@@ -418,71 +416,122 @@ class LiveTradingService:
                 self.logger.info(f"Skipping {symbol}: calculated qty is 0")
                 continue
 
+            # Calculate GTT prices for swing trading (delivery)
+            sl_price = price * (1 - self.stop_loss_pct)
+            tp_price = price * (1 + self.target_profit_pct)
+
             order_params = {
                 'symbol': symbol,
                 'qty': qty,
                 'side': 'BUY',
                 'type': 'MARKET',
-                'product_type': 'CNC'
+                'product_type': 'CNC',  # Delivery for swing trading
+                'stop_loss_price': sl_price,
+                'take_profit_price': tp_price
             }
 
-            result = self.broker.place_order(order_params)
+            result = self.broker.place_order_v1(order_params)
             if result.get('success'):
+                order_id = result.get('order_id')
+                gtt_order_id = result.get('gtt_order_id')
+                entry_filled = result.get('entry_filled', False)
+                gtt_placed = result.get('gtt_placed', False)
+
+                # Store position info for tracking and potential GTT updates later
                 self.positions[symbol] = {
                     'entry_price': price,
                     'quantity': qty,
-                    'order_id': result.get('order_id'),
+                    'order_id': order_id,
+                    'gtt_order_id': gtt_order_id,
                     'entry_time': datetime.now(),
                     'allocated_capital': allocated_capital,
                     'sector': signal.get('sector', 'Unknown'),
-                    'highest_price': price
+                    'sl_price': sl_price,
+                    'tp_price': tp_price,
+                    'entry_filled': entry_filled,
+                    'gtt_active': gtt_placed
                 }
+                
+                if entry_filled and gtt_placed:
+                    self.logger.info(f"✅ BUY {qty} {symbol} @ ₹{price:.2f} | GTT Active: SL={sl_price:.2f} TP={tp_price:.2f} | ID: {gtt_order_id}")
+                elif entry_filled:
+                    self.logger.warning(f"⚠️ BUY {qty} {symbol} @ ₹{price:.2f} | GTT FAILED to place")
+                else:
+                    self.logger.info(f"⏳ AMO order placed for {qty} {symbol}, waiting for market open")
+                    
                 self.daily_stats['trades_today'] += 1
-                self.logger.info(f"✅ Bought {qty} shares of {symbol} at ₹{price:.2f} "
-                                 f"(sector: {signal.get('sector', 'Unknown')}, alloc: ₹{allocated_capital:,.0f})")
             else:
                 self.logger.error(f"❌ Order failed for {symbol}: {result.get('error')}")
 
     def _monitor_positions(self):
+        """
+        Monitor positions - NOT for exiting (GTT handles exits automatically).
+        Used for:
+          1. Syncing state with broker (checking if positions exist)
+          2. Tracking entry fill status for AMO orders
+          3. Logging position info for training/analysis
+          4. Potential GTT SL/TP adjustment later
+        """
         if not self.positions:
             return
 
+        # Sync with broker positions to ensure state consistency
+        try:
+            broker_positions = self.broker.get_positions()
+            broker_symbols = {pos['symbol'] for pos in broker_positions if pos.get('quantity', 0) > 0}
+        except Exception as e:
+            self.logger.warning(f"Could not fetch broker positions: {e}")
+            broker_symbols = set()
+
         for symbol, pos in list(self.positions.items()):
-            ltp = self.broker.get_ltp(symbol)
-            if ltp <= 0:
-                continue
-
-            if ltp > pos.get('highest_price', pos['entry_price']):
-                pos['highest_price'] = ltp
-
-            pnl_pct = (ltp - pos['entry_price']) / pos['entry_price']
-            pnl_amount = (ltp - pos['entry_price']) * pos['quantity']
-
-            if pnl_pct >= self.target_profit_pct:
-                self._exit_position(symbol, f"Target hit (+{pnl_pct*100:.1f}%)", ltp)
-                continue
-
-            if pnl_pct <= -self.stop_loss_pct:
-                self._exit_position(symbol, f"Stoploss hit ({pnl_pct*100:.1f}%)", ltp)
-                continue
-
-            holding_days = (datetime.now() - pos['entry_time']).days
-            if holding_days >= self.max_holding_days:
-                self._exit_position(symbol, f"Max hold days ({holding_days}d)", ltp)
-                continue
-
+            # Check if position is still active in broker
+            is_in_broker = symbol in broker_symbols
+            
+            # If we have an AMO order waiting for fill, check status
+            if not pos.get('entry_filled', False):
+                # Try to verify if order was filled by checking broker positions
+                if is_in_broker:
+                    pos['entry_filled'] = True
+                    self.logger.info(f"✅ Position {symbol} confirmed filled by broker")
+            
+            # Log position status (for training/analysis)
             if int(time.time()) % 300 < self.price_update_interval:
-                self.logger.info(f"📊 {symbol}: LTP ₹{ltp:.2f} | P&L: {pnl_pct*100:+.1f}% (₹{pnl_amount:,.0f}) | "
-                                 f"Hold: {holding_days}d | Sector: {pos.get('sector', 'Unknown')}")
+                try:
+                    ltp = self.broker.get_ltp(symbol)
+                    pnl_pct = (ltp - pos['entry_price']) / pos['entry_price'] if pos['entry_price'] > 0 else 0
+                    pnl_amount = (ltp - pos['entry_price']) * pos['quantity']
+                    holding_days = (datetime.now() - pos['entry_time']).days
+                    
+                    gtt_status = "🟢 GTT Active" if pos.get('gtt_active') else "🔴 GTT Inactive"
+                    self.logger.info(
+                        f"📊 {symbol}: LTP ₹{ltp:.2f} | P&L: {pnl_pct*100:+.1f}% (₹{pnl_amount:,.0f}) | "
+                        f"Hold: {holding_days}d | Sector: {pos.get('sector', 'Unknown')} | {gtt_status}"
+                    )
+                except Exception as e:
+                    self.logger.debug(f"Could not fetch LTP for {symbol}: {e}")
 
     def _exit_position(self, symbol: str, reason: str, exit_price: Optional[float] = None):
+        """
+        Manual exit position - NOT used for normal GTT exits.
+        Only used for emergency exits or when GTT fails.
+        Since we use GTT OCO orders, TP/SL exits happen automatically at broker level.
+        This method should only be called for:
+          1. Emergency manual exits
+          2. Cancelling GTT and exiting manually
+          3. Testing purposes
+        """
         pos = self.positions.get(symbol)
         if not pos:
+            self.logger.warning(f"Position {symbol} not found locally")
             return
 
         qty = pos['quantity']
         if exit_price is None or exit_price <= 0:
-            exit_price = self.broker.get_ltp(symbol)
+            try:
+                exit_price = self.broker.get_ltp(symbol)
+            except Exception as e:
+                self.logger.error(f"Cannot get LTP for {symbol}: {e}")
+                return
 
         if exit_price <= 0:
             self.logger.error(f"Cannot exit {symbol}: invalid LTP")
@@ -490,6 +539,15 @@ class LiveTradingService:
 
         realized_pnl = (exit_price - pos['entry_price']) * qty
         self.daily_stats['pnl_today'] += realized_pnl
+
+        # Cancel GTT first if it exists (to prevent double exit)
+        gtt_id = pos.get('gtt_order_id')
+        if gtt_id:
+            self.logger.info(f"⚠️ Cancelling GTT {gtt_id} before manual exit...")
+            try:
+                self.broker.cancel_gtt(gtt_id)
+            except Exception as e:
+                self.logger.warning(f"Could not cancel GTT: {e}")
 
         order_params = {
             'symbol': symbol,
@@ -521,7 +579,12 @@ class LiveTradingService:
                     'quantity': p['quantity'],
                     'entry_time': p['entry_time'].isoformat(),
                     'sector': p.get('sector', 'Unknown'),
-                    'allocated_capital': p.get('allocated_capital', 0)
+                    'allocated_capital': p.get('allocated_capital', 0),
+                    'sl_price': p.get('sl_price', 0),
+                    'tp_price': p.get('tp_price', 0),
+                    'gtt_active': p.get('gtt_active', False),
+                    'gtt_order_id': p.get('gtt_order_id'),
+                    'entry_filled': p.get('entry_filled', False)
                 }
                 for sym, p in self.positions.items()
             },
