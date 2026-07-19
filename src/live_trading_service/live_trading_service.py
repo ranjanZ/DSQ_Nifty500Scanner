@@ -114,6 +114,7 @@ class LiveTradingService:
         self.broker = None
         self.strategy = None
         self.data_service = None
+        self.portfolio_state = None
 
         self.is_running = False
         self.positions = {}
@@ -255,6 +256,16 @@ class LiveTradingService:
                 'stock_list_path': 'config/default/stock_list.yaml'
             })
             self.logger.info("✅ Data service initialized")
+            
+            # Initialize portfolio state manager for persistence
+            from .portfolio_state import PortfolioStateManager
+            self.portfolio_state = PortfolioStateManager(project_root=_PROJECT_ROOT)
+            self.portfolio_state.load_state()
+            self.logger.info("✅ Portfolio state manager initialized")
+            
+            # Sync local positions with broker positions on startup
+            self._sync_positions_with_broker()
+            
             self.logger.info(f"💰 Initial Capital: ₹{self.initial_capital:,.0f} | Risk/Trade: {self.risk_per_trade*100:.1f}%")
             self.logger.info(f"🎯 Target: {self.target_profit_pct*100:.1f}% | Stop: {self.stop_loss_pct*100:.1f}% | Max Hold: {self.max_holding_days}d")
 
@@ -281,12 +292,20 @@ class LiveTradingService:
                 now = datetime.now(tz)
 
                 if self.daily_stats['date'] != now.date():
+                    # Save state before new day
+                    if self.portfolio_state:
+                        self._sync_positions_to_portfolio_state()
+                        self.portfolio_state.save_state()
+                    
                     self.daily_stats = {
                         'trades_today': 0,
                         'pnl_today': 0.0,
                         'date': now.date()
                     }
                     self._pending_signals = []
+                    # Rollover portfolio state to new day
+                    if self.portfolio_state:
+                        self.portfolio_state.rollover_day(now.strftime('%Y-%m-%d'))
                     self.logger.info(f"📅 New trading day: {now.date()}")
 
                 if not self._is_market_open(now):
@@ -329,6 +348,10 @@ class LiveTradingService:
 
     def stop(self):
         self.is_running = False
+        # Save state before stopping
+        if self.portfolio_state:
+            self._sync_positions_to_portfolio_state()
+            self.portfolio_state.save_state()
         if self.broker:
             self.broker.disconnect()
         self.logger.info("⏹️  Live trading stopped")
@@ -454,6 +477,16 @@ class LiveTradingService:
                 
                 if entry_filled and gtt_placed:
                     self.logger.info(f"✅ BUY {qty} {symbol} @ ₹{price:.2f} | GTT Active: SL={sl_price:.2f} TP={tp_price:.2f} | ID: {gtt_order_id}")
+                    
+                    # Add to portfolio state immediately after successful order
+                    if self.portfolio_state:
+                        self.portfolio_state.add_holding(
+                            symbol=symbol,
+                            quantity=qty,
+                            average_price=price,
+                            current_value=price * qty,
+                            entry_time=datetime.now().isoformat()
+                        )
                 elif entry_filled:
                     self.logger.warning(f"⚠️ BUY {qty} {symbol} @ ₹{price:.2f} | GTT FAILED to place")
                 else:
@@ -471,21 +504,54 @@ class LiveTradingService:
           2. Tracking entry fill status for AMO orders
           3. Logging position info for training/analysis
           4. Potential GTT SL/TP adjustment later
+          5. Syncing local state with broker and portfolio state
         """
-        if not self.positions:
-            return
-
-        # Sync with broker positions to ensure state consistency
+        # First, sync with broker to ensure we have latest positions
         try:
             broker_positions = self.broker.get_positions()
-            broker_symbols = {pos['symbol'] for pos in broker_positions if pos.get('quantity', 0) > 0}
+            broker_symbols = {pos['symbol']: pos for pos in broker_positions if pos.get('quantity', 0) > 0}
         except Exception as e:
             self.logger.warning(f"Could not fetch broker positions: {e}")
-            broker_symbols = set()
+            broker_symbols = {}
 
+        # Check for new positions in broker that aren't in local state
+        for symbol, broker_pos in broker_symbols.items():
+            if symbol not in self.positions:
+                # Position exists in broker but not locally - add it
+                self.logger.info(f"📥 Found position in broker not in local state: {symbol}")
+                qty = broker_pos.get('quantity', 0)
+                entry_price = broker_pos.get('entry_price', 0)
+                self.positions[symbol] = {
+                    'entry_price': entry_price,
+                    'quantity': qty,
+                    'order_id': None,
+                    'gtt_order_id': None,
+                    'entry_time': datetime.now(),
+                    'allocated_capital': entry_price * qty,
+                    'sector': self._get_sector(symbol),
+                    'sl_price': 0,
+                    'tp_price': 0,
+                    'entry_filled': True,
+                    'gtt_active': False
+                }
+
+        # Update existing positions with broker data
         for symbol, pos in list(self.positions.items()):
             # Check if position is still active in broker
             is_in_broker = symbol in broker_symbols
+            
+            # If position was exited at broker level (GTT triggered), remove from local state
+            if not is_in_broker and pos.get('entry_filled', False):
+                self.logger.info(f"📤 Position {symbol} no longer in broker (likely GTT exit)")
+                # Record the exit in portfolio state before removing
+                if self.portfolio_state:
+                    self.portfolio_state.close_holding(
+                        symbol=symbol,
+                        exit_price=pos.get('last_ltp', pos['entry_price']),
+                        exit_time=datetime.now().isoformat()
+                    )
+                del self.positions[symbol]
+                continue
             
             # If we have an AMO order waiting for fill, check status
             if not pos.get('entry_filled', False):
@@ -493,11 +559,21 @@ class LiveTradingService:
                 if is_in_broker:
                     pos['entry_filled'] = True
                     self.logger.info(f"✅ Position {symbol} confirmed filled by broker")
+                    
+                    # Add to portfolio state
+                    if self.portfolio_state:
+                        self.portfolio_state.add_holding(
+                            symbol=symbol,
+                            quantity=pos['quantity'],
+                            average_price=pos['entry_price'],
+                            entry_time=pos['entry_time'].isoformat()
+                        )
             
             # Log position status (for training/analysis)
             if int(time.time()) % 300 < self.price_update_interval:
                 try:
                     ltp = self.broker.get_ltp(symbol)
+                    pos['last_ltp'] = ltp
                     pnl_pct = (ltp - pos['entry_price']) / pos['entry_price'] if pos['entry_price'] > 0 else 0
                     pnl_amount = (ltp - pos['entry_price']) * pos['quantity']
                     holding_days = (datetime.now() - pos['entry_time']).days
@@ -507,8 +583,16 @@ class LiveTradingService:
                         f"📊 {symbol}: LTP ₹{ltp:.2f} | P&L: {pnl_pct*100:+.1f}% (₹{pnl_amount:,.0f}) | "
                         f"Hold: {holding_days}d | Sector: {pos.get('sector', 'Unknown')} | {gtt_status}"
                     )
+                    
+                    # Update portfolio state with latest LTP
+                    if self.portfolio_state:
+                        self.portfolio_state.update_holding_ltp(symbol, ltp)
                 except Exception as e:
                     self.logger.debug(f"Could not fetch LTP for {symbol}: {e}")
+        
+        # Sync portfolio state periodically
+        if self.portfolio_state:
+            self._sync_positions_to_portfolio_state()
 
     def _exit_position(self, symbol: str, reason: str, exit_price: Optional[float] = None):
         """
@@ -564,8 +648,96 @@ class LiveTradingService:
                              f"Entry: ₹{pos['entry_price']:.2f} | Exit: ₹{exit_price:.2f} | "
                              f"P&L: ₹{realized_pnl:,.0f} | Hold: {holding_days}d")
             del self.positions[symbol]
+            
+            # Update portfolio state for manual exit
+            if self.portfolio_state:
+                self.portfolio_state.close_holding(
+                    symbol=symbol,
+                    exit_price=exit_price,
+                    exit_time=datetime.now().isoformat()
+                )
         else:
             self.logger.error(f"❌ Exit failed for {symbol}: {result.get('error')}")
+
+    def _sync_positions_with_broker(self):
+        """
+        Sync local positions with broker positions on startup.
+        Ensures state consistency after restart.
+        """
+        try:
+            broker_positions = self.broker.get_positions()
+            self.logger.info(f"📊 Found {len(broker_positions)} positions in broker")
+            
+            for broker_pos in broker_positions:
+                symbol = broker_pos.get('symbol', '')
+                qty = broker_pos.get('quantity', 0)
+                if qty <= 0:
+                    continue
+                    
+                entry_price = broker_pos.get('entry_price', 0)
+                
+                # Check if we already have this position locally
+                if symbol not in self.positions:
+                    self.logger.info(f"📥 Syncing position from broker: {symbol} (qty={qty})")
+                    self.positions[symbol] = {
+                        'entry_price': entry_price,
+                        'quantity': qty,
+                        'order_id': None,
+                        'gtt_order_id': None,
+                        'entry_time': datetime.now(),
+                        'allocated_capital': entry_price * qty,
+                        'sector': self._get_sector(symbol),
+                        'sl_price': 0,
+                        'tp_price': 0,
+                        'entry_filled': True,
+                        'gtt_active': False,
+                        'last_ltp': broker_pos.get('ltp', entry_price)
+                    }
+                    
+                    # Also add to portfolio state
+                    if self.portfolio_state:
+                        self.portfolio_state.add_holding(
+                            symbol=symbol,
+                            quantity=qty,
+                            average_price=entry_price,
+                            entry_time=datetime.now().isoformat()
+                        )
+                else:
+                    # Update existing position with broker data
+                    self.positions[symbol]['quantity'] = qty
+                    self.positions[symbol]['entry_price'] = entry_price
+                    self.positions[symbol]['entry_filled'] = True
+            
+            # Save synced state
+            if self.portfolio_state:
+                self._sync_positions_to_portfolio_state()
+                self.portfolio_state.save_state()
+                
+            self.logger.info(f"✅ Synced {len(self.positions)} positions with broker")
+        except Exception as e:
+            self.logger.error(f"Failed to sync with broker: {e}")
+
+    def _sync_positions_to_portfolio_state(self):
+        """
+        Sync all active positions to portfolio state manager.
+        Ensures persistence layer is up to date.
+        """
+        if not self.portfolio_state:
+            return
+            
+        for symbol, pos in self.positions.items():
+            if pos.get('entry_filled', False):
+                ltp = pos.get('last_ltp', pos['entry_price'])
+                # Add or update holding in portfolio state
+                self.portfolio_state.add_holding(
+                    symbol=symbol,
+                    quantity=pos['quantity'],
+                    average_price=pos['entry_price'],
+                    current_value=ltp * pos['quantity'],
+                    entry_time=pos['entry_time'].isoformat()
+                )
+                # Update LTP
+                self.portfolio_state.update_holding_ltp(symbol, ltp)
 
     def get_status(self) -> Dict[str, Any]:
         return {
