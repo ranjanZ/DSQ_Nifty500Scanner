@@ -367,6 +367,7 @@ class LiveTradingService:
         """
         Scan ALL stocks for signals. No capital allocation here.
         Returns raw signals sorted by strength.
+        Also saves scan results to data/portfolio_state/signals/
         """
         signals = []
         stocks = self.data_service.get_stock_list()
@@ -406,7 +407,75 @@ class LiveTradingService:
 
         signals.sort(key=lambda x: x.get('strength', 0), reverse=True)
         self.logger.info(f"Found {len(signals)} raw buy signals")
+        
+        # Save scan results to data/portfolio_state/signals/
+        self._save_scan_results(signals)
+        
         return signals
+    
+    def _save_scan_results(self, signals: List[Dict]):
+        """Save scan results with timestamp to data/portfolio_state/signals/"""
+        try:
+            import os
+            from datetime import datetime
+            import pytz
+            
+            tz = pytz.timezone(self.config.get('timezone', 'Asia/Kolkata'))
+            now = datetime.now(tz)
+            date_str = now.strftime('%Y-%m-%d')
+            timestamp_str = now.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Create directory if it doesn't exist
+            signals_dir = os.path.join(_PROJECT_ROOT, 'data', 'portfolio_state', 'signals')
+            os.makedirs(signals_dir, exist_ok=True)
+            
+            # File path: data/portfolio_state/signals/signals_YYYY-MM-DD.json
+            file_path = os.path.join(signals_dir, f'signals_{date_str}.json')
+            
+            # Load existing data if file exists
+            existing_data = {}
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r') as f:
+                        existing_data = json.load(f)
+                except Exception as e:
+                    self.logger.warning(f"Could not load existing signals file: {e}")
+                    existing_data = {}
+            
+            # Prepare new scan record
+            scan_record = {
+                'scan_time': timestamp_str,
+                'total_stocks_scanned': len(self.data_service.get_stock_list()) if self.data_service else 0,
+                'signals_found': len(signals),
+                'signals': signals
+            }
+            
+            # Update existing data or create new structure
+            if 'scans' not in existing_data:
+                existing_data['scans'] = []
+            
+            # Add new scan to the list
+            existing_data['scans'].append(scan_record)
+            
+            # Keep only last 30 days of scans to prevent file bloat
+            cutoff_date = (now - timedelta(days=30)).strftime('%Y-%m-%d')
+            existing_data['scans'] = [
+                s for s in existing_data['scans'] 
+                if s.get('scan_time', '')[:10] >= cutoff_date
+            ]
+            
+            # Update last_scan_time metadata
+            existing_data['last_scan_time'] = timestamp_str
+            existing_data['last_updated'] = timestamp_str
+            
+            # Save to file
+            with open(file_path, 'w') as f:
+                json.dump(existing_data, f, indent=2)
+            
+            self.logger.info(f"💾 Saved {len(signals)} signals to {file_path}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save scan results: {e}")
 
     def _process_signals(self, signals: List[Dict]):
         if not signals:
