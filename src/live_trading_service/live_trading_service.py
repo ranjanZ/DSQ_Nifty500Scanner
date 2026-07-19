@@ -419,6 +419,7 @@ class LiveTradingService:
             import os
             from datetime import datetime
             import pytz
+            import tempfile
             
             tz = pytz.timezone(self.config.get('timezone', 'Asia/Kolkata'))
             now = datetime.now(tz)
@@ -432,27 +433,45 @@ class LiveTradingService:
             # File path: data/portfolio_state/signals/signals_YYYY-MM-DD.json
             file_path = os.path.join(signals_dir, f'signals_{date_str}.json')
             
-            # Load existing data if file exists
-            existing_data = {}
-            if os.path.exists(file_path):
-                try:
-                    with open(file_path, 'r') as f:
-                        existing_data = json.load(f)
-                except Exception as e:
-                    self.logger.warning(f"Could not load existing signals file: {e}")
-                    existing_data = {}
+            # Convert signals to JSON-serializable format (handle numpy types)
+            def convert_to_serializable(obj):
+                """Convert numpy types and other non-serializable objects to native Python types."""
+                if isinstance(obj, dict):
+                    return {k: convert_to_serializable(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_to_serializable(item) for item in obj]
+                elif hasattr(obj, 'item'):  # numpy types
+                    return obj.item()
+                elif hasattr(obj, 'tolist'):  # numpy arrays
+                    return obj.tolist()
+                elif isinstance(obj, (datetime,)):
+                    return obj.isoformat()
+                else:
+                    return obj
+            
+            serializable_signals = convert_to_serializable(signals)
             
             # Prepare new scan record
             scan_record = {
                 'scan_time': timestamp_str,
                 'total_stocks_scanned': len(self.data_service.get_stock_list()) if self.data_service else 0,
                 'signals_found': len(signals),
-                'signals': signals
+                'signals': serializable_signals
             }
             
-            # Update existing data or create new structure
-            if 'scans' not in existing_data:
-                existing_data['scans'] = []
+            # Load existing data if file exists
+            existing_data = {'scans': [], 'last_scan_time': None}
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r') as f:
+                        existing_data = json.load(f)
+                        if not isinstance(existing_data, dict):
+                            existing_data = {'scans': []}
+                        if 'scans' not in existing_data:
+                            existing_data['scans'] = []
+                except Exception as e:
+                    self.logger.warning(f"Could not load existing signals file: {e}. Starting fresh.")
+                    existing_data = {'scans': []}
             
             # Add new scan to the list
             existing_data['scans'].append(scan_record)
@@ -468,9 +487,18 @@ class LiveTradingService:
             existing_data['last_scan_time'] = timestamp_str
             existing_data['last_updated'] = timestamp_str
             
-            # Save to file
-            with open(file_path, 'w') as f:
-                json.dump(existing_data, f, indent=2)
+            # Atomic write: write to temp file first, then rename
+            temp_fd, temp_path = tempfile.mkstemp(dir=signals_dir, suffix='.json.tmp')
+            try:
+                with os.fdopen(temp_fd, 'w') as f:
+                    json.dump(existing_data, f, indent=2)
+                # Atomic rename
+                os.replace(temp_path, file_path)
+            except Exception:
+                # Clean up temp file if something goes wrong
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+                raise
             
             self.logger.info(f"💾 Saved {len(signals)} signals to {file_path}")
             
