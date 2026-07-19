@@ -17,3 +17,26 @@ __pycache__/
 .vscode/
 .idea/
 ```
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+
+# Build artifacts
+dist/
+build/
+target/
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Python cache
+.mypy_cache/
+.pytest_cache/
+```
+*.pyc
+data/outputs/*
+src/broker_service/fyers/logs/*

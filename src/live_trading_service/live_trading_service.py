@@ -258,7 +258,7 @@ class LiveTradingService:
             self.logger.info("✅ Data service initialized")
             
             # Initialize portfolio state manager for persistence
-            from .portfolio_state import PortfolioStateManager
+            from src.live_trading_service.portfolio_state import PortfolioStateManager
             self.portfolio_state = PortfolioStateManager(project_root=_PROJECT_ROOT)
             self.portfolio_state.load_state()
             self.logger.info("✅ Portfolio state manager initialized")

@@ -1,0 +1,13 @@
+{
+  "scans": [
+    {
+      "scan_time": "2026-07-19 16:17:10",
+      "total_stocks_scanned": 501,
+      "signals_found": 7,
+      "signals": [
+        {
+          "symbol": "NSE:SBIN-EQ",
+          "signal": 1,
+          "price": 1030.1,
+          "strength": 1.0,
+          "timestamp": 
