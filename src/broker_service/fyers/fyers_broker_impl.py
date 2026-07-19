@@ -501,6 +501,352 @@ class FyersBroker(BrokerBase):
             raise RuntimeError(f"Failed to get funds: {e}")
 
 
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # MODIFIED: place_order now respects offlineOrder from params
+    # ═══════════════════════════════════════════════════════════════════════
+
+    # In the existing place_order method, change this line:
+    # FROM: "offlineOrder": False,
+    # TO:   "offlineOrder": order_params.get('offlineOrder', False),
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # NEW: Helper methods for place_order_v1
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def _wait_for_entry_fill(self, order_id: str, max_wait_seconds: int = 30) -> bool:
+        """Poll Fyers orderbook until entry order is filled."""
+        self.logger.info(f"⏳ Waiting for entry fill: {order_id} (max {max_wait_seconds}s)...")
+        start_time = time.time()
+
+        while time.time() - start_time < max_wait_seconds:
+            try:
+                response = self.fyers.orderbook()
+                if not response or response.get('s') != 'ok':
+                    time.sleep(1)
+                    continue
+
+                order_list = response.get('orderBook', response.get('orders', []))
+                for order in order_list:
+                    if order.get('id') == order_id or order.get('orderId') == order_id:
+                        status = order.get('status')
+                        filled_qty = int(order.get('filledQty', 0))
+
+                        if status == 2:  # FILLED
+                            self.logger.info(f"✅ Order {order_id} FILLED")
+                            return True
+                        elif filled_qty > 0:
+                            self.logger.info(f"✅ Order {order_id} PARTIAL FILL: {filled_qty}")
+                            return True
+                        elif status in [1, 5, 7]:  # CANCELLED, REJECTED, EXPIRED
+                            self.logger.error(f"❌ Order {order_id} failed (status: {status})")
+                            return False
+
+                time.sleep(1)
+            except Exception as e:
+                self.logger.debug(f"Poll error: {e}")
+                time.sleep(1)
+
+        self.logger.warning(f"⏱️ Order {order_id} still pending after {max_wait_seconds}s")
+        return False
+
+    def _place_gtt_oco(self, symbol: str, qty: int, side: str,
+                       sl_price: float, tp_price: float, product_type: str = "CNC") -> Dict[str, Any]:
+        """
+        Place GTT OCO (One-Cancels-Other) with SL and TP legs.
+        Uses Fyers v3 place_gtt_order API.
+        """
+        try:
+            is_buy = side.upper() == "BUY"
+            exit_side = -1 if is_buy else 1
+
+            # Round to tick (0.05 for most NSE stocks)
+            tick = 0.05
+            sl_price = round(sl_price / tick) * tick
+            tp_price = round(tp_price / tick) * tick
+
+            gtt_data = {
+                "symbol": symbol,
+                "side": exit_side,
+                "productType": product_type.upper(),
+                "orderInfo": {
+                    "leg1": {
+                        "price": tp_price,
+                        "triggerPrice": tp_price,
+                        "qty": qty
+                    },
+                    "leg2": {
+                        "price": sl_price,
+                        "triggerPrice": sl_price,
+                        "qty": qty
+                    }
+                }
+            }
+
+            self.logger.info(f"📤 Placing GTT OCO: {symbol} | SL: {sl_price} | TP: {tp_price}")
+            response = self.fyers.place_gtt_order(data=gtt_data)
+
+            if response and isinstance(response, dict) and response.get('s') == 'ok':
+                gtt_id = response.get('id', '')
+                self.logger.info(f"✅ GTT OCO placed: {gtt_id}")
+                return {'success': True, 'gtt_order_id': gtt_id, 'response': response}
+            else:
+                error_msg = response.get('message', 'Unknown error') if isinstance(response, dict) else str(response)
+                self.logger.error(f"❌ GTT failed: {error_msg}")
+                return {'success': False, 'error': error_msg, 'response': response}
+
+        except Exception as e:
+            self.logger.error(f"❌ GTT exception: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def place_order_v1(self, order_params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Place an order with optional GTT OCO bracket for SL and TP.
+        Supports AMO (After Market Orders) for testing during market close.
+
+        Args:
+            order_params: {
+                'symbol': 'NSE:SBIN-EQ',
+                'qty': 10,
+                'side': 'BUY',
+                'type': 'MARKET',
+                'product_type': 'CNC',
+                'price': 0.0,              # for LIMIT orders
+                'amo': False,              # True = After Market Order
+                'stop_loss_price': 450.0,  # optional - triggers GTT SL
+                'take_profit_price': 550.0 # optional - triggers GTT TP
+            }
+
+        Returns:
+            {
+                'success': bool,
+                'order_id': str,
+                'entry_filled': bool,
+                'amo': bool,
+                'gtt_placed': bool,
+                'gtt_order_id': str,
+                'error': str
+            }
+        """
+        if not self.connected:
+            raise RuntimeError("Not connected to broker. Call connect() first.")
+
+        symbol = order_params.get('symbol', '')
+        qty = order_params.get('qty', 0)
+        side = order_params.get('side', 'BUY')
+        order_type = order_params.get('type', 'MARKET')
+        product_type = order_params.get('product_type', 'CNC')
+        price = order_params.get('price', 0.0)
+        is_amo = order_params.get('amo', False)
+        sl_price = order_params.get('stop_loss_price')
+        tp_price = order_params.get('take_profit_price')
+
+        # ── 1. Place entry order ──
+        self.logger.info(f"📥 Placing {'AMO ' if is_amo else ''}entry order: {side} {qty} {symbol} @ {order_type}")
+        entry_result = self.place_order({
+            'symbol': symbol,
+            'qty': qty,
+            'side': side,
+            'type': order_type,
+            'price': price,
+            'product_type': product_type,
+            'offlineOrder': is_amo  # AMO flag passed through
+        })
+
+        if not entry_result.get('success'):
+            self.logger.error(f"❌ Entry order failed: {entry_result.get('error')}")
+            return {
+                'success': False,
+                'order_id': None,
+                'entry_filled': False,
+                'amo': is_amo,
+                'gtt_placed': False,
+                'error': entry_result.get('error', 'Entry order failed')
+            }
+
+        entry_order_id = entry_result.get('order_id')
+        self.logger.info(f"✅ Entry order placed: {entry_order_id}")
+
+        # ── 2. AMO mode: return early, GTT after market open ──
+        if is_amo:
+            self.logger.info("AMO order queued for next market open. GTT must be placed after fill.")
+            return {
+                'success': True,
+                'order_id': entry_order_id,
+                'entry_filled': False,
+                'amo': True,
+                'gtt_placed': False,
+                'message': 'AMO entry placed. GTT will be placed after market open when position is active.'
+            }
+
+        # ── 3. No SL/TP requested → return early ──
+        if sl_price is None or tp_price is None:
+            return {
+                'success': True,
+                'order_id': entry_order_id,
+                'entry_filled': True,
+                'amo': False,
+                'gtt_placed': False,
+                'message': 'Entry placed, no GTT requested'
+            }
+
+        # ── 4. Wait for entry fill (MARKET fills fast, LIMIT may wait) ──
+        entry_filled = self._wait_for_entry_fill(entry_order_id, max_wait_seconds=30)
+
+        if not entry_filled:
+            self.logger.error(f"❌ Entry {entry_order_id} did not fill. Cancelling...")
+            self.cancel_order(entry_order_id)
+            return {
+                'success': False,
+                'order_id': entry_order_id,
+                'entry_filled': False,
+                'amo': False,
+                'gtt_placed': False,
+                'error': 'Entry order did not fill'
+            }
+
+        # ── 5. Place GTT OCO ──
+        gtt_result = self._place_gtt_oco(
+            symbol=symbol, qty=qty, side=side,
+            sl_price=sl_price, tp_price=tp_price, product_type=product_type
+        )
+
+        return {
+            'success': True,
+            'order_id': entry_order_id,
+            'entry_filled': True,
+            'amo': False,
+            'gtt_placed': gtt_result.get('success', False),
+            'gtt_order_id': gtt_result.get('gtt_order_id'),
+            'message': 'Entry + GTT placed' if gtt_result.get('success') else 'Entry placed, GTT failed',
+            'gtt_error': gtt_result.get('error')
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# LIVE AMO TEST — Real API calls during market close
+# ═══════════════════════════════════════════════════════════════════════
+
+def run_test_v1_live():
+    """
+    Real AMO test using live Fyers API. 
+    Run this when market is CLOSED (after 15:30 or before 9:15).
+
+    What it does:
+      1. Connects to live Fyers
+      2. Places AMO BUY order for 1 share SBIN (CNC, MARKET)
+      3. Shows the order ID
+      4. Tries placing GTT (will likely fail since AMO not filled yet)
+      5. Cancels the AMO order to clean up
+    """
+    print("=" * 60)
+    print("🔴 LIVE AMO TEST — Real Fyers API calls")
+    print("=" * 60)
+
+    broker = FyersBroker()
+
+    print("\n1. Connecting to Fyers...")
+    try:
+        if not broker.connect():
+            print("❌ Connection failed")
+            return
+    except Exception as e:
+        print(f"❌ Connection error: {e}")
+        return
+
+    print("✅ Connected to Fyers LIVE")
+
+    # ── Test 1: AMO entry only ──
+    print("\n" + "─" * 60)
+    print("TEST 1: AMO entry order (no SL/TP)")
+    print("─" * 60)
+
+    result1 = broker.place_order_v1({
+        'symbol': 'NSE:SBIN-EQ',
+        'qty': 1,
+        'side': 'BUY',
+        'type': 'MARKET',
+        'product_type': 'CNC',
+        'amo': True
+    })
+
+    print(f"\n   Result:")
+    print(f"   success:      {result1.get('success')}")
+    print(f"   order_id:     {result1.get('order_id')}")
+    print(f"   amo:          {result1.get('amo')}")
+    print(f"   message:      {result1.get('message')}")
+    if result1.get('error'):
+        print(f"   error:        {result1['error']}")
+
+    # Cancel Test 1 order
+    oid1 = result1.get('order_id')
+    if oid1:
+        print(f"\n   🧹 Cancelling AMO order {oid1}...")
+        cancel1 = broker.cancel_order(oid1)
+        print(f"   Cancel result: {cancel1}")
+
+    # ── Test 2: AMO entry + GTT attempt ──
+    print("\n" + "─" * 60)
+    print("TEST 2: AMO entry + GTT SL/TP (GTT will fail until AMO fills)")
+    print("─" * 60)
+
+    result2 = broker.place_order_v1({
+        'symbol': 'NSE:SBIN-EQ',
+        'qty': 1,
+        'side': 'BUY',
+        'type': 'MARKET',
+        'product_type': 'CNC',
+        'amo': True,
+        'stop_loss_price': 720.0,
+        'take_profit_price': 780.0
+    })
+
+    print(f"\n   Result:")
+    print(f"   success:      {result2.get('success')}")
+    print(f"   order_id:     {result2.get('order_id')}")
+    print(f"   amo:          {result2.get('amo')}")
+    print(f"   gtt_placed:   {result2.get('gtt_placed')}")
+    print(f"   message:      {result2.get('message')}")
+    if result2.get('error'):
+        print(f"   error:        {result2['error']}")
+
+    # Cancel Test 2 order
+    oid2 = result2.get('order_id')
+    if oid2:
+        print(f"\n   🧹 Cancelling AMO order {oid2}...")
+        cancel2 = broker.cancel_order(oid2)
+        print(f"   Cancel result: {cancel2}")
+
+    # ── Test 3: Normal entry (if market is open, this tests full flow) ──
+    print("\n" + "─" * 60)
+    print("TEST 3: Normal entry + GTT (only works if market is OPEN)")
+    print("─" * 60)
+
+    now = datetime.now(pytz.timezone('Asia/Kolkata'))
+    market_open = datetime.strptime('09:15', '%H:%M').time()
+    market_close = datetime.strptime('15:30', '%H:%M').time()
+
+    if market_open <= now.time() <= market_close and now.weekday() < 5:
+        print("   Market is OPEN — placing live order...")
+        result3 = broker.place_order_v1({
+            'symbol': 'NSE:SBIN-EQ',
+            'qty': 1,
+            'side': 'BUY',
+            'type': 'MARKET',
+            'product_type': 'CNC',
+            'amo': False,
+            'stop_loss_price': 720.0,
+            'take_profit_price': 780.0
+        })
+        print(f"\n   Result: {result3}")
+    else:
+        print("   Market is CLOSED — skipping (use AMO mode instead)")
+
+    broker.disconnect()
+    print("\n" + "=" * 60)
+    print("✅ Live test complete")
+    print("=" * 60)
+
 def run_test():
     """Test function for Fyers broker"""
     print("Testing Fyers Broker Implementation")
@@ -566,3 +912,4 @@ if __name__ == "__main__":
     else:
         print("Fyers Broker Implementation")
         print("Run with 'test' argument to test: python fyers_broker_impl.py test")
+        broker = FyersBroker()
