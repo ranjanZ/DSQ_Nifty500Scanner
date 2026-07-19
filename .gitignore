@@ -3,4 +3,5 @@ __pycache__/
 src/broker_service/fyers/logs/
 *.log
 
+src/broker_service/fyers/logs/*
 data/outputs/
