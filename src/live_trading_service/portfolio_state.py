@@ -65,7 +65,7 @@ class PortfolioStateManager:
 
     def __init__(self, project_root: str = "."):
         self.project_root = project_root
-        self.output_dir = os.path.join(project_root, "data", "outputs","portfolio_state")
+        self.output_dir = os.path.join(project_root, "data","portfolio_state")
         os.makedirs(self.output_dir, exist_ok=True)
         self.state_path = os.path.join(self.output_dir, "portfolio_state.json")
 

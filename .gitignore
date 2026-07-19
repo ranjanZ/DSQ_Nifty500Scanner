@@ -36,3 +36,6 @@ htmlcov/
 .mypy_cache/
 .pytest_cache/
 ```
+*.pyc
+data/outputs/*
+src/broker_service/fyers/logs/*
