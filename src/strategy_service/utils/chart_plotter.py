@@ -1,7 +1,8 @@
 """
 Strategy Chart Plotter
 ======================
-Plots OHLCV candlesticks with buy/sell signals, volume bars, and up to 2 configurable indicators.
+Plots OHLCV candlesticks with buy/sell signals, volume bars with EMA overlay,
+and support level annotations at trade positions.
 Saves charts to strategy_plots/ by default.
 """
 
@@ -31,6 +32,8 @@ class StrategyChartPlotter:
     COLOR_WICK_DOWN = "#da3633"
     COLOR_VOL_UP = "#3fb950"
     COLOR_VOL_DOWN = "#f85149"
+    COLOR_VOL_EMA = "#ff9f43"          # Orange for volume EMA
+    COLOR_SUPPORT = "#00d2d3"          # Cyan for support levels
 
     def __init__(self, plot_dir: Optional[str] = None):
         self.plot_dir = plot_dir or self.DEFAULT_PLOT_DIR
@@ -73,8 +76,8 @@ class StrategyChartPlotter:
 
         return df["_x"].values
 
-    def _plot_volume(self, ax: plt.Axes, df: pd.DataFrame, x_vals: np.ndarray):
-        """Draw volume bars colored by candle direction."""
+    def _plot_volume_with_ema(self, ax: plt.Axes, df: pd.DataFrame, x_vals: np.ndarray):
+        """Draw volume bars with volume EMA overlaid on the same panel."""
         if "volume" not in df.columns:
             return
 
@@ -83,12 +86,21 @@ class StrategyChartPlotter:
         colors = np.where(df["close"].values >= df["open"].values,
                           self.COLOR_VOL_UP, self.COLOR_VOL_DOWN)
 
+        # Plot volume bars
         ax.bar(x_vals, vol, width=0.6, color=colors, alpha=0.7, zorder=2)
-        self._style_axis(ax, title="Volume")
-        ax.set_ylabel("Volume", color=self.COLOR_TEXT)
 
-    def _plot_signals(self, ax: plt.Axes, df: pd.DataFrame, x_vals: np.ndarray):
-        """Overlay buy (^) and sell (v) markers.
+        # Overlay volume EMA if available
+        if "volume_ema" in df.columns:
+            ax.plot(x_vals, df["volume_ema"].values, color=self.COLOR_VOL_EMA,
+                    linewidth=1.5, label="Vol EMA", zorder=3)
+
+        self._style_axis(ax, title="Volume + EMA")
+        ax.set_ylabel("Volume", color=self.COLOR_TEXT)
+        ax.legend(loc="upper left", fontsize=8, facecolor=self.COLOR_BG,
+                  edgecolor=self.COLOR_GRID, labelcolor=self.COLOR_TEXT)
+
+    def _plot_signals(self, ax_price: plt.Axes, df: pd.DataFrame, x_vals: np.ndarray):
+        """Overlay buy (^) and sell (v) markers with support level annotations.
         Uses positional indexing since x_vals is positional (0..N-1)
         and df may have non-sequential label indices (e.g. sliced snapshots).
         """
@@ -97,7 +109,7 @@ class StrategyChartPlotter:
 
         if buy_mask.any():
             buy_pos = np.where(buy_mask)[0]
-            ax.scatter(
+            ax_price.scatter(
                 x_vals[buy_pos],
                 df["low"].iloc[buy_pos].values * 0.998,
                 marker="^", s=120, c=self.COLOR_BUY,
@@ -105,9 +117,40 @@ class StrategyChartPlotter:
                 label=f"Buy ({buy_mask.sum()})", zorder=5,
             )
 
+            # Draw support level lines at buy positions
+            if "signal_support" in df.columns:
+                for pos in buy_pos:
+                    sup_level = df["signal_support"].iloc[pos]
+                    if pd.notna(sup_level):
+                        x = x_vals[pos]
+                        # Horizontal dashed line across the candle
+                        ax_price.axhline(
+                            y=sup_level,
+                            xmin=(x - 0.4) / (x_vals[-1] - x_vals[0] + 1) if len(x_vals) > 1 else 0,
+                            xmax=(x + 0.4) / (x_vals[-1] - x_vals[0] + 1) if len(x_vals) > 1 else 1,
+                            color=self.COLOR_SUPPORT,
+                            linestyle="--",
+                            linewidth=1.0,
+                            alpha=0.9,
+                            zorder=4,
+                        )
+                        # Label the support level
+                        ax_price.annotate(
+                            f" S: {sup_level:.4f}",
+                            xy=(x, sup_level),
+                            fontsize=7,
+                            ha="left",
+                            va="bottom",
+                            color=self.COLOR_SUPPORT,
+                            fontweight="bold",
+                            bbox=dict(boxstyle="round,pad=0.2", facecolor=self.COLOR_BG,
+                                      edgecolor=self.COLOR_SUPPORT, alpha=0.85),
+                            zorder=6,
+                        )
+
         if sell_mask.any():
             sell_pos = np.where(sell_mask)[0]
-            ax.scatter(
+            ax_price.scatter(
                 x_vals[sell_pos],
                 df["high"].iloc[sell_pos].values * 1.002,
                 marker="v", s=120, c=self.COLOR_SELL,
@@ -115,9 +158,38 @@ class StrategyChartPlotter:
                 label=f"Sell ({sell_mask.sum()})", zorder=5,
             )
 
+            # Draw resistance level lines at sell positions
+            if "signal_resistance" in df.columns:
+                for pos in sell_pos:
+                    res_level = df["signal_resistance"].iloc[pos]
+                    if pd.notna(res_level):
+                        x = x_vals[pos]
+                        ax_price.axhline(
+                            y=res_level,
+                            xmin=(x - 0.4) / (x_vals[-1] - x_vals[0] + 1) if len(x_vals) > 1 else 0,
+                            xmax=(x + 0.4) / (x_vals[-1] - x_vals[0] + 1) if len(x_vals) > 1 else 1,
+                            color="#ff6b6b",
+                            linestyle="--",
+                            linewidth=1.0,
+                            alpha=0.9,
+                            zorder=4,
+                        )
+                        ax_price.annotate(
+                            f" R: {res_level:.4f}",
+                            xy=(x, res_level),
+                            fontsize=7,
+                            ha="left",
+                            va="top",
+                            color="#ff6b6b",
+                            fontweight="bold",
+                            bbox=dict(boxstyle="round,pad=0.2", facecolor=self.COLOR_BG,
+                                      edgecolor="#ff6b6b", alpha=0.85),
+                            zorder=6,
+                        )
+
         if "signal_strength" in df.columns:
             for pos in np.where(buy_mask)[0]:
-                ax.annotate(
+                ax_price.annotate(
                     f"{df['signal_strength'].iloc[pos]:.1f}",
                     xy=(x_vals[pos], df["low"].iloc[pos] * 0.992),
                     fontsize=6, ha="center", color=self.COLOR_BUY, fontweight="bold",
@@ -158,7 +230,7 @@ class StrategyChartPlotter:
         n_ind = len(indicators)
         has_volume = "volume" in df.columns
 
-        # Layout: price + volume + up to 2 indicator panels
+        # Layout: price + volume(overlaid EMA) + up to 2 indicator panels
         # height_ratios: price=3, volume=1, each indicator=1
         if n_ind == 0:
             if has_volume:
@@ -218,9 +290,9 @@ class StrategyChartPlotter:
             ax_price.xaxis.set_major_locator(mdates.AutoDateLocator())
             plt.setp(ax_price.xaxis.get_majorticklabels(), rotation=30, ha="right")
 
-        # Volume panel
+        # Volume panel (with EMA overlaid)
         if ax_vol is not None:
-            self._plot_volume(ax_vol, df, x_vals)
+            self._plot_volume_with_ema(ax_vol, df, x_vals)
 
         # Indicator panels
         for ax_i, ind_cfg in zip(ax_inds, indicators):

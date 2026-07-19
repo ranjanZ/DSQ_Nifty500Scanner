@@ -40,3 +40,5 @@ htmlcov/
 *.pyc
 data/outputs/*
 src/broker_service/fyers/logs/*
+
+data/outputs/strategy_plots/*

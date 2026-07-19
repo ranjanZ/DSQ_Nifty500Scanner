@@ -17,13 +17,14 @@ params:
   adaptive_kde: true
   exponential_weighting: true
   weight_decay_factor: 0.99
+  max_candle_size_atr: 2.0   # Skip if candle range > 2× ATR
 
 # ── Data Source (DB pull config) ──
 data_source:
-  symbol: "aubank_eq"           # DB table name / symbol
+  symbol: "hdfcbank_eq"           # DB table name / symbol
   db_name: "spot_db_anamika"    # Database name
-  days_back: 120                # How many days of history to fetch
-  num_back_signals: 30          # Only generate signals for last N candles
+  days_back: 300                # How many days of history to fetch
+  num_back_signals: 300          # Only generate signals for last N candles
 
 # ── Chart Display ──
 chart_display:
@@ -44,5 +45,5 @@ chart_display:
   snapshot:
     enabled: true
     window: 25                  # candles before & after signal
-    max_snapshots: 3            # max number of signal snapshots to save
+    max_snapshots: 5            # max number of signal snapshots to save
     output_dir: "data/outputs/strategy_plots"

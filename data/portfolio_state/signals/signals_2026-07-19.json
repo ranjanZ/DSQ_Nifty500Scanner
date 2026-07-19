@@ -1,13 +1,285 @@
 {
   "scans": [
     {
-      "scan_time": "2026-07-19 16:17:10",
+      "scan_time": "2026-07-19 16:27:13",
       "total_stocks_scanned": 501,
-      "signals_found": 7,
+      "signals_found": 34,
       "signals": [
         {
           "symbol": "NSE:SBIN-EQ",
           "signal": 1,
           "price": 1030.1,
           "strength": 1.0,
-          "timestamp": 
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:AAVAS-EQ",
+          "signal": 1,
+          "price": 1500.9,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:ACE-EQ",
+          "signal": 1,
+          "price": 1004.4,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Capital Goods"
+        },
+        {
+          "symbol": "NSE:APLLTD-EQ",
+          "signal": 1,
+          "price": 850.05,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Healthcare"
+        },
+        {
+          "symbol": "NSE:ANGELONE-EQ",
+          "signal": 1,
+          "price": 343.4,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:APTUS-EQ",
+          "signal": 1,
+          "price": 295.6,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:BASF-EQ",
+          "signal": 1,
+          "price": 3700.5,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Chemicals"
+        },
+        {
+          "symbol": "NSE:BAJAJ-AUTO-EQ",
+          "signal": 1,
+          "price": 10323.0,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Automobile and Auto Components"
+        },
+        {
+          "symbol": "NSE:BHEL-EQ",
+          "signal": 1,
+          "price": 417.95,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Capital Goods"
+        },
+        {
+          "symbol": "NSE:CESC-EQ",
+          "signal": 1,
+          "price": 163.54,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Power"
+        },
+        {
+          "symbol": "NSE:CHENNPETRO-EQ",
+          "signal": 1,
+          "price": 1157.2,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Oil Gas & Consumable Fuels"
+        },
+        {
+          "symbol": "NSE:DALBHARAT-EQ",
+          "signal": 1,
+          "price": 1824.7,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Construction Materials"
+        },
+        {
+          "symbol": "NSE:ERIS-EQ",
+          "signal": 1,
+          "price": 1459.7,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Healthcare"
+        },
+        {
+          "symbol": "NSE:FORCEMOT-EQ",
+          "signal": 1,
+          "price": 18431.0,
+          "strength": 1.0,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Automobile and Auto Components"
+        },
+        {
+          "symbol": "NSE:ACMESOLAR-EQ",
+          "signal": 1,
+          "price": 392.15,
+          "strength": 0.8,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Power"
+        },
+        {
+          "symbol": "NSE:CEATLTD-EQ",
+          "signal": 1,
+          "price": 3789.1,
+          "strength": 0.8,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Automobile and Auto Components"
+        },
+        {
+          "symbol": "NSE:CHALET-EQ",
+          "signal": 1,
+          "price": 860.45,
+          "strength": 0.8,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Consumer Services"
+        },
+        {
+          "symbol": "NSE:ENDURANCE-EQ",
+          "signal": 1,
+          "price": 2746.2,
+          "strength": 0.8,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Automobile and Auto Components"
+        },
+        {
+          "symbol": "NSE:AARTIIND-EQ",
+          "signal": 1,
+          "price": 500.7,
+          "strength": 0.7,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Chemicals"
+        },
+        {
+          "symbol": "NSE:BANDHANBNK-EQ",
+          "signal": 1,
+          "price": 216.52,
+          "strength": 0.7,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:BANKINDIA-EQ",
+          "signal": 1,
+          "price": 145.21,
+          "strength": 0.7,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:BPCL-EQ",
+          "signal": 1,
+          "price": 309.6,
+          "strength": 0.7,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Oil Gas & Consumable Fuels"
+        },
+        {
+          "symbol": "NSE:CENTRALBK-EQ",
+          "signal": 1,
+          "price": 32.72,
+          "strength": 0.7,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:ACC-EQ",
+          "signal": 1,
+          "price": 1383.2,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Construction Materials"
+        },
+        {
+          "symbol": "NSE:AIAENG-EQ",
+          "signal": 1,
+          "price": 4828.5,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Capital Goods"
+        },
+        {
+          "symbol": "NSE:ALKEM-EQ",
+          "signal": 1,
+          "price": 5659.0,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Healthcare"
+        },
+        {
+          "symbol": "NSE:BLUEDART-EQ",
+          "signal": 1,
+          "price": 4919.6,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Services"
+        },
+        {
+          "symbol": "NSE:CENTURYPLY-EQ",
+          "signal": 1,
+          "price": 795.6,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Consumer Durables"
+        },
+        {
+          "symbol": "NSE:CHOLAHLDNG-EQ",
+          "signal": 1,
+          "price": 1598.8,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:COFORGE-EQ",
+          "signal": 1,
+          "price": 1533.2,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Information Technology"
+        },
+        {
+          "symbol": "NSE:CUMMINSIND-EQ",
+          "signal": 1,
+          "price": 5549.5,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Capital Goods"
+        },
+        {
+          "symbol": "NSE:DEEPAKNTR-EQ",
+          "signal": 1,
+          "price": 1697.0,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Chemicals"
+        },
+        {
+          "symbol": "NSE:DIVISLAB-EQ",
+          "signal": 1,
+          "price": 7273.0,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Healthcare"
+        },
+        {
+          "symbol": "NSE:GICRE-EQ",
+          "signal": 1,
+          "price": 367.0,
+          "strength": 0.5,
+          "timestamp": "2026-07-15T05:30:00",
+          "sector": "Financial Services"
+        }
+      ]
+    }
+  ],
+  "last_scan_time": "2026-07-19 16:27:13",
+  "last_updated": "2026-07-19 16:27:13"
+}
