@@ -393,7 +393,7 @@ class LiveTradingService:
         market_close = datetime.strptime(self.market_close, '%H:%M').time()
         return market_open <= now.time() <= market_close
 
-    def _scan_for_signals(self) -> List[Dict]:
+    def _scan_for_signals(self,num_days_back=10) -> List[Dict]:
         """Scan stocks for trading signals"""
         signals = []
         stocks = self.data_service.get_stock_list()
@@ -401,7 +401,10 @@ class LiveTradingService:
             self.logger.warning("No stocks in watchlist")
             return signals
 
-        capital_alloc = self._allocate_capital([s['symbol'] for s in stocks])
+        self.logger.info(f"🔍 Scanning for signals from {len(stocks)}  stocks")
+
+        print(stocks[0])
+        capital_alloc = self._allocate_capital([s['fyers_symbol'] for s in stocks])
         active_symbols = list(capital_alloc.keys())
         self.logger.info(f"Scanning {len(active_symbols)} symbols (sector-based allocation)")
 
@@ -410,7 +413,7 @@ class LiveTradingService:
                 continue
 
             end_date = datetime.now().strftime('%Y-%m-%d')
-            start_date = (datetime.now() - timedelta(days=100)).strftime('%Y-%m-%d')
+            start_date = (datetime.now() - timedelta(days=num_days_back)).strftime('%Y-%m-%d')
             df = self.data_service.get_historical_data(symbol, start_date, end_date)
 
             if df is None or df.empty:

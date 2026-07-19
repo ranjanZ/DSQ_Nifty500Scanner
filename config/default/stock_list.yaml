@@ -1,40 +1,4 @@
-# Stock List Configuration - Default Settings
-# Database and watchlist configurations
-
-database_config:
-  db_name: "spot_db_anamika"
-  user: "postgres"
-  password: "123"
-  host: "localhost"
-  port: "5432"
-
-watchlists:
-  nifty_top_5:
-    - name: "Reliance Industries Limited"
-      fyers_symbol: "NSE:RELIANCE-EQ"
-      sector: "Energy"
-      market_cap: "Large Cap"
-    
-    - name: "Tata Consultancy Services Limited"
-      fyers_symbol: "NSE:TCS-EQ"
-      sector: "Information Technology"
-      market_cap: "Large Cap"
-    
-    - name: "HDFC Bank Limited"
-      fyers_symbol: "NSE:HDFCBANK-EQ"
-      sector: "Financial Services"
-      market_cap: "Large Cap"
-      
-    - name: "Infosys Limted"
-      fyers_symbol: "NSE:INFY-EQ"
-      sector: "Information Technology"
-      market_cap: "Large Cap"
-    
-    - name: "ICICI Bank Limited"
-      fyers_symbol: "NSE:ICICIBANK-EQ"
-      sector: "Financial Services"
-      market_cap: "Large Cap"
-    
+watchlists:   
   bank_stocks:
     - name: "HDFC Bank Limited"
       fyers_symbol: "NSE:HDFCBANK-EQ"
@@ -172,3 +136,2939 @@ watchlists:
       isin_code: INE731H01025
       sector: Capital Goods
       market_cap: Large Cap
+    - name: ADANI ENERGY SOLUTION LTD
+      fyers_symbol: NSE:ADANIENSOL-EQ
+      symbol: ADANIENSOL
+      isin_code: INE931S01010
+      sector: Power
+      market_cap: Large Cap
+    - name: ADANI ENTERPRISES LIMITED
+      fyers_symbol: NSE:ADANIENT-EQ
+      symbol: ADANIENT
+      isin_code: INE423A01024
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: ADANI GREEN ENERGY LTD
+      fyers_symbol: NSE:ADANIGREEN-EQ
+      symbol: ADANIGREEN
+      isin_code: INE364U01010
+      sector: Power
+      market_cap: Large Cap
+    - name: ADANI PORT & SEZ LTD
+      fyers_symbol: NSE:ADANIPORTS-EQ
+      symbol: ADANIPORTS
+      isin_code: INE742F01042
+      sector: Services
+      market_cap: Large Cap
+    - name: ADANI POWER LTD
+      fyers_symbol: NSE:ADANIPOWER-EQ
+      symbol: ADANIPOWER
+      isin_code: INE814H01029
+      sector: Power
+      market_cap: Large Cap
+    - name: ADANI TOTAL GAS LIMITED
+      fyers_symbol: NSE:ATGL-EQ
+      symbol: ATGL
+      isin_code: INE399L01023
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: ADITYA BIRLA CAPITAL LTD.
+      fyers_symbol: NSE:ABCAPITAL-EQ
+      symbol: ABCAPITAL
+      isin_code: INE674K01013
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ADITYA BIRLA FASHION & RT
+      fyers_symbol: NSE:ABFRL-EQ
+      symbol: ABFRL
+      isin_code: INE647O01011
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: ADITYA BIRLA LIFES BRAN L
+      fyers_symbol: NSE:ABLBL-EQ
+      symbol: ABLBL
+      isin_code: INE14LE01019
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: ADITYA BIRLA REAL EST LTD
+      fyers_symbol: NSE:ABREL-EQ
+      symbol: ABREL
+      isin_code: INE055A01016
+      sector: Forest Materials
+      market_cap: Large Cap
+    - name: ADIT BIRL SUN LIF AMC LTD
+      fyers_symbol: NSE:ABSLAMC-EQ
+      symbol: ABSLAMC
+      isin_code: INE404A01024
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: AEGIS LOGISTICS LIMITED
+      fyers_symbol: NSE:AEGISLOG-EQ
+      symbol: AEGISLOG
+      isin_code: INE208C01025
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: AEGIS VOPAK TERMINALS LTD
+      fyers_symbol: NSE:AEGISVOPAK-EQ
+      symbol: AEGISVOPAK
+      isin_code: INE0INX01018
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: AFCONS INFRASTRUCTURE LTD
+      fyers_symbol: NSE:AFCONS-EQ
+      symbol: AFCONS
+      isin_code: INE101I01011
+      sector: Construction
+      market_cap: Large Cap
+    - name: AFFLE 3I LIMITED
+      fyers_symbol: NSE:AFFLE-EQ
+      symbol: AFFLE
+      isin_code: INE00WC01027
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: AJANTA PHARMA LIMITED
+      fyers_symbol: NSE:AJANTPHARM-EQ
+      symbol: AJANTPHARM
+      isin_code: INE031B01049
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: AKUMS DRUGS AND PHARMA L
+      fyers_symbol: NSE:AKUMS-EQ
+      symbol: AKUMS
+      isin_code: INE09XN01023
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: AKZO NOBEL INDIA LIMITED
+      fyers_symbol: NSE:AKZOINDIA-EQ
+      symbol: AKZOINDIA
+      isin_code: INE133A01011
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: ALEMBIC PHARMA LTD
+      fyers_symbol: NSE:APLLTD-EQ
+      symbol: APLLTD
+      isin_code: INE901L01018
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ALKEM LABORATORIES LTD.
+      fyers_symbol: NSE:ALKEM-EQ
+      symbol: ALKEM
+      isin_code: INE540L01014
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ALKYL AMINES CHEM. LTD
+      fyers_symbol: NSE:ALKYLAMINE-EQ
+      symbol: ALKYLAMINE
+      isin_code: INE150B01039
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: ALOK INDUSTRIES LIMITED
+      fyers_symbol: NSE:ALOKINDS-EQ
+      symbol: ALOKINDS
+      isin_code: INE270A01029
+      sector: Textiles
+      market_cap: Large Cap
+    - name: AMARA RAJA ENERGY MOB LTD
+      fyers_symbol: NSE:ARE&M-EQ
+      symbol: ARE&M
+      isin_code: INE885A01032
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: AMBER ENTERPRISES (I) LTD
+      fyers_symbol: NSE:AMBER-EQ
+      symbol: AMBER
+      isin_code: INE371P01015
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: AMBUJA CEMENTS LTD
+      fyers_symbol: NSE:AMBUJACEM-EQ
+      symbol: AMBUJACEM
+      isin_code: INE079A01024
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: ANAND RATHI WEALTH LTD
+      fyers_symbol: NSE:ANANDRATHI-EQ
+      symbol: ANANDRATHI
+      isin_code: INE463V01026
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ANANT RAJ LIMITED
+      fyers_symbol: NSE:ANANTRAJ-EQ
+      symbol: ANANTRAJ
+      isin_code: INE242C01024
+      sector: Realty
+      market_cap: Large Cap
+    - name: ANGEL ONE LIMITED
+      fyers_symbol: NSE:ANGELONE-EQ
+      symbol: ANGELONE
+      isin_code: INE732I01013
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: APAR INDUSTRIES LTD.
+      fyers_symbol: NSE:APARINDS-EQ
+      symbol: APARINDS
+      isin_code: INE372A01015
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: APOLLO HOSPITALS ENTER. L
+      fyers_symbol: NSE:APOLLOHOSP-EQ
+      symbol: APOLLOHOSP
+      isin_code: INE437A01024
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: APOLLO TYRES LTD
+      fyers_symbol: NSE:APOLLOTYRE-EQ
+      symbol: APOLLOTYRE
+      isin_code: INE438A01022
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: APTUS VALUE HSG FIN I LTD
+      fyers_symbol: NSE:APTUS-EQ
+      symbol: APTUS
+      isin_code: INE852O01025
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ASAHI INDIA GLASS LIMITED
+      fyers_symbol: NSE:ASAHIINDIA-EQ
+      symbol: ASAHIINDIA
+      isin_code: INE439A01020
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: ASHOK LEYLAND LTD
+      fyers_symbol: NSE:ASHOKLEY-EQ
+      symbol: ASHOKLEY
+      isin_code: INE208A01029
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: ASIAN PAINTS LIMITED
+      fyers_symbol: NSE:ASIANPAINT-EQ
+      symbol: ASIANPAINT
+      isin_code: INE021A01026
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: ASTER DM HEALTHCARE LTD.
+      fyers_symbol: NSE:ASTERDM-EQ
+      symbol: ASTERDM
+      isin_code: INE914M01019
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ASTRAZENECA PHARMA IND LT
+      fyers_symbol: NSE:ASTRAZEN-EQ
+      symbol: ASTRAZEN
+      isin_code: INE203A01020
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ASTRAL LIMITED
+      fyers_symbol: NSE:ASTRAL-EQ
+      symbol: ASTRAL
+      isin_code: INE006I01046
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: ATHER ENERGY LIMITED
+      fyers_symbol: NSE:ATHERENERG-EQ
+      symbol: ATHERENERG
+      isin_code: INE0LEZ01016
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: ATUL LTD
+      fyers_symbol: NSE:ATUL-EQ
+      symbol: ATUL
+      isin_code: INE100A01010
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: AUROBINDO PHARMA LTD
+      fyers_symbol: NSE:AUROPHARMA-EQ
+      symbol: AUROPHARMA
+      isin_code: INE406A01037
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: AUTHUM INVEST & INFRA LTD
+      fyers_symbol: NSE:AIIL-EQ
+      symbol: AIIL
+      isin_code: INE206F01022
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: AVENUE SUPERMARTS LIMITED
+      fyers_symbol: NSE:DMART-EQ
+      symbol: DMART
+      isin_code: INE192R01011
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: AXIS BANK LIMITED
+      fyers_symbol: NSE:AXISBANK-EQ
+      symbol: AXISBANK
+      isin_code: INE238A01034
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BASF INDIA LTD
+      fyers_symbol: NSE:BASF-EQ
+      symbol: BASF
+      isin_code: INE373A01013
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: BEML LIMITED
+      fyers_symbol: NSE:BEML-EQ
+      symbol: BEML
+      isin_code: INE258A01024
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: BLS INTL SERVS LTD
+      fyers_symbol: NSE:BLS-EQ
+      symbol: BLS
+      isin_code: INE153T01027
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: BSE LIMITED
+      fyers_symbol: NSE:BSE-EQ
+      symbol: BSE
+      isin_code: INE118H01025
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BAJAJ AUTO LIMITED
+      fyers_symbol: NSE:BAJAJ-AUTO-EQ
+      symbol: BAJAJ-AUTO
+      isin_code: INE917I01010
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: BAJAJ FINANCE LIMITED
+      fyers_symbol: NSE:BAJFINANCE-EQ
+      symbol: BAJFINANCE
+      isin_code: INE296A01032
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BAJAJ FINSERV LTD.
+      fyers_symbol: NSE:BAJAJFINSV-EQ
+      symbol: BAJAJFINSV
+      isin_code: INE918I01026
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BAJAJ HOLDINGS & INVS LTD
+      fyers_symbol: NSE:BAJAJHLDNG-EQ
+      symbol: BAJAJHLDNG
+      isin_code: INE118A01012
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BAJAJ HOUSING FINANCE LTD
+      fyers_symbol: NSE:BAJAJHFL-EQ
+      symbol: BAJAJHFL
+      isin_code: INE377Y01014
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BALKRISHNA IND. LTD
+      fyers_symbol: NSE:BALKRISIND-EQ
+      symbol: BALKRISIND
+      isin_code: INE787D01026
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: BALRAMPUR CHINI MILLS LTD
+      fyers_symbol: NSE:BALRAMCHIN-EQ
+      symbol: BALRAMCHIN
+      isin_code: INE119A01028
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: BANDHAN BANK LIMITED
+      fyers_symbol: NSE:BANDHANBNK-EQ
+      symbol: BANDHANBNK
+      isin_code: INE545U01014
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BANK OF BARODA
+      fyers_symbol: NSE:BANKBARODA-EQ
+      symbol: BANKBARODA
+      isin_code: INE028A01039
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BANK OF INDIA
+      fyers_symbol: NSE:BANKINDIA-EQ
+      symbol: BANKINDIA
+      isin_code: INE084A01016
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BANK OF MAHARASHTRA
+      fyers_symbol: NSE:MAHABANK-EQ
+      symbol: MAHABANK
+      isin_code: INE457A01014
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: BATA INDIA LTD
+      fyers_symbol: NSE:BATAINDIA-EQ
+      symbol: BATAINDIA
+      isin_code: INE176A01028
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: BAYER CROPSCIENCE LTD
+      fyers_symbol: NSE:BAYERCROP-EQ
+      symbol: BAYERCROP
+      isin_code: INE462A01022
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: BERGER PAINTS (I) LTD
+      fyers_symbol: NSE:BERGEPAINT-EQ
+      symbol: BERGEPAINT
+      isin_code: INE463A01038
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: BHARAT DYNAMICS LIMITED
+      fyers_symbol: NSE:BDL-EQ
+      symbol: BDL
+      isin_code: INE171Z01026
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: BHARAT ELECTRONICS LTD
+      fyers_symbol: NSE:BEL-EQ
+      symbol: BEL
+      isin_code: INE263A01024
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: BHARAT FORGE LTD
+      fyers_symbol: NSE:BHARATFORG-EQ
+      symbol: BHARATFORG
+      isin_code: INE465A01025
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: BHEL
+      fyers_symbol: NSE:BHEL-EQ
+      symbol: BHEL
+      isin_code: INE257A01026
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: BHARAT PETROLEUM CORP  LT
+      fyers_symbol: NSE:BPCL-EQ
+      symbol: BPCL
+      isin_code: INE029A01011
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: BHARTI AIRTEL LIMITED
+      fyers_symbol: NSE:BHARTIARTL-EQ
+      symbol: BHARTIARTL
+      isin_code: INE397D01024
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: BHARTI HEXACOM LIMITED
+      fyers_symbol: NSE:BHARTIHEXA-EQ
+      symbol: BHARTIHEXA
+      isin_code: INE343G01021
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: BIKAJI FOODS INTERN LTD
+      fyers_symbol: NSE:BIKAJI-EQ
+      symbol: BIKAJI
+      isin_code: INE00E101023
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: BIOCON LIMITED.
+      fyers_symbol: NSE:BIOCON-EQ
+      symbol: BIOCON
+      isin_code: INE376G01013
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: BIRLASOFT LIMITED
+      fyers_symbol: NSE:BSOFT-EQ
+      symbol: BSOFT
+      isin_code: INE836A01035
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: BLUE DART EXPRESS LTD
+      fyers_symbol: NSE:BLUEDART-EQ
+      symbol: BLUEDART
+      isin_code: INE233B01017
+      sector: Services
+      market_cap: Large Cap
+    - name: BLUE JET HEALTHCARE LTD
+      fyers_symbol: NSE:BLUEJET-EQ
+      symbol: BLUEJET
+      isin_code: INE0KBH01020
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: BLUE STAR LIMITED
+      fyers_symbol: NSE:BLUESTARCO-EQ
+      symbol: BLUESTARCO
+      isin_code: INE472A01039
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: BOMBAY BURMAH TRADING COR
+      fyers_symbol: NSE:BBTC-EQ
+      symbol: BBTC
+      isin_code: INE050A01025
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: BOSCH LIMITED
+      fyers_symbol: NSE:BOSCHLTD-EQ
+      symbol: BOSCHLTD
+      isin_code: INE323A01026
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: BRAINBEES SOLUTIONS LTD
+      fyers_symbol: NSE:FIRSTCRY-EQ
+      symbol: FIRSTCRY
+      isin_code: INE02RE01045
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: BRIGADE ENTER. LTD
+      fyers_symbol: NSE:BRIGADE-EQ
+      symbol: BRIGADE
+      isin_code: INE791I01019
+      sector: Realty
+      market_cap: Large Cap
+    - name: BRITANNIA INDUSTRIES LTD
+      fyers_symbol: NSE:BRITANNIA-EQ
+      symbol: BRITANNIA
+      isin_code: INE216A01030
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: C.E. INFO SYSTEMS LIMITED
+      fyers_symbol: NSE:MAPMYINDIA-EQ
+      symbol: MAPMYINDIA
+      isin_code: INE0BV301023
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: CCL PRODUCTS (I) LTD
+      fyers_symbol: NSE:CCL-EQ
+      symbol: CCL
+      isin_code: INE421D01022
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: CESC LTD
+      fyers_symbol: NSE:CESC-EQ
+      symbol: CESC
+      isin_code: INE486A01021
+      sector: Power
+      market_cap: Large Cap
+    - name: CG POWER AND IND SOL LTD
+      fyers_symbol: NSE:CGPOWER-EQ
+      symbol: CGPOWER
+      isin_code: INE067A01029
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: CRISIL LTD
+      fyers_symbol: NSE:CRISIL-EQ
+      symbol: CRISIL
+      isin_code: INE007A01025
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CAMPUS ACTIVEWEAR LIMITED
+      fyers_symbol: NSE:CAMPUS-EQ
+      symbol: CAMPUS
+      isin_code: INE278Y01022
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: CAN FIN HOMES LTD
+      fyers_symbol: NSE:CANFINHOME-EQ
+      symbol: CANFINHOME
+      isin_code: INE477A01020
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CANARA BANK
+      fyers_symbol: NSE:CANBK-EQ
+      symbol: CANBK
+      isin_code: INE476A01022
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CAPLIN POINT LAB LTD.
+      fyers_symbol: NSE:CAPLIPOINT-EQ
+      symbol: CAPLIPOINT
+      isin_code: INE475E01026
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: CAPRI GLOBAL CAPITAL LTD
+      fyers_symbol: NSE:CGCL-EQ
+      symbol: CGCL
+      isin_code: INE180C01042
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CARBORUNDUM UNIVERSAL LTD
+      fyers_symbol: NSE:CARBORUNIV-EQ
+      symbol: CARBORUNIV
+      isin_code: INE120A01034
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: CASTROL INDIA LIMITED
+      fyers_symbol: NSE:CASTROLIND-EQ
+      symbol: CASTROLIND
+      isin_code: INE172A01027
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: CEAT LIMITED
+      fyers_symbol: NSE:CEATLTD-EQ
+      symbol: CEATLTD
+      isin_code: INE482A01020
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: CENTRAL BANK OF INDIA
+      fyers_symbol: NSE:CENTRALBK-EQ
+      symbol: CENTRALBK
+      isin_code: INE483A01010
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CENTRAL DEPO SER (I) LTD
+      fyers_symbol: NSE:CDSL-EQ
+      symbol: CDSL
+      isin_code: INE736A01011
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CENTURY PLYBOARDS (I) LTD
+      fyers_symbol: NSE:CENTURYPLY-EQ
+      symbol: CENTURYPLY
+      isin_code: INE348B01021
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: CERA SANITARYWARE LTD
+      fyers_symbol: NSE:CERA-EQ
+      symbol: CERA
+      isin_code: INE739E01017
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: CHALET HOTELS LIMITED
+      fyers_symbol: NSE:CHALET-EQ
+      symbol: CHALET
+      isin_code: INE427F01016
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: CHAMBAL FERTILIZERS LTD
+      fyers_symbol: NSE:CHAMBLFERT-EQ
+      symbol: CHAMBLFERT
+      isin_code: INE085A01013
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: CHENNAI PETROLEUM CORP LT
+      fyers_symbol: NSE:CHENNPETRO-EQ
+      symbol: CHENNPETRO
+      isin_code: INE178A01016
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: CHOICE INTERNATIONAL LTD
+      fyers_symbol: NSE:CHOICEIN-EQ
+      symbol: CHOICEIN
+      isin_code: INE102B01014
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CHOLAMANDALAM FIN HOL LTD
+      fyers_symbol: NSE:CHOLAHLDNG-EQ
+      symbol: CHOLAHLDNG
+      isin_code: INE149A01033
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CHOLAMANDALAM IN & FIN CO
+      fyers_symbol: NSE:CHOLAFIN-EQ
+      symbol: CHOLAFIN
+      isin_code: INE121A01024
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CIPLA LTD
+      fyers_symbol: NSE:CIPLA-EQ
+      symbol: CIPLA
+      isin_code: INE059A01026
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: CITY UNION BANK LTD
+      fyers_symbol: NSE:CUB-EQ
+      symbol: CUB
+      isin_code: INE491A01021
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CLEAN SCIENCE & TECH LTD
+      fyers_symbol: NSE:CLEAN-EQ
+      symbol: CLEAN
+      isin_code: INE227W01023
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: COAL INDIA LTD
+      fyers_symbol: NSE:COALINDIA-EQ
+      symbol: COALINDIA
+      isin_code: INE522F01014
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: COCHIN SHIPYARD LIMITED
+      fyers_symbol: NSE:COCHINSHIP-EQ
+      symbol: COCHINSHIP
+      isin_code: INE704P01025
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: COFORGE LIMITED
+      fyers_symbol: NSE:COFORGE-EQ
+      symbol: COFORGE
+      isin_code: INE591G01025
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: COHANCE LIFESCIENCES LTD
+      fyers_symbol: NSE:COHANCE-EQ
+      symbol: COHANCE
+      isin_code: INE03QK01018
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: COLGATE PALMOLIVE LTD.
+      fyers_symbol: NSE:COLPAL-EQ
+      symbol: COLPAL
+      isin_code: INE259A01022
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: COMPUTER AGE MNGT SER LTD
+      fyers_symbol: NSE:CAMS-EQ
+      symbol: CAMS
+      isin_code: INE596I01012
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CONCORD BIOTECH LIMITED
+      fyers_symbol: NSE:CONCORDBIO-EQ
+      symbol: CONCORDBIO
+      isin_code: INE338H01029
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: CONTAINER CORP OF IND LTD
+      fyers_symbol: NSE:CONCOR-EQ
+      symbol: CONCOR
+      isin_code: INE111A01025
+      sector: Services
+      market_cap: Large Cap
+    - name: COROMANDEL INTERNTL. LTD
+      fyers_symbol: NSE:COROMANDEL-EQ
+      symbol: COROMANDEL
+      isin_code: INE169A01031
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: CRAFTSMAN AUTOMATION LTD
+      fyers_symbol: NSE:CRAFTSMAN-EQ
+      symbol: CRAFTSMAN
+      isin_code: INE00LO01017
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: CREDITACCESS GRAMEEN LTD
+      fyers_symbol: NSE:CREDITACC-EQ
+      symbol: CREDITACC
+      isin_code: INE741K01010
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: CROMPT GREA CON ELEC LTD
+      fyers_symbol: NSE:CROMPTON-EQ
+      symbol: CROMPTON
+      isin_code: INE299U01018
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: CUMMINS INDIA LTD
+      fyers_symbol: NSE:CUMMINSIND-EQ
+      symbol: CUMMINSIND
+      isin_code: INE298A01020
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: CYIENT LIMITED
+      fyers_symbol: NSE:CYIENT-EQ
+      symbol: CYIENT
+      isin_code: INE136B01020
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: DCM SHRIRAM LIMITED
+      fyers_symbol: NSE:DCMSHRIRAM-EQ
+      symbol: DCMSHRIRAM
+      isin_code: INE499A01024
+      sector: Diversified
+      market_cap: Large Cap
+    - name: DLF LIMITED
+      fyers_symbol: NSE:DLF-EQ
+      symbol: DLF
+      isin_code: INE271C01023
+      sector: Realty
+      market_cap: Large Cap
+    - name: DOMS INDUSTRIES LIMITED
+      fyers_symbol: NSE:DOMS-EQ
+      symbol: DOMS
+      isin_code: INE321T01012
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: DABUR INDIA LTD
+      fyers_symbol: NSE:DABUR-EQ
+      symbol: DABUR
+      isin_code: INE016A01026
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: DALMIA BHARAT LIMITED
+      fyers_symbol: NSE:DALBHARAT-EQ
+      symbol: DALBHARAT
+      isin_code: INE00R701025
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: DATA PATTERNS INDIA LTD
+      fyers_symbol: NSE:DATAPATTNS-EQ
+      symbol: DATAPATTNS
+      isin_code: INE0IX101010
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: DEEPAK FERTILIZERS & PETR
+      fyers_symbol: NSE:DEEPAKFERT-EQ
+      symbol: DEEPAKFERT
+      isin_code: INE501A01019
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: DEEPAK NITRITE LTD
+      fyers_symbol: NSE:DEEPAKNTR-EQ
+      symbol: DEEPAKNTR
+      isin_code: INE288B01029
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: DELHIVERY LIMITED
+      fyers_symbol: NSE:DELHIVERY-EQ
+      symbol: DELHIVERY
+      isin_code: INE148O01028
+      sector: Services
+      market_cap: Large Cap
+    - name: DEVYANI INTERNATIONAL LTD
+      fyers_symbol: NSE:DEVYANI-EQ
+      symbol: DEVYANI
+      isin_code: INE872J01023
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: DIVI S LABORATORIES LTD
+      fyers_symbol: NSE:DIVISLAB-EQ
+      symbol: DIVISLAB
+      isin_code: INE361B01024
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: DIXON TECHNO (INDIA) LTD
+      fyers_symbol: NSE:DIXON-EQ
+      symbol: DIXON
+      isin_code: INE935N01020
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: DR AGARWALS HEALTH CARE L
+      fyers_symbol: NSE:AGARWALEYE-EQ
+      symbol: AGARWALEYE
+      isin_code: INE943P01029
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: DR. LAL PATH LABS LTD.
+      fyers_symbol: NSE:LALPATHLAB-EQ
+      symbol: LALPATHLAB
+      isin_code: INE600L01024
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: DR. REDDY S LABORATORIES
+      fyers_symbol: NSE:DRREDDY-EQ
+      symbol: DRREDDY
+      isin_code: INE089A01031
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: nan
+      fyers_symbol: nan
+      symbol: DUMMYSKFIN
+      isin_code: DUM640A01023
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: nan
+      fyers_symbol: nan
+      symbol: DUMMYTATAM
+      isin_code: DUM155A01022
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: nan
+      fyers_symbol: nan
+      symbol: DUMMYDBRLT
+      isin_code: DUM879I01012
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: EID PARRY INDIA LTD
+      fyers_symbol: NSE:EIDPARRY-EQ
+      symbol: EIDPARRY
+      isin_code: INE126A01031
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: EIH LIMITED
+      fyers_symbol: NSE:EIHOTEL-EQ
+      symbol: EIHOTEL
+      isin_code: INE230A01023
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: EICHER MOTORS LTD
+      fyers_symbol: NSE:EICHERMOT-EQ
+      symbol: EICHERMOT
+      isin_code: INE066A01021
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: ELECON ENG. CO. LTD
+      fyers_symbol: NSE:ELECON-EQ
+      symbol: ELECON
+      isin_code: INE205B01031
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: ELGI EQUIPMENTS LTD
+      fyers_symbol: NSE:ELGIEQUIP-EQ
+      symbol: ELGIEQUIP
+      isin_code: INE285A01027
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: EMAMI LIMITED
+      fyers_symbol: NSE:EMAMILTD-EQ
+      symbol: EMAMILTD
+      isin_code: INE548C01032
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: EMCURE PHARMACEUTICALS L
+      fyers_symbol: NSE:EMCURE-EQ
+      symbol: EMCURE
+      isin_code: INE168P01015
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ENDURANCE TECHNO. LTD.
+      fyers_symbol: NSE:ENDURANCE-EQ
+      symbol: ENDURANCE
+      isin_code: INE913H01037
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: ENGINEERS INDIA LTD
+      fyers_symbol: NSE:ENGINERSIN-EQ
+      symbol: ENGINERSIN
+      isin_code: INE510A01028
+      sector: Construction
+      market_cap: Large Cap
+    - name: ERIS LIFESCIENCES LIMITED
+      fyers_symbol: NSE:ERIS-EQ
+      symbol: ERIS
+      isin_code: INE406M01024
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ESCORTS KUBOTA LIMITED
+      fyers_symbol: NSE:ESCORTS-EQ
+      symbol: ESCORTS
+      isin_code: INE042A01014
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: ETERNAL LIMITED
+      fyers_symbol: NSE:ETERNAL-EQ
+      symbol: ETERNAL
+      isin_code: INE758T01015
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: EXIDE INDUSTRIES LTD
+      fyers_symbol: NSE:EXIDEIND-EQ
+      symbol: EXIDEIND
+      isin_code: INE302A01020
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: FSN E COMMERCE VENTURES
+      fyers_symbol: NSE:NYKAA-EQ
+      symbol: NYKAA
+      isin_code: INE388Y01029
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: FEDERAL BANK LTD
+      fyers_symbol: NSE:FEDERALBNK-EQ
+      symbol: FEDERALBNK
+      isin_code: INE171A01029
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: FACT LTD
+      fyers_symbol: NSE:FACT-EQ
+      symbol: FACT
+      isin_code: INE188A01015
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: FINOLEX CABLES LTD
+      fyers_symbol: NSE:FINCABLES-EQ
+      symbol: FINCABLES
+      isin_code: INE235A01022
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: FINOLEX INDUSTRIES LTD
+      fyers_symbol: NSE:FINPIPE-EQ
+      symbol: FINPIPE
+      isin_code: INE183A01024
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: FIRSTSOURCE SOLU. LTD.
+      fyers_symbol: NSE:FSL-EQ
+      symbol: FSL
+      isin_code: INE684F01012
+      sector: Services
+      market_cap: Large Cap
+    - name: FIVE-STAR BUS FIN LTD
+      fyers_symbol: NSE:FIVESTAR-EQ
+      symbol: FIVESTAR
+      isin_code: INE128S01021
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: FORCE MOTORS LIMITED
+      fyers_symbol: NSE:FORCEMOT-EQ
+      symbol: FORCEMOT
+      isin_code: INE451A01017
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: FORTIS HEALTHCARE LTD
+      fyers_symbol: NSE:FORTIS-EQ
+      symbol: FORTIS
+      isin_code: INE061F01013
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: GAIL (INDIA) LTD
+      fyers_symbol: NSE:GAIL-EQ
+      symbol: GAIL
+      isin_code: INE129A01019
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: GE VERNOVA T&D INDIA LTD
+      fyers_symbol: NSE:GVT&D-EQ
+      symbol: GVT&D
+      isin_code: INE200A01026
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: GMR AIRPORTS LIMITED
+      fyers_symbol: NSE:GMRAIRPORT-EQ
+      symbol: GMRAIRPORT
+      isin_code: INE776C01039
+      sector: Services
+      market_cap: Large Cap
+    - name: GARDEN REACH SHIP&ENG LTD
+      fyers_symbol: NSE:GRSE-EQ
+      symbol: GRSE
+      isin_code: INE382Z01011
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: GENERAL INS CORP OF INDIA
+      fyers_symbol: NSE:GICRE-EQ
+      symbol: GICRE
+      isin_code: INE481Y01014
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: GILLETTE INDIA LTD
+      fyers_symbol: NSE:GILLETTE-EQ
+      symbol: GILLETTE
+      isin_code: INE322A01010
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: GLAND PHARMA LIMITED
+      fyers_symbol: NSE:GLAND-EQ
+      symbol: GLAND
+      isin_code: INE068V01023
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: GLAXOSMITHKLINE PHARMA LT
+      fyers_symbol: NSE:GLAXO-EQ
+      symbol: GLAXO
+      isin_code: INE159A01016
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: GLENMARK PHARMACEUTICALS
+      fyers_symbol: NSE:GLENMARK-EQ
+      symbol: GLENMARK
+      isin_code: INE935A01035
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: GLOBAL HEALTH LIMITED
+      fyers_symbol: NSE:MEDANTA-EQ
+      symbol: MEDANTA
+      isin_code: INE474Q01031
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: GO DIGIT GENERAL INS LTD
+      fyers_symbol: NSE:GODIGIT-EQ
+      symbol: GODIGIT
+      isin_code: INE03JT01014
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: GODAWARI POW & ISP LTD
+      fyers_symbol: NSE:GPIL-EQ
+      symbol: GPIL
+      isin_code: INE177H01039
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: GODFREY PHILLIPS INDIA LT
+      fyers_symbol: NSE:GODFRYPHLP-EQ
+      symbol: GODFRYPHLP
+      isin_code: INE260B01028
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: GODREJ AGROVET LIMITED
+      fyers_symbol: NSE:GODREJAGRO-EQ
+      symbol: GODREJAGRO
+      isin_code: INE850D01014
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: GODREJ CONSUMER PRODUCTS
+      fyers_symbol: NSE:GODREJCP-EQ
+      symbol: GODREJCP
+      isin_code: INE102D01028
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: GODREJ INDUSTRIES LTD
+      fyers_symbol: NSE:GODREJIND-EQ
+      symbol: GODREJIND
+      isin_code: INE233A01035
+      sector: Diversified
+      market_cap: Large Cap
+    - name: GODREJ PROPERTIES LTD
+      fyers_symbol: NSE:GODREJPROP-EQ
+      symbol: GODREJPROP
+      isin_code: INE484J01027
+      sector: Realty
+      market_cap: Large Cap
+    - name: GRANULES INDIA LIMITED
+      fyers_symbol: NSE:GRANULES-EQ
+      symbol: GRANULES
+      isin_code: INE101D01020
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: GRAPHITE INDIA LTD
+      fyers_symbol: NSE:GRAPHITE-EQ
+      symbol: GRAPHITE
+      isin_code: INE371A01025
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: GRASIM INDUSTRIES LTD
+      fyers_symbol: NSE:GRASIM-EQ
+      symbol: GRASIM
+      isin_code: INE047A01021
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: GRAVITA INDIA LIMITED
+      fyers_symbol: NSE:GRAVITA-EQ
+      symbol: GRAVITA
+      isin_code: INE024L01027
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: THE GE SHPG.LTD
+      fyers_symbol: NSE:GESHIP-EQ
+      symbol: GESHIP
+      isin_code: INE017A01032
+      sector: Services
+      market_cap: Large Cap
+    - name: GUJARAT FLUOROCHEM LTD
+      fyers_symbol: NSE:FLUOROCHEM-EQ
+      symbol: FLUOROCHEM
+      isin_code: INE09N301011
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: GUJARAT GAS LIMITED
+      fyers_symbol: NSE:GUJGASLTD-EQ
+      symbol: GUJGASLTD
+      isin_code: INE844O01030
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: GUJARAT MINERAL DEV CORP
+      fyers_symbol: NSE:GMDCLTD-EQ
+      symbol: GMDCLTD
+      isin_code: INE131A01031
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: GUJARAT STATE PETRO LTD
+      fyers_symbol: NSE:GSPL-EQ
+      symbol: GSPL
+      isin_code: INE246F01010
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: HEG LTD
+      fyers_symbol: NSE:HEG-EQ
+      symbol: HEG
+      isin_code: INE545A01024
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: HBL ENGINEERING LTD
+      fyers_symbol: NSE:HBLENGINE-EQ
+      symbol: HBLENGINE
+      isin_code: INE292B01021
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: HCL TECHNOLOGIES LTD
+      fyers_symbol: NSE:HCLTECH-EQ
+      symbol: HCLTECH
+      isin_code: INE860A01027
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: HDFC AMC LIMITED
+      fyers_symbol: NSE:HDFCAMC-EQ
+      symbol: HDFCAMC
+      isin_code: INE127D01025
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: HDFC BANK LTD
+      fyers_symbol: NSE:HDFCBANK-EQ
+      symbol: HDFCBANK
+      isin_code: INE040A01034
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: HDFC LIFE INS CO LTD
+      fyers_symbol: NSE:HDFCLIFE-EQ
+      symbol: HDFCLIFE
+      isin_code: INE795G01014
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: HFCL LIMITED
+      fyers_symbol: NSE:HFCL-EQ
+      symbol: HFCL
+      isin_code: INE548A01028
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: HAPPIEST MINDS TECHNO LTD
+      fyers_symbol: NSE:HAPPSTMNDS-EQ
+      symbol: HAPPSTMNDS
+      isin_code: INE419U01012
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: HAVELLS INDIA LIMITED
+      fyers_symbol: NSE:HAVELLS-EQ
+      symbol: HAVELLS
+      isin_code: INE176B01034
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: HERO MOTOCORP LIMITED
+      fyers_symbol: NSE:HEROMOTOCO-EQ
+      symbol: HEROMOTOCO
+      isin_code: INE158A01026
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: HEXAWARE TECHNOLOGIES LTD
+      fyers_symbol: NSE:HEXT-EQ
+      symbol: HEXT
+      isin_code: INE093A01041
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: HIMADRI SPECIALITY CHEM L
+      fyers_symbol: NSE:HSCL-EQ
+      symbol: HSCL
+      isin_code: INE019C01026
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: HINDALCO  INDUSTRIES  LTD
+      fyers_symbol: NSE:HINDALCO-EQ
+      symbol: HINDALCO
+      isin_code: INE038A01020
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: HINDUSTAN AERONAUTICS LTD
+      fyers_symbol: NSE:HAL-EQ
+      symbol: HAL
+      isin_code: INE066F01020
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: HINDUSTAN COPPER LTD
+      fyers_symbol: NSE:HINDCOPPER-EQ
+      symbol: HINDCOPPER
+      isin_code: INE531E01026
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: HINDUSTAN PETROLEUM CORP
+      fyers_symbol: NSE:HINDPETRO-EQ
+      symbol: HINDPETRO
+      isin_code: INE094A01015
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: HINDUSTAN UNILEVER LTD.
+      fyers_symbol: NSE:HINDUNILVR-EQ
+      symbol: HINDUNILVR
+      isin_code: INE030A01027
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: HINDUSTAN ZINC LIMITED
+      fyers_symbol: NSE:HINDZINC-EQ
+      symbol: HINDZINC
+      isin_code: INE267A01025
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: HITACHI ENERGY INDIA LTD
+      fyers_symbol: NSE:POWERINDIA-EQ
+      symbol: POWERINDIA
+      isin_code: INE07Y701011
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: HOME FIRST FIN CO IND LTD
+      fyers_symbol: NSE:HOMEFIRST-EQ
+      symbol: HOMEFIRST
+      isin_code: INE481N01025
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: HONASA CONSUMER LIMITED
+      fyers_symbol: NSE:HONASA-EQ
+      symbol: HONASA
+      isin_code: INE0J5401028
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: HONEYWELL AUTOMATION IND
+      fyers_symbol: NSE:HONAUT-EQ
+      symbol: HONAUT
+      isin_code: INE671A01010
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: HSG & URBAN DEV CORPN LTD
+      fyers_symbol: NSE:HUDCO-EQ
+      symbol: HUDCO
+      isin_code: INE031A01017
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: HYUNDAI MOTOR INDIA LTD
+      fyers_symbol: NSE:HYUNDAI-EQ
+      symbol: HYUNDAI
+      isin_code: INE0V6F01027
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: ICICI BANK LTD.
+      fyers_symbol: NSE:ICICIBANK-EQ
+      symbol: ICICIBANK
+      isin_code: INE090A01021
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ICICI LOMBARD GIC LIMITED
+      fyers_symbol: NSE:ICICIGI-EQ
+      symbol: ICICIGI
+      isin_code: INE765G01017
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ICICI PRU LIFE INS CO LTD
+      fyers_symbol: NSE:ICICIPRULI-EQ
+      symbol: ICICIPRULI
+      isin_code: INE726G01019
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: IDBI BANK LIMITED
+      fyers_symbol: NSE:IDBI-EQ
+      symbol: IDBI
+      isin_code: INE008A01015
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: IDFC FIRST BANK LIMITED
+      fyers_symbol: NSE:IDFCFIRSTB-EQ
+      symbol: IDFCFIRSTB
+      isin_code: INE092T01019
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: IFCI LTD
+      fyers_symbol: NSE:IFCI-EQ
+      symbol: IFCI
+      isin_code: INE039A01010
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: IIFL FINANCE LIMITED
+      fyers_symbol: NSE:IIFL-EQ
+      symbol: IIFL
+      isin_code: INE530B01024
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: INOX INDIA LIMITED
+      fyers_symbol: NSE:INOXINDIA-EQ
+      symbol: INOXINDIA
+      isin_code: INE616N01034
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: IRB INFRA DEV LTD.
+      fyers_symbol: NSE:IRB-EQ
+      symbol: IRB
+      isin_code: INE821I01022
+      sector: Construction
+      market_cap: Large Cap
+    - name: IRCON INTERNATIONAL LTD
+      fyers_symbol: NSE:IRCON-EQ
+      symbol: IRCON
+      isin_code: INE962Y01021
+      sector: Construction
+      market_cap: Large Cap
+    - name: ITC HOTELS LIMITED
+      fyers_symbol: NSE:ITCHOTELS-EQ
+      symbol: ITCHOTELS
+      isin_code: INE379A01028
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: ITC LTD
+      fyers_symbol: NSE:ITC-EQ
+      symbol: ITC
+      isin_code: INE154A01025
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: ITI LTD
+      fyers_symbol: NSE:ITI-EQ
+      symbol: ITI
+      isin_code: INE248A01017
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: INDEGENE LIMITED
+      fyers_symbol: NSE:INDGN-EQ
+      symbol: INDGN
+      isin_code: INE065X01017
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: THE INDIA CEMENTS LIMITED
+      fyers_symbol: NSE:INDIACEM-EQ
+      symbol: INDIACEM
+      isin_code: INE383A01012
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: INDIAMART INTERMESH LTD
+      fyers_symbol: NSE:INDIAMART-EQ
+      symbol: INDIAMART
+      isin_code: INE933S01016
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: INDIAN BANK
+      fyers_symbol: NSE:INDIANB-EQ
+      symbol: INDIANB
+      isin_code: INE562A01011
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: INDIAN ENERGY EXC LTD
+      fyers_symbol: NSE:IEX-EQ
+      symbol: IEX
+      isin_code: INE022Q01020
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: THE INDIAN HOTELS CO. LTD
+      fyers_symbol: NSE:INDHOTEL-EQ
+      symbol: INDHOTEL
+      isin_code: INE053A01029
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: INDIAN OIL CORP LTD
+      fyers_symbol: NSE:IOC-EQ
+      symbol: IOC
+      isin_code: INE242A01010
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: INDIAN OVERSEAS BANK
+      fyers_symbol: NSE:IOB-EQ
+      symbol: IOB
+      isin_code: INE565A01014
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: INDIAN RAIL TOUR CORP LTD
+      fyers_symbol: NSE:IRCTC-EQ
+      symbol: IRCTC
+      isin_code: INE335Y01020
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: INDIAN RAILWAY FIN CORP L
+      fyers_symbol: NSE:IRFC-EQ
+      symbol: IRFC
+      isin_code: INE053F01010
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: INDIAN RENEWABLE ENERGY
+      fyers_symbol: NSE:IREDA-EQ
+      symbol: IREDA
+      isin_code: INE202E01016
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: INDRAPRASTHA GAS LTD
+      fyers_symbol: NSE:IGL-EQ
+      symbol: IGL
+      isin_code: INE203G01027
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: INDUS TOWERS LIMITED
+      fyers_symbol: NSE:INDUSTOWER-EQ
+      symbol: INDUSTOWER
+      isin_code: INE121J01017
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: INDUSIND BANK LIMITED
+      fyers_symbol: NSE:INDUSINDBK-EQ
+      symbol: INDUSINDBK
+      isin_code: INE095A01012
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: INFO EDGE (I) LTD
+      fyers_symbol: NSE:NAUKRI-EQ
+      symbol: NAUKRI
+      isin_code: INE663F01032
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: INFOSYS LIMITED
+      fyers_symbol: NSE:INFY-EQ
+      symbol: INFY
+      isin_code: INE009A01021
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: INOX WIND LIMITED
+      fyers_symbol: NSE:INOXWIND-EQ
+      symbol: INOXWIND
+      isin_code: INE066P01011
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: INTELLECT DESIGN ARENA
+      fyers_symbol: NSE:INTELLECT-EQ
+      symbol: INTELLECT
+      isin_code: INE306R01017
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: INTERGLOBE AVIATION LTD
+      fyers_symbol: NSE:INDIGO-EQ
+      symbol: INDIGO
+      isin_code: INE646L01027
+      sector: Services
+      market_cap: Large Cap
+    - name: INTERNATIO GEMM INS (I) L
+      fyers_symbol: NSE:IGIL-EQ
+      symbol: IGIL
+      isin_code: INE0Q9301021
+      sector: Services
+      market_cap: Large Cap
+    - name: INVENTURUS KNOWLEDGE SO L
+      fyers_symbol: NSE:IKS-EQ
+      symbol: IKS
+      isin_code: INE115Q01022
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: IPCA LABORATORIES LTD
+      fyers_symbol: NSE:IPCALAB-EQ
+      symbol: IPCALAB
+      isin_code: INE571A01038
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: J B CHEMICALS AND PHARMA
+      fyers_symbol: NSE:JBCHEPHARM-EQ
+      symbol: JBCHEPHARM
+      isin_code: INE572A01036
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: JK CEMENT LIMITED
+      fyers_symbol: NSE:JKCEMENT-EQ
+      symbol: JKCEMENT
+      isin_code: INE823G01014
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: JBM AUTO LIMITED
+      fyers_symbol: NSE:JBMA-EQ
+      symbol: JBMA
+      isin_code: INE927D01051
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: JK TYRE & INDUSTRIES LTD
+      fyers_symbol: NSE:JKTYRE-EQ
+      symbol: JKTYRE
+      isin_code: INE573A01042
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: JM FINANCIAL LIMITED
+      fyers_symbol: NSE:JMFINANCIL-EQ
+      symbol: JMFINANCIL
+      isin_code: INE780C01023
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: JSW ENERGY LIMITED
+      fyers_symbol: NSE:JSWENERGY-EQ
+      symbol: JSWENERGY
+      isin_code: INE121E01018
+      sector: Power
+      market_cap: Large Cap
+    - name: JSW INFRASTRUCTURE LTD
+      fyers_symbol: NSE:JSWINFRA-EQ
+      symbol: JSWINFRA
+      isin_code: INE880J01026
+      sector: Services
+      market_cap: Large Cap
+    - name: JSW STEEL LIMITED
+      fyers_symbol: NSE:JSWSTEEL-EQ
+      symbol: JSWSTEEL
+      isin_code: INE019A01038
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: JAIPRAKASH POWER VEN. LTD
+      fyers_symbol: NSE:JPPOWER-EQ
+      symbol: JPPOWER
+      isin_code: INE351F01018
+      sector: Power
+      market_cap: Large Cap
+    - name: J & K BANK LTD.
+      fyers_symbol: NSE:J&KBANK-EQ
+      symbol: J&KBANK
+      isin_code: INE168A01041
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: JINDAL SAW LIMITED
+      fyers_symbol: NSE:JINDALSAW-EQ
+      symbol: JINDALSAW
+      isin_code: INE324A01032
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: JINDAL STAINLESS LIMITED
+      fyers_symbol: NSE:JSL-EQ
+      symbol: JSL
+      isin_code: INE220G01021
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: JINDAL STEEL LIMITED
+      fyers_symbol: NSE:JINDALSTEL-EQ
+      symbol: JINDALSTEL
+      isin_code: INE749A01030
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: JIO FIN SERVICES LTD
+      fyers_symbol: NSE:JIOFIN-EQ
+      symbol: JIOFIN
+      isin_code: INE758E01017
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: JUBILANT FOODWORKS LTD
+      fyers_symbol: NSE:JUBLFOOD-EQ
+      symbol: JUBLFOOD
+      isin_code: INE797F01020
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: JUBILANT INGREVIA LIMITED
+      fyers_symbol: NSE:JUBLINGREA-EQ
+      symbol: JUBLINGREA
+      isin_code: INE0BY001018
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: JUBILANT PHARMOVA LTD
+      fyers_symbol: NSE:JUBLPHARMA-EQ
+      symbol: JUBLPHARMA
+      isin_code: INE700A01033
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: JUPITER WAGONS LIMITED
+      fyers_symbol: NSE:JWL-EQ
+      symbol: JWL
+      isin_code: INE209L01016
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: JYOTHY LABS LIMITED
+      fyers_symbol: NSE:JYOTHYLAB-EQ
+      symbol: JYOTHYLAB
+      isin_code: INE668F01031
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: JYOTI CNC AUTOMATION LTD
+      fyers_symbol: NSE:JYOTICNC-EQ
+      symbol: JYOTICNC
+      isin_code: INE980O01024
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: KPR MILL LTD.
+      fyers_symbol: NSE:KPRMILL-EQ
+      symbol: KPRMILL
+      isin_code: INE930H01031
+      sector: Textiles
+      market_cap: Large Cap
+    - name: KEI INDUSTRIES LTD.
+      fyers_symbol: NSE:KEI-EQ
+      symbol: KEI
+      isin_code: INE878B01027
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: KPIT TECHNOLOGIES LIMITED
+      fyers_symbol: NSE:KPITTECH-EQ
+      symbol: KPITTECH
+      isin_code: INE04I401011
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: KSB LIMITED
+      fyers_symbol: NSE:KSB-EQ
+      symbol: KSB
+      isin_code: INE999A01023
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: KAJARIA CERAMICS LTD
+      fyers_symbol: NSE:KAJARIACER-EQ
+      symbol: KAJARIACER
+      isin_code: INE217B01036
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: KALPATARU PROJECT INT LTD
+      fyers_symbol: NSE:KPIL-EQ
+      symbol: KPIL
+      isin_code: INE220B01022
+      sector: Construction
+      market_cap: Large Cap
+    - name: KALYAN JEWELLERS IND LTD
+      fyers_symbol: NSE:KALYANKJIL-EQ
+      symbol: KALYANKJIL
+      isin_code: INE303R01014
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: KARUR VYSYA BANK LTD
+      fyers_symbol: NSE:KARURVYSYA-EQ
+      symbol: KARURVYSYA
+      isin_code: INE036D01028
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: KAYNES TECHNOLOGY IND LTD
+      fyers_symbol: NSE:KAYNES-EQ
+      symbol: KAYNES
+      isin_code: INE918Z01012
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: KEC INTL. LIMITED
+      fyers_symbol: NSE:KEC-EQ
+      symbol: KEC
+      isin_code: INE389H01022
+      sector: Construction
+      market_cap: Large Cap
+    - name: KFIN TECHNOLOGIES LIMITED
+      fyers_symbol: NSE:KFINTECH-EQ
+      symbol: KFINTECH
+      isin_code: INE138Y01010
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: KIRLOSKAR BROTHERS LTD
+      fyers_symbol: NSE:KIRLOSBROS-EQ
+      symbol: KIRLOSBROS
+      isin_code: INE732A01036
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: KIRLOSKAR OIL ENG LTD
+      fyers_symbol: NSE:KIRLOSENG-EQ
+      symbol: KIRLOSENG
+      isin_code: INE146L01010
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: KOTAK MAHINDRA BANK LTD
+      fyers_symbol: NSE:KOTAKBANK-EQ
+      symbol: KOTAKBANK
+      isin_code: INE237A01028
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: KRISHNA INST OF MED SCI L
+      fyers_symbol: NSE:KIMS-EQ
+      symbol: KIMS
+      isin_code: INE967H01025
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: L&T FINANCE LIMITED
+      fyers_symbol: NSE:LTF-EQ
+      symbol: LTF
+      isin_code: INE498L01015
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: L&T TECHNOLOGY SER. LTD.
+      fyers_symbol: NSE:LTTS-EQ
+      symbol: LTTS
+      isin_code: INE010V01017
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: LIC HOUSING FINANCE LTD
+      fyers_symbol: NSE:LICHSGFIN-EQ
+      symbol: LICHSGFIN
+      isin_code: INE115A01026
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: LT FOODS LIMITED
+      fyers_symbol: NSE:LTFOODS-EQ
+      symbol: LTFOODS
+      isin_code: INE818H01020
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: LTIMINDTREE LIMITED
+      fyers_symbol: NSE:LTIM-EQ
+      symbol: LTIM
+      isin_code: INE214T01019
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: LARSEN & TOUBRO LTD.
+      fyers_symbol: NSE:LT-EQ
+      symbol: LT
+      isin_code: INE018A01030
+      sector: Construction
+      market_cap: Large Cap
+    - name: LATENT VIEW ANALYTICS LTD
+      fyers_symbol: NSE:LATENTVIEW-EQ
+      symbol: LATENTVIEW
+      isin_code: INE0I7C01011
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: LAURUS LABS LIMITED
+      fyers_symbol: NSE:LAURUSLABS-EQ
+      symbol: LAURUSLABS
+      isin_code: INE947Q01028
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: LEELA PALACES HOTEL LTD
+      fyers_symbol: NSE:THELEELA-EQ
+      symbol: THELEELA
+      isin_code: INE0AQ201015
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: LEMON TREE HOTELS LTD
+      fyers_symbol: NSE:LEMONTREE-EQ
+      symbol: LEMONTREE
+      isin_code: INE970X01018
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: LIFE INSURA CORP OF INDIA
+      fyers_symbol: NSE:LICI-EQ
+      symbol: LICI
+      isin_code: INE0J1Y01017
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: LINDE INDIA LIMITED
+      fyers_symbol: NSE:LINDEINDIA-EQ
+      symbol: LINDEINDIA
+      isin_code: INE473A01011
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: LLOYDS METALS N ENERGY L
+      fyers_symbol: NSE:LLOYDSME-EQ
+      symbol: LLOYDSME
+      isin_code: INE281B01032
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: LODHA DEVELOPERS LIMITED
+      fyers_symbol: NSE:LODHA-EQ
+      symbol: LODHA
+      isin_code: INE670K01029
+      sector: Realty
+      market_cap: Large Cap
+    - name: LUPIN LIMITED
+      fyers_symbol: NSE:LUPIN-EQ
+      symbol: LUPIN
+      isin_code: INE326A01037
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: MMTC LIMITED
+      fyers_symbol: NSE:MMTC-EQ
+      symbol: MMTC
+      isin_code: INE123F01029
+      sector: Services
+      market_cap: Large Cap
+    - name: MRF LTD
+      fyers_symbol: NSE:MRF-EQ
+      symbol: MRF
+      isin_code: INE883A01011
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: MAHANAGAR GAS LTD.
+      fyers_symbol: NSE:MGL-EQ
+      symbol: MGL
+      isin_code: INE002S01010
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: MAHSCOOTER - DEP SETT
+      fyers_symbol: NSE:MAHSCOOTER-BE
+      symbol: MAHSCOOTER
+      isin_code: INE288A01013
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: MAHARASHTRA SEAMLESS LTD
+      fyers_symbol: NSE:MAHSEAMLES-EQ
+      symbol: MAHSEAMLES
+      isin_code: INE271B01025
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: M&M FIN. SERVICES LTD
+      fyers_symbol: NSE:M&MFIN-EQ
+      symbol: M&MFIN
+      isin_code: INE774D01024
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: MAHINDRA & MAHINDRA LTD
+      fyers_symbol: NSE:M&M-EQ
+      symbol: M&M
+      isin_code: INE101A01026
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: MANAPPURAM FINANCE LTD
+      fyers_symbol: NSE:MANAPPURAM-EQ
+      symbol: MANAPPURAM
+      isin_code: INE522D01027
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: MRPL
+      fyers_symbol: NSE:MRPL-EQ
+      symbol: MRPL
+      isin_code: INE103A01014
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: MANKIND PHARMA LIMITED
+      fyers_symbol: NSE:MANKIND-EQ
+      symbol: MANKIND
+      isin_code: INE634S01028
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: MARICO LIMITED
+      fyers_symbol: NSE:MARICO-EQ
+      symbol: MARICO
+      isin_code: INE196A01026
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: MARUTI SUZUKI INDIA LTD.
+      fyers_symbol: NSE:MARUTI-EQ
+      symbol: MARUTI
+      isin_code: INE585B01010
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: MAX FINANCIAL SERV LTD
+      fyers_symbol: NSE:MFSL-EQ
+      symbol: MFSL
+      isin_code: INE180A01020
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: MAX HEALTHCARE INS LTD
+      fyers_symbol: NSE:MAXHEALTH-EQ
+      symbol: MAXHEALTH
+      isin_code: INE027H01010
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: MAZAGON DOCK SHIPBUIL LTD
+      fyers_symbol: NSE:MAZDOCK-EQ
+      symbol: MAZDOCK
+      isin_code: INE249Z01020
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: METROPOLIS HEALTHCARE LTD
+      fyers_symbol: NSE:METROPOLIS-EQ
+      symbol: METROPOLIS
+      isin_code: INE112L01020
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: MINDA CORPORATION LTD
+      fyers_symbol: NSE:MINDACORP-EQ
+      symbol: MINDACORP
+      isin_code: INE842C01021
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: MOTHERSON SUMI WRNG IND L
+      fyers_symbol: NSE:MSUMI-EQ
+      symbol: MSUMI
+      isin_code: INE0FS801015
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: MOTILAL OSWAL FIN LTD
+      fyers_symbol: NSE:MOTILALOFS-EQ
+      symbol: MOTILALOFS
+      isin_code: INE338I01027
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: MPHASIS LIMITED
+      fyers_symbol: NSE:MPHASIS-EQ
+      symbol: MPHASIS
+      isin_code: INE356A01018
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: MULTI COMMODITY EXCHANGE
+      fyers_symbol: NSE:MCX-EQ
+      symbol: MCX
+      isin_code: INE745G01035
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: MUTHOOT FINANCE LIMITED
+      fyers_symbol: NSE:MUTHOOTFIN-EQ
+      symbol: MUTHOOTFIN
+      isin_code: INE414G01012
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: NATCO PHARMA LTD.
+      fyers_symbol: NSE:NATCOPHARM-EQ
+      symbol: NATCOPHARM
+      isin_code: INE987B01026
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: NBCC (INDIA) LIMITED
+      fyers_symbol: NSE:NBCC-EQ
+      symbol: NBCC
+      isin_code: INE095N01031
+      sector: Construction
+      market_cap: Large Cap
+    - name: NCC LIMITED
+      fyers_symbol: NSE:NCC-EQ
+      symbol: NCC
+      isin_code: INE868B01028
+      sector: Construction
+      market_cap: Large Cap
+    - name: NHPC LTD
+      fyers_symbol: NSE:NHPC-EQ
+      symbol: NHPC
+      isin_code: INE848E01016
+      sector: Power
+      market_cap: Large Cap
+    - name: NLC INDIA LIMITED
+      fyers_symbol: NSE:NLCINDIA-EQ
+      symbol: NLCINDIA
+      isin_code: INE589A01014
+      sector: Power
+      market_cap: Large Cap
+    - name: NMDC LTD.
+      fyers_symbol: NSE:NMDC-EQ
+      symbol: NMDC
+      isin_code: INE584A01023
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: NMDC STEEL LIMITED
+      fyers_symbol: NSE:NSLNISP-EQ
+      symbol: NSLNISP
+      isin_code: INE0NNS01018
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: NTPC GREEN ENERGY LIMITED
+      fyers_symbol: NSE:NTPCGREEN-EQ
+      symbol: NTPCGREEN
+      isin_code: INE0ONG01011
+      sector: Power
+      market_cap: Large Cap
+    - name: NTPC LTD
+      fyers_symbol: NSE:NTPC-EQ
+      symbol: NTPC
+      isin_code: INE733E01010
+      sector: Power
+      market_cap: Large Cap
+    - name: NARAYANA HRUDAYALAYA LTD.
+      fyers_symbol: NSE:NH-EQ
+      symbol: NH
+      isin_code: INE410P01011
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: NATIONAL ALUMINIUM CO LTD
+      fyers_symbol: NSE:NATIONALUM-EQ
+      symbol: NATIONALUM
+      isin_code: INE139A01034
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: NAVA LIMITED
+      fyers_symbol: NSE:NAVA-EQ
+      symbol: NAVA
+      isin_code: INE725A01030
+      sector: Power
+      market_cap: Large Cap
+    - name: NAVIN FLUORINE INT. LTD
+      fyers_symbol: NSE:NAVINFLUOR-EQ
+      symbol: NAVINFLUOR
+      isin_code: INE048G01026
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: NESTLE INDIA LIMITED
+      fyers_symbol: NSE:NESTLEIND-EQ
+      symbol: NESTLEIND
+      isin_code: INE239A01024
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: NETWEB TECH INDIA LTD
+      fyers_symbol: NSE:NETWEB-EQ
+      symbol: NETWEB
+      isin_code: INE0NT901020
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: NEULAND LAB LTD.
+      fyers_symbol: NSE:NEULANDLAB-EQ
+      symbol: NEULANDLAB
+      isin_code: INE794A01010
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: NEWGEN SOFTWARE TECH LTD
+      fyers_symbol: NSE:NEWGEN-EQ
+      symbol: NEWGEN
+      isin_code: INE619B01017
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: NIPPON L I A M LTD
+      fyers_symbol: NSE:NAM-INDIA-EQ
+      symbol: NAM-INDIA
+      isin_code: INE298J01013
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: NIVA BUPA HEALTH INS CO L
+      fyers_symbol: NSE:NIVABUPA-EQ
+      symbol: NIVABUPA
+      isin_code: INE995S01015
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: NUVAMA WEALTH MANAGE LTD
+      fyers_symbol: NSE:NUVAMA-EQ
+      symbol: NUVAMA
+      isin_code: INE531F01015
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: NUVOCO VISTAS CORP LTD
+      fyers_symbol: NSE:NUVOCO-EQ
+      symbol: NUVOCO
+      isin_code: INE118D01016
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: OBEROI REALTY LIMITED
+      fyers_symbol: NSE:OBEROIRLTY-EQ
+      symbol: OBEROIRLTY
+      isin_code: INE093I01010
+      sector: Realty
+      market_cap: Large Cap
+    - name: OIL AND NATURAL GAS CORP.
+      fyers_symbol: NSE:ONGC-EQ
+      symbol: ONGC
+      isin_code: INE213A01029
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: OIL INDIA LTD
+      fyers_symbol: NSE:OIL-EQ
+      symbol: OIL
+      isin_code: INE274J01014
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: OLA ELECTRIC MOBILITY LTD
+      fyers_symbol: NSE:OLAELEC-BE
+      symbol: OLAELEC
+      isin_code: INE0LXG01040
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: OLECTRA GREENTECH LIMITED
+      fyers_symbol: NSE:OLECTRA-EQ
+      symbol: OLECTRA
+      isin_code: INE260D01016
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: ONE 97 COMMUNICATIONS LTD
+      fyers_symbol: NSE:PAYTM-EQ
+      symbol: PAYTM
+      isin_code: INE982J01020
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ONESOURCE SPECL PHARMA L
+      fyers_symbol: NSE:ONESOURCE-EQ
+      symbol: ONESOURCE
+      isin_code: INE013P01021
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ORACLE FIN SERV SOFT LTD.
+      fyers_symbol: NSE:OFSS-EQ
+      symbol: OFSS
+      isin_code: INE881D01027
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: PB FINTECH LIMITED
+      fyers_symbol: NSE:POLICYBZR-EQ
+      symbol: POLICYBZR
+      isin_code: INE417T01026
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: PCBL CHEMICAL LIMITED
+      fyers_symbol: NSE:PCBL-EQ
+      symbol: PCBL
+      isin_code: INE602A01031
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: PG ELECTROPLAST LTD
+      fyers_symbol: NSE:PGEL-EQ
+      symbol: PGEL
+      isin_code: INE457L01029
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: PI INDUSTRIES LTD
+      fyers_symbol: NSE:PIIND-EQ
+      symbol: PIIND
+      isin_code: INE603J01030
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: PNB HOUSING FIN LTD.
+      fyers_symbol: NSE:PNBHOUSING-EQ
+      symbol: PNBHOUSING
+      isin_code: INE572E01012
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: PTC INDUSTRIES LIMITED
+      fyers_symbol: NSE:PTCIL-EQ
+      symbol: PTCIL
+      isin_code: INE596F01018
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: PVR INOX LIMITED
+      fyers_symbol: NSE:PVRINOX-EQ
+      symbol: PVRINOX
+      isin_code: INE191H01014
+      sector: Media Entertainment & Publication
+      market_cap: Large Cap
+    - name: PAGE INDUSTRIES LTD
+      fyers_symbol: NSE:PAGEIND-EQ
+      symbol: PAGEIND
+      isin_code: INE761H01022
+      sector: Textiles
+      market_cap: Large Cap
+    - name: PATANJALI FOODS LIMITED
+      fyers_symbol: NSE:PATANJALI-EQ
+      symbol: PATANJALI
+      isin_code: INE619A01035
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: PERSISTENT SYSTEMS LTD
+      fyers_symbol: NSE:PERSISTENT-EQ
+      symbol: PERSISTENT
+      isin_code: INE262H01021
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: PETRONET LNG LIMITED
+      fyers_symbol: NSE:PETRONET-EQ
+      symbol: PETRONET
+      isin_code: INE347G01014
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: PFIZER LTD
+      fyers_symbol: NSE:PFIZER-EQ
+      symbol: PFIZER
+      isin_code: INE182A01018
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: THE PHOENIX MILLS LTD
+      fyers_symbol: NSE:PHOENIXLTD-EQ
+      symbol: PHOENIXLTD
+      isin_code: INE211B01039
+      sector: Realty
+      market_cap: Large Cap
+    - name: PIDILITE INDUSTRIES LTD
+      fyers_symbol: NSE:PIDILITIND-EQ
+      symbol: PIDILITIND
+      isin_code: INE318A01026
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: PIRAMAL PHARMA LIMITED
+      fyers_symbol: NSE:PPLPHARMA-EQ
+      symbol: PPLPHARMA
+      isin_code: INE0DK501011
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: POLY MEDICURE LIMITED
+      fyers_symbol: NSE:POLYMED-EQ
+      symbol: POLYMED
+      isin_code: INE205C01021
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: POLYCAB INDIA LIMITED
+      fyers_symbol: NSE:POLYCAB-EQ
+      symbol: POLYCAB
+      isin_code: INE455K01017
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: POONAWALLA FINCORP LTD
+      fyers_symbol: NSE:POONAWALLA-EQ
+      symbol: POONAWALLA
+      isin_code: INE511C01022
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: POWER FIN CORP LTD.
+      fyers_symbol: NSE:PFC-EQ
+      symbol: PFC
+      isin_code: INE134E01011
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: POWER GRID CORP. LTD.
+      fyers_symbol: NSE:POWERGRID-EQ
+      symbol: POWERGRID
+      isin_code: INE752E01010
+      sector: Power
+      market_cap: Large Cap
+    - name: PRAJ INDUSTRIES LTD
+      fyers_symbol: NSE:PRAJIND-EQ
+      symbol: PRAJIND
+      isin_code: INE074A01025
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: PREMIER ENERGIES LIMITED
+      fyers_symbol: NSE:PREMIERENE-EQ
+      symbol: PREMIERENE
+      isin_code: INE0BS701011
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: PRESTIGE ESTATE LTD
+      fyers_symbol: NSE:PRESTIGE-EQ
+      symbol: PRESTIGE
+      isin_code: INE811K01011
+      sector: Realty
+      market_cap: Large Cap
+    - name: P&G HYGIENE & HEALTH CARE
+      fyers_symbol: NSE:PGHH-EQ
+      symbol: PGHH
+      isin_code: INE179A01014
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: PUNJAB NATIONAL BANK
+      fyers_symbol: NSE:PNB-EQ
+      symbol: PNB
+      isin_code: INE160A01022
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: R R KABEL LIMITED
+      fyers_symbol: NSE:RRKABEL-EQ
+      symbol: RRKABEL
+      isin_code: INE777K01022
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: RBL BANK LIMITED
+      fyers_symbol: NSE:RBLBANK-EQ
+      symbol: RBLBANK
+      isin_code: INE976G01028
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: REC LIMITED
+      fyers_symbol: NSE:RECLTD-EQ
+      symbol: RECLTD
+      isin_code: INE020B01018
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: RHI MAGNESITA INDIA LTD
+      fyers_symbol: NSE:RHIM-EQ
+      symbol: RHIM
+      isin_code: INE743M01012
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: RITES LIMITED
+      fyers_symbol: NSE:RITES-EQ
+      symbol: RITES
+      isin_code: INE320J01015
+      sector: Construction
+      market_cap: Large Cap
+    - name: RADICO KHAITAN LTD
+      fyers_symbol: NSE:RADICO-EQ
+      symbol: RADICO
+      isin_code: INE944F01028
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: RAIL VIKAS NIGAM LIMITED
+      fyers_symbol: NSE:RVNL-EQ
+      symbol: RVNL
+      isin_code: INE415G01027
+      sector: Construction
+      market_cap: Large Cap
+    - name: RAILTEL CORP OF IND LTD
+      fyers_symbol: NSE:RAILTEL-EQ
+      symbol: RAILTEL
+      isin_code: INE0DD101019
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: RAINBOW CHILDRENS MED LTD
+      fyers_symbol: NSE:RAINBOW-EQ
+      symbol: RAINBOW
+      isin_code: INE961O01016
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: RAMKRISHNA FORGINGS LTD
+      fyers_symbol: NSE:RKFORGE-EQ
+      symbol: RKFORGE
+      isin_code: INE399G01023
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: RASHTRIYA CHEMICALS & FER
+      fyers_symbol: NSE:RCF-EQ
+      symbol: RCF
+      isin_code: INE027A01015
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: REDINGTON LIMITED
+      fyers_symbol: NSE:REDINGTON-EQ
+      symbol: REDINGTON
+      isin_code: INE891D01026
+      sector: Services
+      market_cap: Large Cap
+    - name: RELIANCE INDUSTRIES LTD
+      fyers_symbol: NSE:RELIANCE-EQ
+      symbol: RELIANCE
+      isin_code: INE002A01018
+      sector: Oil Gas & Consumable Fuels
+      market_cap: Large Cap
+    - name: RELIANCE INFRASTRUCTU LTD
+      fyers_symbol: NSE:RELINFRA-BE
+      symbol: RELINFRA
+      isin_code: INE036A01016
+      sector: Power
+      market_cap: Large Cap
+    - name: RELIANCE POWER LTD.
+      fyers_symbol: NSE:RPOWER-EQ
+      symbol: RPOWER
+      isin_code: INE614G01033
+      sector: Power
+      market_cap: Large Cap
+    - name: SBFC FINANCE LIMITED
+      fyers_symbol: NSE:SBFC-EQ
+      symbol: SBFC
+      isin_code: INE423Y01016
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: SBI CARDS & PAY SER LTD
+      fyers_symbol: NSE:SBICARD-EQ
+      symbol: SBICARD
+      isin_code: INE018E01016
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: SBI LIFE INSURANCE CO LTD
+      fyers_symbol: NSE:SBILIFE-EQ
+      symbol: SBILIFE
+      isin_code: INE123W01016
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: SJVN LTD
+      fyers_symbol: NSE:SJVN-EQ
+      symbol: SJVN
+      isin_code: INE002L01015
+      sector: Power
+      market_cap: Large Cap
+    - name: SKF INDIA LTD
+      fyers_symbol: NSE:SKFINDIA-EQ
+      symbol: SKFINDIA
+      isin_code: INE640A01023
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: SRF LTD
+      fyers_symbol: NSE:SRF-EQ
+      symbol: SRF
+      isin_code: INE647A01010
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: SAGILITY LIMITED
+      fyers_symbol: NSE:SAGILITY-EQ
+      symbol: SAGILITY
+      isin_code: INE0W2G01015
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: SAI LIFE SCIENCES LIMITED
+      fyers_symbol: NSE:SAILIFE-EQ
+      symbol: SAILIFE
+      isin_code: INE570L01029
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: SAMMAAN CAPITAL LIMITED
+      fyers_symbol: NSE:SAMMAANCAP-EQ
+      symbol: SAMMAANCAP
+      isin_code: INE148I01020
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: SAMVRDHNA MTHRSN INTL LTD
+      fyers_symbol: NSE:MOTHERSON-EQ
+      symbol: MOTHERSON
+      isin_code: INE775A01035
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: SAPPHIRE FOODS INDIA LTD
+      fyers_symbol: NSE:SAPPHIRE-EQ
+      symbol: SAPPHIRE
+      isin_code: INE806T01020
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: SARDA ENERGY & MIN LTD
+      fyers_symbol: NSE:SARDAEN-EQ
+      symbol: SARDAEN
+      isin_code: INE385C01021
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: SAREGAMA INDIA LIMITED
+      fyers_symbol: NSE:SAREGAMA-EQ
+      symbol: SAREGAMA
+      isin_code: INE979A01025
+      sector: Media Entertainment & Publication
+      market_cap: Large Cap
+    - name: SCHAEFFLER INDIA LIMITED
+      fyers_symbol: NSE:SCHAEFFLER-EQ
+      symbol: SCHAEFFLER
+      isin_code: INE513A01022
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: SCHNEIDER ELECTRIC INFRA
+      fyers_symbol: NSE:SCHNEIDER-EQ
+      symbol: SCHNEIDER
+      isin_code: INE839M01018
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: SHIPPING CORP OF INDIA LT
+      fyers_symbol: NSE:SCI-EQ
+      symbol: SCI
+      isin_code: INE109A01011
+      sector: Services
+      market_cap: Large Cap
+    - name: SHREE CEMENT LIMITED
+      fyers_symbol: NSE:SHREECEM-EQ
+      symbol: SHREECEM
+      isin_code: INE070A01015
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: SHRIRAM FINANCE LIMITED
+      fyers_symbol: NSE:SHRIRAMFIN-EQ
+      symbol: SHRIRAMFIN
+      isin_code: INE721A01047
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: SHYAM METALICS AND ENGY L
+      fyers_symbol: NSE:SHYAMMETL-EQ
+      symbol: SHYAMMETL
+      isin_code: INE810G01011
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: SIEMENS ENERGY INDIA LTD
+      fyers_symbol: NSE:ENRIN-EQ
+      symbol: ENRIN
+      isin_code: INE1NPP01017
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: SIEMENS LTD
+      fyers_symbol: NSE:SIEMENS-EQ
+      symbol: SIEMENS
+      isin_code: INE003A01024
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: SIGNATUREGLOBAL INDIA LTD
+      fyers_symbol: NSE:SIGNATURE-EQ
+      symbol: SIGNATURE
+      isin_code: INE903U01023
+      sector: Realty
+      market_cap: Large Cap
+    - name: SOBHA LIMITED
+      fyers_symbol: NSE:SOBHA-EQ
+      symbol: SOBHA
+      isin_code: INE671H01015
+      sector: Realty
+      market_cap: Large Cap
+    - name: SOLAR INDUSTRIES (I) LTD
+      fyers_symbol: NSE:SOLARINDS-EQ
+      symbol: SOLARINDS
+      isin_code: INE343H01029
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: SONA BLW PRECISION FRGS L
+      fyers_symbol: NSE:SONACOMS-EQ
+      symbol: SONACOMS
+      isin_code: INE073K01018
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: SONATA SOFTWARE LTD
+      fyers_symbol: NSE:SONATSOFTW-EQ
+      symbol: SONATSOFTW
+      isin_code: INE269A01021
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: STAR HEALTH & AL INS CO L
+      fyers_symbol: NSE:STARHEALTH-EQ
+      symbol: STARHEALTH
+      isin_code: INE575P01011
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: STATE BANK OF INDIA
+      fyers_symbol: NSE:SBIN-EQ
+      symbol: SBIN
+      isin_code: INE062A01020
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: STEEL AUTHORITY OF INDIA
+      fyers_symbol: NSE:SAIL-EQ
+      symbol: SAIL
+      isin_code: INE114A01011
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: SUMITOMO CHEM INDIA LTD
+      fyers_symbol: NSE:SUMICHEM-EQ
+      symbol: SUMICHEM
+      isin_code: INE258G01013
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: SUN PHARMACEUTICAL IND L
+      fyers_symbol: NSE:SUNPHARMA-EQ
+      symbol: SUNPHARMA
+      isin_code: INE044A01036
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: SUN TV NETWORK LIMITED
+      fyers_symbol: NSE:SUNTV-EQ
+      symbol: SUNTV
+      isin_code: INE424H01027
+      sector: Media Entertainment & Publication
+      market_cap: Large Cap
+    - name: SUNDARAM FINANCE LTD
+      fyers_symbol: NSE:SUNDARMFIN-EQ
+      symbol: SUNDARMFIN
+      isin_code: INE660A01013
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: SUNDRAM FASTENERS LTD
+      fyers_symbol: NSE:SUNDRMFAST-EQ
+      symbol: SUNDRMFAST
+      isin_code: INE387A01021
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: SUPREME INDUSTRIES LTD
+      fyers_symbol: NSE:SUPREMEIND-EQ
+      symbol: SUPREMEIND
+      isin_code: INE195A01028
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: SUZLON ENERGY LIMITED
+      fyers_symbol: NSE:SUZLON-EQ
+      symbol: SUZLON
+      isin_code: INE040H01021
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: SWAN CORP LIMITED
+      fyers_symbol: NSE:SWANCORP-EQ
+      symbol: SWANCORP
+      isin_code: INE665A01038
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: SWIGGY LIMITED
+      fyers_symbol: NSE:SWIGGY-EQ
+      symbol: SWIGGY
+      isin_code: INE00H001014
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: SYNGENE INTERNATIONAL LTD
+      fyers_symbol: NSE:SYNGENE-EQ
+      symbol: SYNGENE
+      isin_code: INE398R01022
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: SYRMA SGS TECHNOLOGY LTD
+      fyers_symbol: NSE:SYRMA-EQ
+      symbol: SYRMA
+      isin_code: INE0DYJ01015
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: TBO TEK LIMITED
+      fyers_symbol: NSE:TBOTEK-EQ
+      symbol: TBOTEK
+      isin_code: INE673O01025
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: TVS MOTOR COMPANY  LTD
+      fyers_symbol: NSE:TVSMOTOR-EQ
+      symbol: TVSMOTOR
+      isin_code: INE494B01023
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: TATA CHEMICALS LTD
+      fyers_symbol: NSE:TATACHEM-EQ
+      symbol: TATACHEM
+      isin_code: INE092A01019
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: TATA COMMUNICATIONS LTD
+      fyers_symbol: NSE:TATACOMM-EQ
+      symbol: TATACOMM
+      isin_code: INE151A01013
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: TATA CONSULTANCY SERV LT
+      fyers_symbol: NSE:TCS-EQ
+      symbol: TCS
+      isin_code: INE467B01029
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: TATA CONSUMER PRODUCT LTD
+      fyers_symbol: NSE:TATACONSUM-EQ
+      symbol: TATACONSUM
+      isin_code: INE192A01025
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: TATA ELXSI LIMITED
+      fyers_symbol: NSE:TATAELXSI-EQ
+      symbol: TATAELXSI
+      isin_code: INE670A01012
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: TATA INVESTMENT CORP LTD
+      fyers_symbol: NSE:TATAINVEST-EQ
+      symbol: TATAINVEST
+      isin_code: INE672A01026
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: TATA MOTORS PASS VEH LTD
+      fyers_symbol: NSE:TMPV-EQ
+      symbol: TMPV
+      isin_code: INE155A01022
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: TATA POWER CO LTD
+      fyers_symbol: NSE:TATAPOWER-EQ
+      symbol: TATAPOWER
+      isin_code: INE245A01021
+      sector: Power
+      market_cap: Large Cap
+    - name: TATA STEEL LIMITED
+      fyers_symbol: NSE:TATASTEEL-EQ
+      symbol: TATASTEEL
+      isin_code: INE081A01020
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: TATA TECHNOLOGIES LIMITED
+      fyers_symbol: NSE:TATATECH-EQ
+      symbol: TATATECH
+      isin_code: INE142M01025
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: TATA TELESERV(MAHARASTRA)
+      fyers_symbol: NSE:TTML-EQ
+      symbol: TTML
+      isin_code: INE517B01013
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: TECH MAHINDRA LIMITED
+      fyers_symbol: NSE:TECHM-EQ
+      symbol: TECHM
+      isin_code: INE669C01036
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: TECHNO ELEC & ENG CO. LTD
+      fyers_symbol: NSE:TECHNOE-EQ
+      symbol: TECHNOE
+      isin_code: INE285K01026
+      sector: Construction
+      market_cap: Large Cap
+    - name: TEJAS NETWORKS LIMITED
+      fyers_symbol: NSE:TEJASNET-EQ
+      symbol: TEJASNET
+      isin_code: INE010J01012
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: THE NEW INDIA ASSU CO LTD
+      fyers_symbol: NSE:NIACL-EQ
+      symbol: NIACL
+      isin_code: INE470Y01017
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: THE RAMCO CEMENTS LIMITED
+      fyers_symbol: NSE:RAMCOCEM-EQ
+      symbol: RAMCOCEM
+      isin_code: INE331A01037
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: THERMAX LTD
+      fyers_symbol: NSE:THERMAX-EQ
+      symbol: THERMAX
+      isin_code: INE152A01029
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: TIMKEN INDIA LTD.
+      fyers_symbol: NSE:TIMKEN-EQ
+      symbol: TIMKEN
+      isin_code: INE325A01013
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: TITAGARH RAIL SYSTEMS LTD
+      fyers_symbol: NSE:TITAGARH-EQ
+      symbol: TITAGARH
+      isin_code: INE615H01020
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: TITAN COMPANY LIMITED
+      fyers_symbol: NSE:TITAN-EQ
+      symbol: TITAN
+      isin_code: INE280A01028
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: TORRENT PHARMACEUTICALS L
+      fyers_symbol: NSE:TORNTPHARM-EQ
+      symbol: TORNTPHARM
+      isin_code: INE685A01028
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: TORRENT POWER LTD
+      fyers_symbol: NSE:TORNTPOWER-EQ
+      symbol: TORNTPOWER
+      isin_code: INE813H01021
+      sector: Power
+      market_cap: Large Cap
+    - name: TRANS & RECTI. LTD
+      fyers_symbol: NSE:TARIL-EQ
+      symbol: TARIL
+      isin_code: INE763I01026
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: TRENT LTD
+      fyers_symbol: NSE:TRENT-EQ
+      symbol: TRENT
+      isin_code: INE849A01020
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: TRIDENT LIMITED
+      fyers_symbol: NSE:TRIDENT-EQ
+      symbol: TRIDENT
+      isin_code: INE064C01022
+      sector: Textiles
+      market_cap: Large Cap
+    - name: TRIVENI ENGG. & INDS. LTD
+      fyers_symbol: NSE:TRIVENI-EQ
+      symbol: TRIVENI
+      isin_code: INE256C01024
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: TRIVENI TURBINE LIMITED
+      fyers_symbol: NSE:TRITURBINE-EQ
+      symbol: TRITURBINE
+      isin_code: INE152M01016
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: TUBE INVEST OF INDIA LTD
+      fyers_symbol: NSE:TIINDIA-EQ
+      symbol: TIINDIA
+      isin_code: INE974X01010
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: UCO BANK
+      fyers_symbol: NSE:UCOBANK-EQ
+      symbol: UCOBANK
+      isin_code: INE691A01018
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: UNO MINDA LIMITED
+      fyers_symbol: NSE:UNOMINDA-EQ
+      symbol: UNOMINDA
+      isin_code: INE405E01023
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: UPL LIMITED
+      fyers_symbol: NSE:UPL-EQ
+      symbol: UPL
+      isin_code: INE628A01036
+      sector: Chemicals
+      market_cap: Large Cap
+    - name: UTI ASSET MNGMT CO LTD
+      fyers_symbol: NSE:UTIAMC-EQ
+      symbol: UTIAMC
+      isin_code: INE094J01016
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ULTRATECH CEMENT LIMITED
+      fyers_symbol: NSE:ULTRACEMCO-EQ
+      symbol: ULTRACEMCO
+      isin_code: INE481G01011
+      sector: Construction Materials
+      market_cap: Large Cap
+    - name: UNION BANK OF INDIA
+      fyers_symbol: NSE:UNIONBANK-EQ
+      symbol: UNIONBANK
+      isin_code: INE692A01016
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: UNITED BREWERIES LTD
+      fyers_symbol: NSE:UBL-EQ
+      symbol: UBL
+      isin_code: INE686F01025
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: UNITED SPIRITS LIMITED
+      fyers_symbol: NSE:UNITDSPR-EQ
+      symbol: UNITDSPR
+      isin_code: INE854D01024
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: USHA MARTIN LTD.
+      fyers_symbol: NSE:USHAMART-EQ
+      symbol: USHAMART
+      isin_code: INE228A01035
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: V-GUARD IND LTD.
+      fyers_symbol: NSE:VGUARD-EQ
+      symbol: VGUARD
+      isin_code: INE951I01027
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: VALOR ESTATE LIMITED
+      fyers_symbol: NSE:DBREALTY-EQ
+      symbol: DBREALTY
+      isin_code: INE879I01012
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: VARDHMAN TEXTILES LIMITED
+      fyers_symbol: NSE:VTL-EQ
+      symbol: VTL
+      isin_code: INE825A01020
+      sector: Textiles
+      market_cap: Large Cap
+    - name: VARUN BEVERAGES LIMITED
+      fyers_symbol: NSE:VBL-EQ
+      symbol: VBL
+      isin_code: INE200M01039
+      sector: Fast Moving Consumer Goods
+      market_cap: Large Cap
+    - name: VEDANT FASHIONS LIMITED
+      fyers_symbol: NSE:MANYAVAR-EQ
+      symbol: MANYAVAR
+      isin_code: INE825V01034
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: VEDANTA LIMITED
+      fyers_symbol: NSE:VEDL-EQ
+      symbol: VEDL
+      isin_code: INE205A01025
+      sector: Metals & Mining
+      market_cap: Large Cap
+    - name: VENTIVE HOSPITALITY LTD
+      fyers_symbol: NSE:VENTIVE-EQ
+      symbol: VENTIVE
+      isin_code: INE781S01027
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: VIJAYA DIAGNOSTIC CEN LTD
+      fyers_symbol: NSE:VIJAYA-EQ
+      symbol: VIJAYA
+      isin_code: INE043W01024
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: VISHAL MEGA MART LIMITED
+      fyers_symbol: NSE:VMM-EQ
+      symbol: VMM
+      isin_code: INE01EA01019
+      sector: Consumer Services
+      market_cap: Large Cap
+    - name: VODAFONE IDEA LIMITED
+      fyers_symbol: NSE:IDEA-EQ
+      symbol: IDEA
+      isin_code: INE669E01016
+      sector: Telecommunication
+      market_cap: Large Cap
+    - name: VOLTAS LTD
+      fyers_symbol: NSE:VOLTAS-EQ
+      symbol: VOLTAS
+      isin_code: INE226A01021
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: WAAREE ENERGIES LIMITED
+      fyers_symbol: NSE:WAAREEENER-EQ
+      symbol: WAAREEENER
+      isin_code: INE377N01017
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: WELSPUN CORP LIMITED
+      fyers_symbol: NSE:WELCORP-EQ
+      symbol: WELCORP
+      isin_code: INE191B01025
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: WELSPUN LIVING LIMITED
+      fyers_symbol: NSE:WELSPUNLIV-EQ
+      symbol: WELSPUNLIV
+      isin_code: INE192B01031
+      sector: Textiles
+      market_cap: Large Cap
+    - name: WHIRLPOOL OF INDIA LTD
+      fyers_symbol: NSE:WHIRLPOOL-EQ
+      symbol: WHIRLPOOL
+      isin_code: INE716A01013
+      sector: Consumer Durables
+      market_cap: Large Cap
+    - name: WIPRO LTD
+      fyers_symbol: NSE:WIPRO-EQ
+      symbol: WIPRO
+      isin_code: INE075A01022
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: WOCKHARDT LIMITED
+      fyers_symbol: NSE:WOCKPHARMA-EQ
+      symbol: WOCKPHARMA
+      isin_code: INE049B01025
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: YES BANK LIMITED
+      fyers_symbol: NSE:YESBANK-EQ
+      symbol: YESBANK
+      isin_code: INE528G01035
+      sector: Financial Services
+      market_cap: Large Cap
+    - name: ZF COM VE CTR SYS IND LTD
+      fyers_symbol: NSE:ZFCVINDIA-EQ
+      symbol: ZFCVINDIA
+      isin_code: INE342J01019
+      sector: Automobile and Auto Components
+      market_cap: Large Cap
+    - name: ZEE ENTERTAINMENT ENT LTD
+      fyers_symbol: NSE:ZEEL-EQ
+      symbol: ZEEL
+      isin_code: INE256A01028
+      sector: Media Entertainment & Publication
+      market_cap: Large Cap
+    - name: ZEN TECHNOLOGIES LIMITED
+      fyers_symbol: NSE:ZENTEC-EQ
+      symbol: ZENTEC
+      isin_code: INE251B01027
+      sector: Capital Goods
+      market_cap: Large Cap
+    - name: ZENSAR TECHNOLOGIES  LTD
+      fyers_symbol: NSE:ZENSARTECH-EQ
+      symbol: ZENSARTECH
+      isin_code: INE520A01027
+      sector: Information Technology
+      market_cap: Large Cap
+    - name: ZYDUS LIFESCIENCES LTD
+      fyers_symbol: NSE:ZYDUSLIFE-EQ
+      symbol: ZYDUSLIFE
+      isin_code: INE010B01027
+      sector: Healthcare
+      market_cap: Large Cap
+    - name: ECLERX SERVICES LTD
+      fyers_symbol: NSE:ECLERX-EQ
+      symbol: ECLERX
+      isin_code: INE738I01010
+      sector: Services
+      market_cap: Large Cap
+
+

@@ -258,7 +258,7 @@ class FyersBroker(BrokerBase):
                     continue
 
                 if 'candles' not in response or not response.get('candles'):
-                    logger.warning(f"No candle data for {symbol}")
+                    #logger.warning(f"No candle data for {symbol} input payload: {data}  respose: {response} ")
                     return pd.DataFrame()
 
                 df = pd.DataFrame(

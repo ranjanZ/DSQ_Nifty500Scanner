@@ -16,11 +16,11 @@ live_trading_service:
 
   # Market hours (IST)
   market_open: "01:00"
-  market_close: "15:30"
+  market_close: "15:46"
   
   # Scan interval (seconds)
-  scan_time: "01:07"
-  trade_time: "00:34"
+  scan_time: "01:48"
+  trade_time: "01:43"
 
   # Data refresh intervals (seconds)
   data_refresh_interval: 5

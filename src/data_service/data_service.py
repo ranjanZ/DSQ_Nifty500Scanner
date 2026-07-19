@@ -12,6 +12,14 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, date, timedelta
 import logging
 
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -414,6 +422,14 @@ def run_test():
         ltp = service.get_ltp(symbol)
         print(f"LTP of {symbol}: {ltp}")
     
+    want_update=input("Press Enter to update all Nifty 500 stocks (or Ctrl+C to skip)...")
+    if want_update == "y":
+        print("\nUpdating all Nifty 500 stocks...")
+        service.update_all_stocks(watchlist='nifty_top_500', interval='D', days_back=300)
+
+
+
+
     service.disconnect()
     print("\nData service test completed")
 
