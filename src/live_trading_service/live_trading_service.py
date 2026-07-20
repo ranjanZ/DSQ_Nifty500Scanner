@@ -397,7 +397,7 @@ class LiveTradingService:
             if df is None or df.empty:
                 continue
 
-            signal_df = self.strategy.generate_signals(df, num_back_signals=4)
+            signal_df = self.strategy.generate_signals(df, num_back_signals=1)
             if signal_df is not None and not signal_df.empty:
                 latest = signal_df.iloc[-1]
                 if latest.get('signal') == 1:
@@ -906,6 +906,6 @@ if __name__ == "__main__":
 
         service = LiveTradingService()
         service.initialize()
-        raw_signals=service._scan_for_signals(num_days_back=200)
+        raw_signals=service._scan_for_signals(num_days_back=100)
         signal=service._allocate_capital_to_signals(raw_signals)
         service._process_signals(signal)

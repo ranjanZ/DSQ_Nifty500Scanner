@@ -6,7 +6,7 @@ live_trading_service:
   enabled: true
 
   # Trading capital
-  initial_capital: 2000
+  initial_capital: 15000
   
   # Risk management
   risk_per_trade: 0.02

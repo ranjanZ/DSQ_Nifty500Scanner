@@ -37,7 +37,7 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
             'lookback_window': 300,
             'pivot_window': 2,
             'min_touch_count': 2,
-            'level_atr_multiple': 0.3,
+            'level_atr_multiple': 2,
             'num_levels': 5,
             'max_age_candles': 100,
             'broken_level_cooldown': 20,
@@ -150,6 +150,8 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
             is_at_sup, sup_level = self.is_at_support(
                 current_candle, current_candle['support_levels'], atr
             )
+            df.loc[df.index[i], 'signal_support'] = sup_level
+            print(f"Index {i}: is_at_sup={is_at_sup}, sup_level={sup_level}, atr={atr}")
             if not is_at_sup:
                 continue
 
@@ -178,3 +180,29 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
                 df.loc[df.index[i], 'volume_ratio'] = current_candle['volume'] / current_candle['volume_ema']
 
         return df
+    
+
+
+
+if __name__ == "__main__":
+    import yaml
+    from datetime import datetime
+    from datetime import timedelta
+    from src.data_service.data_service import get_historical_data
+    config_path = "src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml"
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+        params = cfg.get("params", {})
+
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=100)
+    data = get_table_content(
+        db_name="spot_db_anamika",
+        table_name="hdfcbank_eq",
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+    strategy=VolumeSupportResistanceStrategy(params=params)
+    signals_df = strategy.generate_signals(data, num_back_signals=10)

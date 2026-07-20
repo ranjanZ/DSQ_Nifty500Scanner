@@ -478,7 +478,7 @@ if __name__ == "__main__":
 
     # Initialize (auto-creates DB if missing)
     service = DataService({
-        'db_name': 'spot_db',
+        'db_name': 'spot_db_anamika',
         'stock_list_path': 'config/default/stock_list.yaml'
     })
 
@@ -486,10 +486,10 @@ if __name__ == "__main__":
     symbols = service.get_symbols('nifty_top_500')
 
     # Update all Nifty 500 daily data
-    service.update_all_stocks(watchlist='nifty_top_500', interval='D', days_back=60)
+    service.update_all_stocks(watchlist='nifty_top_500', interval='D', days_back=300)
 
     # Fetch from DB
-    df = service.get_historical_data('NSE:SBIN-EQ', '2026-01-01', '2026-07-18', source='db')
+    df = service.get_historical_data('NSE:ABCAPITAL-EQ', '2026-01-01', '2026-07-18', source='db')
 
     # Fetch live from broker
     df = service.get_historical_data('NSE:SBIN-EQ', '2026-07-01', '2026-07-18', interval='D', source='broker')
