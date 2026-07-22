@@ -642,6 +642,15 @@ class LiveTradingService:
                     'gtt_active': False
                 }
 
+                # Only add to portfolio state if it doesn't already exist there either
+                if self.portfolio_state and not self.portfolio_state.is_held(symbol):
+                    self.portfolio_state.add_holding(
+                        symbol=symbol,
+                        quantity=qty,
+                        average_price=entry_price,
+                        entry_time=datetime.now().isoformat()
+                    )
+
         # Update existing positions with broker data
         for symbol, pos in list(self.positions.items()):
             # Check if position is still active in broker
@@ -801,14 +810,22 @@ class LiveTradingService:
                         'last_ltp': broker_pos.get('ltp', entry_price)
                     }
                     
-                    # Also add to portfolio state
+                    # Only add to portfolio state if it doesn't already exist
+                    # This prevents duplicate quantity additions on restart
                     if self.portfolio_state:
-                        self.portfolio_state.add_holding(
-                            symbol=symbol,
-                            quantity=qty,
-                            average_price=entry_price,
-                            entry_time=datetime.now().isoformat()
-                        )
+                        if not self.portfolio_state.is_held(symbol):
+                            # New holding - add it
+                            self.portfolio_state.add_holding(
+                                symbol=symbol,
+                                quantity=qty,
+                                average_price=entry_price,
+                                entry_time=datetime.now().isoformat()
+                            )
+                        else:
+                            # Existing holding - sync quantity and avg price with broker
+                            self.portfolio_state.sync_holding_with_broker(symbol, qty, entry_price)
+                            self.portfolio_state.update_holding_ltp(symbol, broker_pos.get('ltp', entry_price))
+                            self.logger.info(f"🔄 Synced holding {symbol}: qty={qty}, avg={entry_price:.2f}")
                 else:
                     # Update existing position with broker data
                     self.positions[symbol]['quantity'] = qty
@@ -828,6 +845,9 @@ class LiveTradingService:
         """
         Sync all active positions to portfolio state manager.
         Ensures persistence layer is up to date.
+        NOTE: We do NOT call add_holding() here because that would duplicate quantities.
+        Instead, we only update LTP for existing holdings. New holdings are added
+        directly in _sync_positions_with_broker() and _monitor_positions().
         """
         if not self.portfolio_state:
             return
@@ -835,15 +855,7 @@ class LiveTradingService:
         for symbol, pos in self.positions.items():
             if pos.get('entry_filled', False):
                 ltp = pos.get('last_ltp', pos['entry_price'])
-                # Add or update holding in portfolio state
-                self.portfolio_state.add_holding(
-                    symbol=symbol,
-                    quantity=pos['quantity'],
-                    average_price=pos['entry_price'],
-                    current_value=ltp * pos['quantity'],
-                    entry_time=pos['entry_time'].isoformat()
-                )
-                # Update LTP
+                # Only update LTP - do NOT add holding again (that duplicates quantity)
                 self.portfolio_state.update_holding_ltp(symbol, ltp)
 
     def get_status(self) -> Dict[str, Any]:
