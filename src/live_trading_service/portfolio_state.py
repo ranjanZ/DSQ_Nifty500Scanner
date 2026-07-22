@@ -176,6 +176,22 @@ class PortfolioStateManager:
                 return True
         return False
 
+    def sync_holding_with_broker(self, symbol: str, quantity: int, average_price: float):
+        """
+        Sync holding quantity and average price with broker data.
+        Used when reconciling existing holdings from previous days.
+        """
+        for h in self._today_holdings:
+            if h.symbol == symbol:
+                old_qty = h.quantity
+                h.quantity = quantity
+                h.average_price = average_price
+                # Recalculate current_value based on new quantity (LTP will be updated separately)
+                # Keep unrealized_pnl to be recalculated when LTP is updated
+                logger.info(f"Synced holding {symbol}: qty {old_qty} → {quantity}, avg={average_price:.2f}")
+                return True
+        return False
+
     def update_all_holdings(self, ltp_lookup: Dict[str, float]):
         """Batch update all holdings with latest prices."""
         for h in self._today_holdings:
