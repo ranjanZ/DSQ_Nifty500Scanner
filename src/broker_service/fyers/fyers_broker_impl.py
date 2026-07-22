@@ -581,9 +581,25 @@ class FyersBroker(BrokerBase):
             exit_side = -1 if is_buy else 1
 
             # Round to tick (0.05 for most NSE stocks)
-            tick = 0.05
+            tick = 0.1
             sl_price = round(sl_price / tick) * tick
             tp_price = round(tp_price / tick) * tick
+
+            # --- FIX FOR GTT EXECUTION ---
+            # Calculate a dynamic buffer to guarantee execution (simulating a market order).
+            # We use 0.1% of the price or a minimum of 0.50 INR (10 ticks).
+            tp_buffer = max(0.50, tp_price * 0.001)
+            sl_buffer = max(0.50, sl_price * 0.001)
+
+            # Apply buffer in the direction of the exit trade:
+            # exit_side is 1 for BUY (add buffer) and -1 for SELL (subtract buffer).
+            # This ensures the limit price is strictly "worse" than the trigger.
+            tp_limit = tp_price + (tp_buffer * exit_side)
+            sl_limit = sl_price + (sl_buffer * exit_side)
+
+            # Round the limit prices to the nearest tick
+            tp_limit = round(tp_limit / tick) * tick
+            sl_limit = round(sl_limit / tick) * tick
 
             gtt_data = {
                 "symbol": symbol,
@@ -591,19 +607,19 @@ class FyersBroker(BrokerBase):
                 "productType": product_type.upper(),
                 "orderInfo": {
                     "leg1": {
-                        "price": tp_price,
-                        "triggerPrice": tp_price,
+                        "price": tp_limit,           # Limit price (buffered)
+                        "triggerPrice": tp_price,    # Trigger price
                         "qty": qty
                     },
                     "leg2": {
-                        "price": sl_price,
-                        "triggerPrice": sl_price,
+                        "price": sl_limit,           # Limit price (buffered)
+                        "triggerPrice": sl_price,    # Trigger price
                         "qty": qty
                     }
                 }
             }
 
-            self.logger.info(f"📤 Placing GTT OCO: {symbol} | SL: {sl_price} | TP: {tp_price}")
+            self.logger.info(f"📤 Placing GTT OCO: {symbol} | TP Trigger: {tp_price} (Limit: {tp_limit}) | SL Trigger: {sl_price} (Limit: {sl_limit})")
             response = self.fyers.place_gtt_order(data=gtt_data)
 
             if response and isinstance(response, dict) and response.get('s') == 'ok':

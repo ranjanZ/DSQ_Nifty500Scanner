@@ -19,8 +19,8 @@ live_trading_service:
   market_close: "23:59"
   
   # Scan interval (seconds)
-  scan_time: "23:52"
-  trade_time: "21:30"
+  scan_time: "14:45"
+  trade_time: "15:07"
 
   # Data refresh intervals (seconds)
   data_refresh_interval: 5

@@ -190,8 +190,47 @@
           "sector": "Fast Moving Consumer Goods"
         }
       ]
+    },
+    {
+      "scan_time": "2026-07-22 14:58:21",
+      "total_stocks_scanned": 501,
+      "signals_found": 4,
+      "signals": [
+        {
+          "symbol": "NSE:NESTLEIND-EQ",
+          "signal": 1,
+          "price": 1489.4,
+          "strength": 1.0,
+          "timestamp": "2026-07-22T05:30:00",
+          "sector": "Fast Moving Consumer Goods"
+        },
+        {
+          "symbol": "NSE:JSWSTEEL-EQ",
+          "signal": 1,
+          "price": 1267.6,
+          "strength": 0.8,
+          "timestamp": "2026-07-22T05:30:00",
+          "sector": "Metals & Mining"
+        },
+        {
+          "symbol": "NSE:YESBANK-EQ",
+          "signal": 1,
+          "price": 23.29,
+          "strength": 0.8,
+          "timestamp": "2026-07-22T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:MEDANTA-EQ",
+          "signal": 1,
+          "price": 1352.5,
+          "strength": 0.5,
+          "timestamp": "2026-07-22T05:30:00",
+          "sector": "Healthcare"
+        }
+      ]
     }
   ],
-  "last_scan_time": "2026-07-22 00:06:44",
-  "last_updated": "2026-07-22 00:06:44"
+  "last_scan_time": "2026-07-22 14:58:21",
+  "last_updated": "2026-07-22 14:58:21"
 }

@@ -46,10 +46,89 @@
           "current_value": 0.0,
           "unrealized_pnl": 0.0,
           "entry_time": "2026-07-20T23:31:13.745878"
+        },
+        {
+          "symbol": "NSE:NESTLEIND-EQ",
+          "quantity": 233,
+          "average_price": 1490.9000000000024,
+          "current_value": 348008.8,
+          "unrealized_pnl": 629.0999999994528,
+          "entry_time": "2026-07-22T16:08:50.226546"
+        },
+        {
+          "symbol": "NSE:MEDANTA-EQ",
+          "quantity": 466,
+          "average_price": 1351.25,
+          "current_value": 630684.4,
+          "unrealized_pnl": 1001.9000000000233,
+          "entry_time": "2026-07-22T16:08:50.226597"
+        },
+        {
+          "symbol": "NSE:YESBANK-EQ",
+          "quantity": 46134,
+          "average_price": 23.25,
+          "current_value": 1072154.16,
+          "unrealized_pnl": -461.3400000000838,
+          "entry_time": "2026-07-22T16:08:50.226639"
         }
       ],
-      "closed_positions": [],
-      "updated_at": "2026-07-22T00:13:26.551075"
+      "closed_positions": [
+        {
+          "symbol": "NSE:YESBANK-EQ",
+          "quantity": 51084,
+          "entry_price": 23.29000000000004,
+          "exit_price": 23.25,
+          "realised_pnl": -2043.3600000019528,
+          "exit_time": "2026-07-22T15:28:56.446734",
+          "type": "delivery_sell"
+        },
+        {
+          "symbol": "NSE:MEDANTA-EQ",
+          "quantity": 514,
+          "entry_price": 1352.5,
+          "exit_price": 1351.9,
+          "realised_pnl": -308.39999999995325,
+          "exit_time": "2026-07-22T15:28:56.446821",
+          "type": "delivery_sell"
+        },
+        {
+          "symbol": "NSE:NESTLEIND-EQ",
+          "quantity": 257,
+          "entry_price": 1489.4000000000042,
+          "exit_price": 1496.7,
+          "realised_pnl": 1876.0999999989365,
+          "exit_time": "2026-07-22T15:28:56.446870",
+          "type": "delivery_sell"
+        },
+        {
+          "symbol": "NSE:MEDANTA-EQ",
+          "quantity": 932,
+          "entry_price": 1351.25,
+          "exit_price": 1353.4,
+          "realised_pnl": 2003.8000000000848,
+          "exit_time": "2026-07-22T16:08:40.033850",
+          "type": "delivery_sell"
+        },
+        {
+          "symbol": "NSE:YESBANK-EQ",
+          "quantity": 92268,
+          "entry_price": 23.25,
+          "exit_price": 23.24,
+          "realised_pnl": -922.6800000001442,
+          "exit_time": "2026-07-22T16:08:40.034085",
+          "type": "delivery_sell"
+        },
+        {
+          "symbol": "NSE:NESTLEIND-EQ",
+          "quantity": 466,
+          "entry_price": 1490.9000000000135,
+          "exit_price": 1493.6,
+          "realised_pnl": 1258.1999999936638,
+          "exit_time": "2026-07-22T16:08:40.034320",
+          "type": "delivery_sell"
+        }
+      ],
+      "updated_at": "2026-07-22T16:28:30.623243"
     }
   },
   "latest_date": "2026-07-22"
