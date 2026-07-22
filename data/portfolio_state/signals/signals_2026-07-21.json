@@ -1,0 +1,249 @@
+{
+  "scans": [
+    {
+      "scan_time": "2026-07-21 10:25:25",
+      "total_stocks_scanned": 501,
+      "signals_found": 0,
+      "signals": []
+    },
+    {
+      "scan_time": "2026-07-21 10:49:01",
+      "total_stocks_scanned": 501,
+      "signals_found": 28,
+      "signals": [
+        {
+          "symbol": "NSE:SBIN-EQ",
+          "signal": 1,
+          "price": 1060.0,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:BANKINDIA-EQ",
+          "signal": 1,
+          "price": 146.95,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:CANBK-EQ",
+          "signal": 1,
+          "price": 128.82,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:ESCORTS-EQ",
+          "signal": 1,
+          "price": 2981.4,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Capital Goods"
+        },
+        {
+          "symbol": "NSE:GESHIP-EQ",
+          "signal": 1,
+          "price": 1387.1,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Services"
+        },
+        {
+          "symbol": "NSE:HINDPETRO-EQ",
+          "signal": 1,
+          "price": 405.4,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Oil Gas & Consumable Fuels"
+        },
+        {
+          "symbol": "NSE:JSWENERGY-EQ",
+          "signal": 1,
+          "price": 567.7,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Power"
+        },
+        {
+          "symbol": "NSE:LICHSGFIN-EQ",
+          "signal": 1,
+          "price": 552.45,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:MANAPPURAM-EQ",
+          "signal": 1,
+          "price": 337.1,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:NAVINFLUOR-EQ",
+          "signal": 1,
+          "price": 7861.5,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Chemicals"
+        },
+        {
+          "symbol": "NSE:PVRINOX-EQ",
+          "signal": 1,
+          "price": 1019.25,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Media Entertainment & Publication"
+        },
+        {
+          "symbol": "NSE:PNB-EQ",
+          "signal": 1,
+          "price": 111.76,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:RBLBANK-EQ",
+          "signal": 1,
+          "price": 368.45,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:SOLARINDS-EQ",
+          "signal": 1,
+          "price": 19028.0,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Chemicals"
+        },
+        {
+          "symbol": "NSE:TORNTPOWER-EQ",
+          "signal": 1,
+          "price": 1433.3,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Power"
+        },
+        {
+          "symbol": "NSE:UNIONBANK-EQ",
+          "signal": 1,
+          "price": 175.93,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:MANYAVAR-EQ",
+          "signal": 1,
+          "price": 413.95,
+          "strength": 1.0,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Consumer Services"
+        },
+        {
+          "symbol": "NSE:BATAINDIA-EQ",
+          "signal": 1,
+          "price": 700.5,
+          "strength": 0.8,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Consumer Durables"
+        },
+        {
+          "symbol": "NSE:CROMPTON-EQ",
+          "signal": 1,
+          "price": 262.1,
+          "strength": 0.8,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Consumer Durables"
+        },
+        {
+          "symbol": "NSE:GLENMARK-EQ",
+          "signal": 1,
+          "price": 2239.5,
+          "strength": 0.8,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Healthcare"
+        },
+        {
+          "symbol": "NSE:INDIAMART-EQ",
+          "signal": 1,
+          "price": 1932.9,
+          "strength": 0.8,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Consumer Services"
+        },
+        {
+          "symbol": "NSE:JSWSTEEL-EQ",
+          "signal": 1,
+          "price": 1257.0,
+          "strength": 0.8,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Metals & Mining"
+        },
+        {
+          "symbol": "NSE:PCBL-EQ",
+          "signal": 1,
+          "price": 325.55,
+          "strength": 0.8,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Chemicals"
+        },
+        {
+          "symbol": "NSE:RADICO-EQ",
+          "signal": 1,
+          "price": 4132.4,
+          "strength": 0.8,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Fast Moving Consumer Goods"
+        },
+        {
+          "symbol": "NSE:SHYAMMETL-EQ",
+          "signal": 1,
+          "price": 1055.0,
+          "strength": 0.8,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Capital Goods"
+        },
+        {
+          "symbol": "NSE:KOTAKBANK-EQ",
+          "signal": 1,
+          "price": 382.05,
+          "strength": 0.5,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Financial Services"
+        },
+        {
+          "symbol": "NSE:ACC-EQ",
+          "signal": 1,
+          "price": 1381.4,
+          "strength": 0.5,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Construction Materials"
+        },
+        {
+          "symbol": "NSE:ULTRACEMCO-EQ",
+          "signal": 1,
+          "price": 11903.0,
+          "strength": 0.5,
+          "timestamp": "2026-07-20T05:30:00",
+          "sector": "Construction Materials"
+        }
+      ]
+    },
+    {
+      "scan_time": "2026-07-21 21:34:04",
+      "total_stocks_scanned": 501,
+      "signals_found": 0,
+      "signals": []
+    }
+  ],
+  "last_scan_time": "2026-07-21 21:34:04",
+  "last_updated": "2026-07-21 21:34:04"
+}

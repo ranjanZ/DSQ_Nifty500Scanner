@@ -251,10 +251,15 @@ class LiveTradingService:
             self.logger.info(f"✅ Strategy initialized: {self.strategy.name}")
 
             from src.data_service import DataService
+            # self.data_service = DataService({
+            #     'db_name': self.config.get('database', {}).get('db_name', 'spot_db'),
+            #     'stock_list_path': 'config/default/stock_list.yaml'
+            # })
             self.data_service = DataService({
-                'db_name': self.config.get('database', {}).get('db_name', 'spot_db_anamika'),
+                'db_name':'spot_db_anamika',
                 'stock_list_path': 'config/default/stock_list.yaml'
             })
+
             self.logger.info("✅ Data service initialized")
             
             # Initialize portfolio state manager for persistence
@@ -322,7 +327,7 @@ class LiveTradingService:
                 # SCAN: find signals on ALL stocks, then allocate capital
                 if self.scan_time and current_minute == self.scan_time and last_scan_minute != current_minute:
                     self.logger.info(f"Updating the database at {now.strftime('%H:%M:%S')}...")
-                    self.data_service.delete_all_stocks_new_data(self, num_days=1)
+                    self.data_service.delete_all_stocks_new_data(num_days=1)
                     self.data_service.update_all_stocks()
 
 
@@ -368,7 +373,7 @@ class LiveTradingService:
         market_close = datetime.strptime(self.market_close, '%H:%M').time()
         return market_open <= now.time() <= market_close
 
-    def _scan_for_signals(self, num_days_back: int = 10) -> List[Dict]:
+    def _scan_for_signals(self, num_days_back: int = 100) -> List[Dict]:
         """
         Scan ALL stocks for signals. No capital allocation here.
         Returns raw signals sorted by strength.
@@ -906,6 +911,7 @@ if __name__ == "__main__":
 
         service = LiveTradingService()
         service.initialize()
-        raw_signals=service._scan_for_signals(num_days_back=100)
-        signal=service._allocate_capital_to_signals(raw_signals)
-        service._process_signals(signal)
+        service.start()
+        #raw_signals=service._scan_for_signals(num_days_back=100)
+        #signal=service._allocate_capital_to_signals(raw_signals)
+        #service._process_signals(signal)

@@ -188,7 +188,7 @@ if __name__ == "__main__":
     import yaml
     from datetime import datetime
     from datetime import timedelta
-    from src.data_service.data_service import get_historical_data
+    from src.data_service.data_service import get_table_content
     config_path = "src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml"
     with open(config_path, "r") as f:
         cfg = yaml.safe_load(f)
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     start_date = end_date - timedelta(days=100)
     data = get_table_content(
         db_name="spot_db_anamika",
-        table_name="hdfcbank_eq",
+        table_name="axisbank_eq",
         start_date=start_date,
         end_date=end_date,
     )

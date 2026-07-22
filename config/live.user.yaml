@@ -6,21 +6,21 @@ live_trading_service:
   enabled: true
 
   # Trading capital
-  initial_capital: 15000
+  initial_capital: 10000
   
   # Risk management
   risk_per_trade: 0.02
-  target_profit_pct: 0.05
+  target_profit_pct: 0.06
   stop_loss_pct: 0.02
   max_holding_days: 7
 
   # Market hours (IST)
-  market_open: "01:00"
-  market_close: "15:46"
+  market_open: "00:00"
+  market_close: "23:59"
   
   # Scan interval (seconds)
-  scan_time: "01:48"
-  trade_time: "01:43"
+  scan_time: "23:52"
+  trade_time: "21:30"
 
   # Data refresh intervals (seconds)
   data_refresh_interval: 5
@@ -42,14 +42,14 @@ live_trading_service:
       "Automobile and Auto Components": 0.15
       "Information Technology": 0.0
       "Fast Moving Consumer Goods": 0.15
-      "Consumer Services": 0
+      "Consumer Services": 0.15
       "Chemicals": 0
       "Oil Gas & Consumable Fuels": 0
       "Consumer Durables": 0
       "Power": 0.12
       "Metals & Mining": 0
-      "Services": 0
-      "Construction": 0
+      "Services": 0.12
+      "Construction": 0.12
       "Construction Materials": 0
       "Realty": 0
       "Telecommunication": 0

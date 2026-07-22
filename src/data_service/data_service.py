@@ -90,6 +90,8 @@ class DataService:
                            interval: str = "1D", source: str = "db") -> Optional[pd.DataFrame]:
         try:
             if source == "db":
+                end_date = (pd.to_datetime(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S') if end_date and len(end_date) <= 10 else end_date
+                print(f"Fetching historical data for {symbol} from DB: {start_date} to {end_date} from db")
                 return self._get_from_db(symbol, start_date, end_date)
             elif source == "broker":
                 return self._get_from_broker(symbol, start_date, end_date, interval)
