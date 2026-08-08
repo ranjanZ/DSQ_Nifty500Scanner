@@ -212,11 +212,11 @@ def get_data_wrapper():
 # ═══════════════════════════════════════════════════════════════════════
 
 if HAS_MCP:
-    @mcp.resource("data://symbols/{watchlist?}")
-    def list_symbols(watchlist: str = None) -> str:
-        """List available symbols, optionally filtered by watchlist."""
+    @mcp.resource("data://symbols")
+    def list_symbols() -> str:
+        """List available symbols."""
         wrapper = get_data_wrapper()
-        symbols = wrapper.get_available_symbols(watchlist)
+        symbols = wrapper.get_available_symbols(None)
         
         if not symbols:
             return "No symbols available"
