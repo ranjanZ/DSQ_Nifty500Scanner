@@ -18,7 +18,7 @@ backtest:
   # Capital allocation based on sector
   position_weights:
     method: "sector_based"
-    max_positions: 7                # Maximum concurrent positions
+    max_new_positions: 7            # Maximum new positions per day
     max_per_sector: 1               # Only 1 stock per sector at a time
     sector_allocation:
       "Financial Services": 0.1
