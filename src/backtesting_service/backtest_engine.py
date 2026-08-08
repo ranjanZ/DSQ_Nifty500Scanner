@@ -261,6 +261,10 @@ class BacktestEngine:
 
         self.trades: List[Trade] = []
         self.equity_curve: List[Tuple[datetime, float]] = []
+        
+        # Cache for symbol-to-sector mapping (loaded once at initialization)
+        self._sector_cache: Optional[Dict[str, str]] = None
+        self._load_sector_cache()
 
     # ── Data fetching ─────────────────────────────────────────────────
 
@@ -992,45 +996,63 @@ class BacktestEngine:
 
     # ── Main run ──────────────────────────────────────────────────────
 
-    def _load_stock_list(self) -> Dict[str, str]:
-        """Load symbol to sector mapping from config/default/stock_list.yaml"""
+    def _load_sector_cache(self):
+        """Load symbol-to-sector mapping from stock_list.yaml once at initialization.
+        
+        This loads ALL watchlists from stock_list.yaml into memory for fast lookup.
+        Supports multiple watchlists like 'nifty_top_500', 'bank_stocks', 'it_stocks', etc.
+        """
+        self._sector_cache = {}
         stock_list_path = os.path.join(self.project_root, "config", "default", "stock_list.yaml")
-        symbol_to_sector = {}
         
         if not os.path.exists(stock_list_path):
-            return {}
+            if self.verbose:
+                print(f"   ⚠️  stock_list.yaml not found at {stock_list_path}")
+            return
         
         try:
             with open(stock_list_path, "r") as f:
                 data = yaml.safe_load(f) or {}
             
             watchlists = data.get("watchlists", {})
+            total_stocks = 0
+            
+            # Load ALL watchlists, not just nifty_top_500
             for watchlist_name, stocks in watchlists.items():
                 if not isinstance(stocks, list):
                     continue
                 for stock in stocks:
                     if not isinstance(stock, dict):
                         continue
-                    # Extract symbol from fyers_symbol (e.g., "NSE:AUBANK-EQ" -> "aubank_eq")
+                    
                     fyers_sym = stock.get("fyers_symbol", "")
                     sector = stock.get("sector", "Unknown")
                     
                     if fyers_sym:
                         # Convert NSE:AUBANK-EQ to aubank_eq
                         symbol = fyers_sym.replace("NSE:", "").replace("-EQ", "").lower() + "_eq"
-                        symbol_to_sector[symbol] = sector
+                        self._sector_cache[symbol] = sector
+                        total_stocks += 1
+            
+            if self.verbose:
+                print(f"   📦 Loaded {total_stocks} stocks from {len(watchlists)} watchlists into sector cache")
+                
         except Exception as e:
             if self.verbose:
                 print(f"   ⚠️  Failed to load stock_list.yaml: {e}")
-        
-        return symbol_to_sector
 
     def _get_sector(self, symbol: str) -> str:
-        """Lookup sector for a symbol from stock_list.yaml, fallback to cache or unknown."""
-        # Primary: load from config/default/stock_list.yaml
-        symbol_to_sector = self._load_stock_list()
-        if symbol in symbol_to_sector:
-            return symbol_to_sector[symbol]
+        """Lookup sector for a symbol from in-memory cache.
+        
+        Priority:
+        1. In-memory cache (loaded from stock_list.yaml at initialization)
+        2. Legacy cache file (sector_cache.json) - for backward compatibility
+        3. Hardcoded fallback map for common symbols
+        4. "Unknown" as final fallback
+        """
+        # Primary: Check in-memory cache (fastest - O(1) lookup)
+        if symbol in self._sector_cache:
+            return self._sector_cache[symbol]
         
         # Secondary: Try to load from cache file (legacy support)
         cache_path = os.path.join(self.project_root, "data", "sector_cache.json")
