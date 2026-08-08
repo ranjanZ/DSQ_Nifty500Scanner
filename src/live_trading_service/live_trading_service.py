@@ -252,7 +252,7 @@ class LiveTradingService:
 
             from src.data_service import DataService
             # self.data_service = DataService({
-            #     'db_name': self.config.get('database', {}).get('db_name', 'spot_db'),
+            #     'db_name': self.config.get('database', {}).get('db_name', 'spot_db_anamika'),
             #     'stock_list_path': 'config/default/stock_list.yaml'
             # })
             self.data_service = DataService({
