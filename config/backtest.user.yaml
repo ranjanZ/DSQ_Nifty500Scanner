@@ -3,14 +3,14 @@ backtest:
   strategy_name: "random_strategy"   # Using random strategy for testing
 
   start_date: "2025-01-01"          # start of backtesting period
-  end_date: "2025-12-31"            # end of backtesting period
+  end_date: "2025-02-01"            # end of backtesting period
   initial_capital: 100000           # ₹1,00,000
   target_profit_pct: 0.08
   stop_loss_pct: 0.04               # 4%
   max_holding_days: 7
 
   # Max capital that can be allocated per day for new positions
-  max_capital_allocation_per_day: 50000  # ₹50,000 max per day
+  max_capital_allocation_per_day: 10000  # ₹50,000 max per day
 
   # Watchlist: nifty_top_500 loads all 500 stocks
   watchlist: ["nifty_top_500"]
