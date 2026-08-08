@@ -5,9 +5,12 @@ live_trading_service:
   # Enable/disable live trading
   enabled: true
 
+  # Strategy to use (must match strategy folder name exactly)
+  strategy_type: "volume_support_resistance_strategy"
+
   # Trading capital
   initial_capital: 10000
-  
+
   # Risk management
   risk_per_trade: 0.02
   target_profit_pct: 0.06
@@ -15,9 +18,9 @@ live_trading_service:
   max_holding_days: 7
 
   # Market hours (IST)
-  market_open: "00:00"
-  market_close: "23:59"
-  
+  market_open: "09:15"
+  market_close: "15:30"
+
   # Scan interval (seconds)
   scan_time: "14:45"
   trade_time: "15:07"
@@ -59,5 +62,4 @@ live_trading_service:
       "Energy": 0
       "Forest Materials": 0
 
-
-
+timezone: "Asia/Kolkata"
