@@ -256,7 +256,7 @@ class BacktestEngine:
         self.target_profit_pct = bt_cfg.get("target_profit_pct", 0.08)
         self.stop_loss_pct = bt_cfg.get("stop_loss_pct", 0.04)
         self.max_holding_days = bt_cfg.get("max_holding_days", 7)
-        self.lookback_days = bt_cfg.get("lookback_days", 100)
+        self.lookback_days = bt_cfg.get("lookback_days", 5)
         self.position_weights = bt_cfg.get("position_weights", {})
         self.watchlist = bt_cfg.get("watchlist", ["nifty_top_500"])
 
@@ -315,6 +315,8 @@ class BacktestEngine:
                 df["date"] = pd.to_datetime(df.index)
 
             df = df[df["date"] >= start_date].reset_index(drop=True)
+            print(f"🎉  Successfully fetched {symbol} len:{len(df)}")
+
             return df
         except Exception as e:
             if self.verbose:
@@ -1035,7 +1037,7 @@ class BacktestEngine:
         for sym, df in results:
             if df is None or len(df) < self.lookback_days:
                 if self.verbose:
-                    print(f"   ⚠️  Insufficient data for {sym}")
+                    print(f"   ⚠️ Insufficient data for lookback {sym}")
                 continue
             daily_prices[sym] = df
         

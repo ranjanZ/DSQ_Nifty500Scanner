@@ -40,7 +40,7 @@ backtest:
       "Forest Materials": 0.1
 
   # days of historical data used for signal generation
-  lookback_days: 100
+  lookback_days: 5
   watchlist: ["nifty_top_500"]
 
 

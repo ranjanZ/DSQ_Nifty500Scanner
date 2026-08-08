@@ -3,8 +3,8 @@
 backtest:
   strategy_name: "volume_support_resistance"   # ← change this to switch strategies
   
-  start_date: "2024-01-01"          # start of backtesting period (historical date)
-  end_date: "2024-12-31"            # end of backtesting period (historical date)
+  start_date: "2026-01-01"          # start of backtesting period (historical date)
+  end_date: "2026-02-01"            # end of backtesting period (historical date)
   initial_capital: 100000           # ₹1,00,000 for proper swing trading simulation
   target_profit_pct: 0.08
   stop_loss_pct: 0.04               # 4%
