@@ -1,0 +1,25 @@
+{
+  "strategy": "VolumeSupportResistance",
+  "timestamp": "2026-08-08T06:36:24.758109",
+  "metrics": {
+    "total_return_pct": 0.0,
+    "annualized_return_pct": 0.0,
+    "sharpe_ratio": 0.0,
+    "sortino_ratio": 0.0,
+    "max_drawdown_pct": 0.0,
+    "max_drawdown_duration_days": 0,
+    "win_rate_pct": 0.0,
+    "profit_factor": 0.0,
+    "avg_win_pct": 0.0,
+    "avg_loss_pct": 0.0,
+    "total_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "avg_holding_days": 0.0,
+    "initial_capital": 10000,
+    "final_equity": 10000,
+    "benchmark_return_pct": 0.0,
+    "sector_metrics": []
+  },
+  "trades": []
+}

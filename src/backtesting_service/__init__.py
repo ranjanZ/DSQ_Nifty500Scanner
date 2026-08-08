@@ -2,7 +2,7 @@
 Backtesting Service - Backtest and optimize trading strategies
 """
 
-from .backtest_service import BacktestEngine
+from .backtest_engine import BacktestEngine
 
 # OptimizationEngine might not exist in all versions
 try:

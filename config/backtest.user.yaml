@@ -1,17 +1,14 @@
 # Backtest Service Configuration - User Overrides
 # Copy this file and modify only what you need to override
 backtest:
-  strategy_name: "Support_Resistance"   # ← change this to switch strategies
+  strategy_name: "volume_support_resistance"   # ← change this to switch strategies
   
-  start_date: "2026-01-01"          # start of backtesting period
-  end_date: "2026-06-04"            # end of backtesting period
+  start_date: "2024-01-01"          # start of backtesting period (historical date)
+  end_date: "2024-12-31"            # end of backtesting period (historical date)
   initial_capital: 10000
   target_profit_pct: 0.08
   stop_loss_pct: 0.04               # 4%
   max_holding_days: 7
-
-
-
 
   # Enable/disable sector allocation from strategy config
   use_strategy_sector_allocation: true
@@ -46,6 +43,3 @@ backtest:
       "Media Entertainment & Publication": 0
       "Energy": 0
       "Forest Materials": 0
-
-
-
