@@ -1,39 +1,46 @@
 ```
-# Python
+# Configuration and metrics files
+config/backtest.user.yaml
+data/outputs/backtesting/*.json
+
+# Python specific
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-env/
+*.so
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
 venv/
 .venv/
-.ENV
-.python-version
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
+env/
+ENV/
+
+# Logs
 *.log
-*.pot
-*.mo
-MoeMyself.db
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-.venv.bak/
 
-# Metrics and outputs
-data/outputs/backtesting/
-data/sector_cache.json
+# IDE specific
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Environment variables
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Environment files
 .env
 .env.local
-.env.*
+*.env.*
 ```

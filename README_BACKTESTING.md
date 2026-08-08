@@ -6,7 +6,7 @@ This guide explains how to run backtests for the **Volume Support/Resistance Str
 
 1. ✅ **Reads data from PostgreSQL database** (`spot_db_anamika`)
 2. ✅ **Uses `config/backtest.user.yaml`** for user overrides
-3. ✅ **Uses `config/default/stock_list.yaml`** for sector mapping (NOT cache files)
+3. ✅ **Uses `config/default/stock_list.yaml`** for sector mapping (500+ stocks, NOT cache files)
 4. ✅ **Implements swing trading with portfolio management** (sector-based allocation, max positions)
 
 ---
@@ -61,6 +61,11 @@ backtest:
   target_profit_pct: 0.08           # 8% target
   stop_loss_pct: 0.04               # 4% stop loss
   max_holding_days: 7               # Swing trading horizon
+  
+  # Watchlist options:
+  # - ["nifty_top_500"] - loads all 500 stocks from config/default/stock_list.yaml
+  # - ["aubank_eq", "reliance_eq", "infy_eq"] - specific symbols (faster for testing)
+  watchlist: ["aubank_eq", "reliance_eq", "infy_eq", "hdfcbank_eq", "tcs_eq"]
 
   # Portfolio Management
   position_weights:
@@ -68,10 +73,10 @@ backtest:
     max_positions: 7                # Max concurrent positions
     max_per_sector: 1               # Only 1 stock per sector
     sector_allocation:
-      "Financial Services": 0.3
-      "Capital Goods": 0.2
-      "Healthcare": 0.2
-      # ... other sectors
+      "Financial Services": 0.30
+      "Capital Goods": 0.20
+      "Healthcare": 0.15
+      # ... other sectors (must sum to 1.0)
 ```
 
 ### 2. Stock List: `config/default/stock_list.yaml`
@@ -91,6 +96,8 @@ watchlists:
 The backtest engine automatically converts:
 - `NSE:AUBANK-EQ` → `aubank_eq` (database table name)
 - Maps to sector: `Financial Services`
+
+**Note**: No separate cache file needed - sector data is loaded directly from `stock_list.yaml`.
 
 ### 3. Strategy Config: `src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml`
 
@@ -115,7 +122,7 @@ cd /workspace
 python src/backtesting_service/backtest_engine.py --strategy volume_support_resistance
 ```
 
-### Method 2: Specify Custom Symbols
+### Method 2: Specify Custom Symbols (Faster for Testing)
 
 ```bash
 python src/backtesting_service/backtest_engine.py \
@@ -139,6 +146,20 @@ python src/backtesting_service/backtest_engine.py \
 python -m src.backtesting_service.backtest_engine \
   --strategy volume_support_resistance
 ```
+
+### Method 5: Test All Nifty 500 Stocks (SLOW - requires full DB)
+
+Edit `config/backtest.user.yaml`:
+```yaml
+watchlist: ["nifty_top_500"]
+```
+
+Then run:
+```bash
+python src/backtesting_service/backtest_engine.py --strategy volume_support_resistance
+```
+
+⚠️ **Warning**: This will attempt to load 500+ stocks from the database. Only use if you have complete historical data.
 
 ---
 
@@ -168,7 +189,7 @@ python -m src.backtesting_service.backtest_engine \
    # Example allocation (₹10,000 capital)
    Financial Services: 30% → ₹3,000
    Capital Goods: 20%      → ₹2,000
-   Healthcare: 20%         → ₹2,000
+   Healthcare: 15%         → ₹1,500
    # ... etc
    ```
 
@@ -202,7 +223,7 @@ Contains:
 
 ### 2. Equity Curve Plot
 ```
-data/outputs/backtesting/volumesupportresistance_equity_curve.png
+data/outputs/backtesting/volumesupportresistance_20240101_20241231.png
 ```
 
 Shows:
@@ -212,7 +233,7 @@ Shows:
 
 ### 3. Sector Breakdown Plot
 ```
-data/outputs/backtesting/volumesupportresistance_sector_breakdown.png
+data/outputs/backtesting/volumesupportresistance_sector_breakdown_20240101_20241231.png
 ```
 
 Displays:
@@ -240,7 +261,7 @@ Displays:
    Allocation: Sector-based (max_pos=7, max_per_sector=1)
 ============================================================
 
-📈 aubank_eq (sector: Financial Services, alloc: ₹10,000)
+📈 aubank_eq (sector: Financial Services, alloc: ₹7,895)
    ✓ Loaded 250 candles
    ✓ Generated 15 signals
    ✓ Executed 12 trades
@@ -248,7 +269,7 @@ Displays:
 📈 reliance_eq (sector: Oil Gas & Consumable Fuels, alloc: ₹0)
    ⚠️  Insufficient data
 
-📈 infy_eq (sector: Information Technology, alloc: ₹0)
+📈 infy_eq (sector: Information Technology, alloc: ₹2,105)
    ⚠️  Insufficient data
 
 ============================================================
@@ -331,6 +352,15 @@ start_date: "2024-01-01"
 end_date: "2024-12-31"
 ```
 
+### Issue: Wrong number of symbols
+
+**Problem**: Backtest shows "5 total" when you expected different count
+
+**Solution**: Check `config/backtest.user.yaml`:
+- `watchlist` defines which symbols to test
+- Set to specific symbols for faster testing: `["aubank_eq", "reliance_eq"]`
+- Set to `["nifty_top_500"]` for full scan (500+ stocks)
+
 ### Issue: Wrong sector allocation
 
 **Check**: Verify `config/default/stock_list.yaml` has correct sector mappings
@@ -386,7 +416,7 @@ with open('data/outputs/backtesting/volumesupportresistance_metrics.json') as f:
 
 - [ ] PostgreSQL running with stock data
 - [ ] `config/backtest.user.yaml` configured (historical dates!)
-- [ ] `config/default/stock_list.yaml` exists (already provided)
+- [ ] `config/default/stock_list.yaml` exists (already provided with 500+ stocks)
 - [ ] Dependencies installed (`pip install -r requirements.txt`)
 - [ ] Run backtest: `python src/backtesting_service/backtest_engine.py --strategy volume_support_resistance`
 - [ ] Check results in `data/outputs/backtesting/`
