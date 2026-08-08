@@ -1,6 +1,8 @@
 # Random Strategy Configuration
 # Simple strategy for testing backtesting engine
 
+class_name: "RandomStrategy"
+
 params:
   signal_probability: 0.08      # 8% chance of signal per day
   use_volume_filter: false      # Disable volume filter for pure random signals
@@ -11,5 +13,5 @@ params:
 description: |
   A simple random strategy that generates buy signals based on probability.
   Useful for testing the backtesting engine infrastructure without complex logic.
-  
+
 expected_signals_per_day: ~40   # With 500 stocks and 8% probability

@@ -175,16 +175,16 @@ def load_strategy_class(strategy_name: str, project_root: str):
             f"Available strategies: {available}"
         )
 
-    # Read class name from config.yaml
+    # Read class name from config.yaml (required)
     config_file = os.path.join(strategy_folder, "config.yaml")
-    class_name = None
-    if os.path.exists(config_file):
-        cfg = load_yaml(config_file)
-        class_name = cfg.get("class_name")
-
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"config.yaml not found in {strategy_folder}")
+    
+    cfg = load_yaml(config_file)
+    class_name = cfg.get("class_name")
+    
     if not class_name:
-        parts = folder.replace("_strategy", "").split("_")
-        class_name = "".join(p.capitalize() for p in parts) + "Strategy"
+        raise ValueError(f"'class_name' not defined in {config_file}")
 
     # Pre-load strategy_base for relative imports
     base_file = os.path.join(project_root, "src", "strategy_service", "strategy_base.py")
@@ -248,8 +248,7 @@ class BacktestEngine:
         self.lookback_days = bt_cfg["lookback_days"]
         self.position_weights = bt_cfg["position_weights"]
         self.watchlist = bt_cfg["watchlist"]
-        # Max capital that can be allocated per day (for new positions)
-        self.max_capital_allocation_per_day = bt_cfg.get("max_capital_allocation_per_day", self.initial_capital)
+        self.max_capital_allocation_per_day = bt_cfg["max_capital_allocation_per_day"]
 
         svc_cfg = config.get("backtest_service", {})
         self.save_plots = svc_cfg["save_plots"]

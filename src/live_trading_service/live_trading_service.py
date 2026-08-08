@@ -50,15 +50,15 @@ def load_strategy_class(strategy_name: str, project_root: str):
         )
 
     config_file = os.path.join(strategy_folder, "config.yaml")
-    class_name = None
-    if os.path.exists(config_file):
-        with open(config_file, "r") as f:
-            cfg = yaml.safe_load(f) or {}
-        class_name = cfg.get("class_name")
-
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"config.yaml not found in {strategy_folder}")
+    
+    with open(config_file, "r") as f:
+        cfg = yaml.safe_load(f) or {}
+    class_name = cfg.get("class_name")
+    
     if not class_name:
-        parts = folder.replace("_strategy", "").split("_")
-        class_name = "".join(p.capitalize() for p in parts) + "Strategy"
+        raise ValueError(f"'class_name' not defined in {config_file}")
 
     base_file = os.path.join(project_root, "src", "strategy_service", "strategy_base.py")
     _load_module_from_file("src.strategy_service.strategy_base", base_file)

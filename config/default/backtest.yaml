@@ -8,6 +8,8 @@ backtest:
   target_profit_pct: 0.08           # 8%
   stop_loss_pct: 0.04               # 4%
   max_holding_days: 7
+  # Max capital that can be allocated per day (for new positions)
+  max_capital_allocation_per_day: 10000
   # capital allocation weights for top-ranked buy signals (must sum to 1.0)
   # top 1 gets 50%, top 2 gets 30%, top 3 gets 20%
   position_weights:
@@ -43,9 +45,8 @@ backtest:
   lookback_days: 5
   watchlist: ["nifty_top_500"]
 
-
-  
-  # Output settings
+# Backtest service output settings
+backtest_service:
   save_plots: true
   save_metrics: true
   verbose: true
