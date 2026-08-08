@@ -1,6 +1,4 @@
-"""
-Strategy Service - Manages all trading strategies
-"""
+"""Strategy Service - Manages all trading strategies"""
 
 from .strategy_base import TradingStrategy
 from .strategies import (

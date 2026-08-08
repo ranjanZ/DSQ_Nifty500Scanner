@@ -116,3 +116,62 @@ class RandomStrategy(TradingStrategy):
     def get_minimum_history(self) -> int:
         """Return minimum history required for this strategy."""
         return self.params.get('lookback_window', 20) + 10
+
+
+# ==================================================================== #
+#  TEST RUNNER
+# ==================================================================== #
+if __name__ == "__main__":
+    import yaml
+    from datetime import datetime, timedelta
+    from pathlib import Path
+    
+    # Load config
+    config_path = Path(__file__).parent / "config.yaml"
+    params = {}
+    if config_path.exists():
+        with open(config_path, "r") as f:
+            cfg = yaml.safe_load(f)
+            params = cfg.get("params", {})
+    
+    # Generate sample data for testing
+    import pandas as pd
+    import numpy as np
+    
+    dates = pd.date_range(start='2024-01-01', periods=150, freq='D')
+    np.random.seed(42)
+    
+    base_price = 1000
+    prices = [base_price]
+    for i in range(1, 150):
+        change = np.random.randn() * 10
+        prices.append(prices[-1] + change)
+    
+    data = pd.DataFrame({
+        'date': dates,
+        'open': prices,
+        'high': [p + abs(np.random.randn() * 5) for p in prices],
+        'low': [p - abs(np.random.randn() * 5) for p in prices],
+        'close': prices,
+        'volume': np.random.randint(1000, 10000, 150)
+    })
+    
+    print(f"📊 Testing RandomStrategy with {len(data)} candles")
+    print("=" * 60)
+    
+    strategy = RandomStrategy(params=params)
+    print(f"✅ Strategy initialized: {strategy.name}")
+    print(f"   Parameters: {strategy.params}")
+    
+    signals = strategy.generate_signals(data, num_back_signals=50)
+    
+    buy_signals = signals[signals['signal'] == 1]
+    print(f"\n📈 Generated {len(buy_signals)} buy signals")
+    
+    if not buy_signals.empty:
+        print("\nSignal details:")
+        cols_to_show = ['date', 'close', 'signal_strength']
+        print(buy_signals[cols_to_show].tail(10).to_string(index=False))
+    
+    print("\n" + "=" * 60)
+    print("✅ RandomStrategy test completed!")
