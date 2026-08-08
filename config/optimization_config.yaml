@@ -4,9 +4,12 @@
 
 optimization:
   # Strategy to optimize (must exist in src/strategy_service/strategies/)
+  # Only strategy_name is required - folder and config path are auto-derived
   strategy_name: "volume_support_resistance"
-  strategy_folder: "volume_support_resistance_strategy"
-  strategy_config_path: "src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml"
+  
+  # Auto-derived:
+  #   strategy_folder: "volume_support_resistance_strategy"
+  #   strategy_config_path: "src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml"
 
   # ── Parameter Space ──
   # Each param must match a key in the strategy's config.yaml -> params
