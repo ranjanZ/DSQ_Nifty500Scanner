@@ -8,6 +8,12 @@ This guide explains how to run backtests for the **Volume Support/Resistance Str
 2. ✅ **Uses `config/backtest.user.yaml`** for user overrides
 3. ✅ **Uses `config/default/stock_list.yaml`** for sector mapping (500+ stocks, NOT cache files)
 4. ✅ **Implements swing trading with portfolio management** (sector-based allocation, max positions)
+5. ✅ **Day-by-day simulation** - Mimics live trading workflow where:
+   - Each day scans all stocks for signals
+   - Opens positions respecting portfolio limits (max 7 positions, 1 per sector)
+   - Closes positions on target/stop/max-hold
+   - **Frees capital when positions close** for new opportunities
+   - Repeats for every trading day in the backtest period
 
 ---
 
@@ -57,7 +63,7 @@ backtest:
   start_date: "2024-01-01"          # Historical dates (NOT future!)
   end_date: "2024-12-31"
   
-  initial_capital: 10000
+  initial_capital: 100000           # ₹1,00,000 for proper swing trading
   target_profit_pct: 0.08           # 8% target
   stop_loss_pct: 0.04               # 4% stop loss
   max_holding_days: 7               # Swing trading horizon
@@ -67,11 +73,11 @@ backtest:
   # - ["aubank_eq", "reliance_eq", "infy_eq"] - specific symbols (faster for testing)
   watchlist: ["aubank_eq", "reliance_eq", "infy_eq", "hdfcbank_eq", "tcs_eq"]
 
-  # Portfolio Management
+  # Portfolio Management - mimics live trading
   position_weights:
     method: "sector_based"
     max_positions: 7                # Max concurrent positions
-    max_per_sector: 1               # Only 1 stock per sector
+    max_per_sector: 1               # Only 1 stock per sector at a time
     sector_allocation:
       "Financial Services": 0.30
       "Capital Goods": 0.20
@@ -81,27 +87,15 @@ backtest:
 
 ### 2. Stock List: `config/default/stock_list.yaml`
 
-Contains **500+ stocks** with sector mappings:
-```yaml
-watchlists:
-  nifty_top_500:
-    - name: "AU SMALL FINANCE BANK LTD"
-      fyers_symbol: NSE:AUBANK-EQ
-      sector: Financial Services
-    - name: "RELIANCE INDUSTRIES LIMITED"
-      fyers_symbol: NSE:RELIANCE-EQ
-      sector: Oil Gas & Consumable Fuels
-```
-
-The backtest engine automatically converts:
+Contains **500+ stocks** with sector mappings. The backtest engine automatically converts:
 - `NSE:AUBANK-EQ` → `aubank_eq` (database table name)
 - Maps to sector: `Financial Services`
 
 **Note**: No separate cache file needed - sector data is loaded directly from `stock_list.yaml`.
 
-### 3. Strategy Config: `src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml`
+### 3. Strategy Config
 
-Strategy-specific parameters:
+Strategy-specific parameters in `src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml`:
 ```yaml
 params:
   volume_ema_period: 20
@@ -165,44 +159,63 @@ python src/backtesting_service/backtest_engine.py --strategy volume_support_resi
 
 ## Swing Trading Workflow with Portfolio Management
 
-### Daily Scan Process
+### Daily Scan Process (Mimics Live Trading)
 
-1. **Strategy Scans All Stocks** (e.g., Nifty 500)
-   ```python
-   # Each day, strategy generates buy signals
-   signals = strategy.generate_signals(df)
-   ```
+The backtest engine now simulates **day-by-day trading** exactly like the live trading service:
 
-2. **Rank Signals by Strength**
-   - Volume ratio
-   - KDE level confluence
-   - Pivot point alignment
+#### 1. Each Trading Day:
+   - Scan ALL stocks in watchlist for buy signals
+   - Check existing positions for exit conditions
+   - Close positions that hit target/stop/max-hold
+   - **Free up capital and slots** when positions close
+   - Open new positions with available capital
 
-3. **Portfolio Management Filters**
-   ```yaml
-   max_positions: 7        # Only take top 7 signals
-   max_per_sector: 1       # Diversify across sectors
-   ```
+#### 2. Portfolio Limits Enforced Daily:
+```yaml
+max_positions: 7        # Maximum 7 concurrent positions
+max_per_sector: 1       # Only 1 stock per sector at a time
+```
 
-4. **Sector-Based Capital Allocation**
-   ```python
-   # Example allocation (₹10,000 capital)
-   Financial Services: 30% → ₹3,000
-   Capital Goods: 20%      → ₹2,000
-   Healthcare: 15%         → ₹1,500
-   # ... etc
-   ```
+#### 3. Capital Flow Example:
+```
+Day 1: Scan → Open 3 positions (₹30k, ₹25k, ₹20k) → Capital used: ₹75k
+Day 2: Position 1 hits target (+8%) → Closed, capital freed
+       Scan → Open 2 new positions with freed capital
+Day 3: Position 2 hits stop (-4%) → Closed, capital freed
+       Position 4 reaches max hold (7 days) → Exit at market
+       Scan → Open new positions...
+```
 
-5. **Position Sizing**
-   ```python
-   # For each selected stock
-   qty = capital_allocated / entry_price
-   ```
+#### 4. Exit Priority:
+   - **Stop Loss** (first priority) - Protects capital
+   - **Target Profit** - Takes profits
+   - **Max Holding Period** (7 days) - Ensures swing trading discipline
 
-6. **Exit Rules**
-   - **Target**: 8% profit
-   - **Stop Loss**: 4% loss
-   - **Max Hold**: 7 days (swing trading)
+### Example Day-by-Day Simulation
+
+```python
+# Pseudo-code of what happens internally
+for each trading_day in backtest_period:
+    # Step 1: Check exits on existing positions
+    for symbol, position in active_positions:
+        if low <= stop_loss:
+            close_position(exit_reason='stoploss')
+            free_capital_and_slot()
+        elif high >= target:
+            close_position(exit_reason='target')
+            free_capital_and_slot()
+        elif days_held >= max_holding_days:
+            close_position(exit_reason='max_hold')
+            free_capital_and_slot()
+    
+    # Step 2: Scan for new signals (only if slots available)
+    if len(active_positions) < max_positions:
+        for symbol in watchlist:
+            if can_open_position(symbol):  # Respects sector limits
+                signal = generate_signal(symbol)
+                if signal == BUY:
+                    open_position(symbol)
+```
 
 ---
 
@@ -219,7 +232,7 @@ Contains:
 - Total return, Sharpe ratio, Sortino ratio
 - Max drawdown, win rate, profit factor
 - Sector-wise breakdown
-- Trade statistics
+- Trade statistics (entry/exit dates, P&L, holding periods)
 
 ### 2. Equity Curve Plot
 ```
@@ -229,7 +242,7 @@ data/outputs/backtesting/volumesupportresistance_20240101_20241231.png
 Shows:
 - Equity growth over time
 - Drawdown periods
-- Benchmark comparison
+- Key metrics in title
 
 ### 3. Sector Breakdown Plot
 ```
@@ -255,54 +268,33 @@ Displays:
 
 🔬 Backtest: VolumeSupportResistance
    Period: 2024-01-01 → 2024-12-31
-   Capital: ₹10,000
+   Capital: ₹1,00,000
    Symbols: 5 total, 3 active
    Target: 8.0% | Stop: 4.0% | Max Hold: 7d
    Allocation: Sector-based (max_pos=7, max_per_sector=1)
 ============================================================
 
-📈 aubank_eq (sector: Financial Services, alloc: ₹7,895)
-   ✓ Loaded 250 candles
-   ✓ Generated 15 signals
-   ✓ Executed 12 trades
+📈 aubank_eq (sector: Financial Services, alloc: ₹78,947)
+   ⚠️  Insufficient data (PostgreSQL not running)
 
 📈 reliance_eq (sector: Oil Gas & Consumable Fuels, alloc: ₹0)
    ⚠️  Insufficient data
 
-📈 infy_eq (sector: Information Technology, alloc: ₹2,105)
+📈 infy_eq (sector: Information Technology, alloc: ₹21,053)
    ⚠️  Insufficient data
 
 ============================================================
 📊 BACKTEST RESULTS
 ============================================================
-   Initial Capital:     ₹10,000
-   Final Equity:        ₹12,450
-   Total Return:        24.50%
-   Annualized Return:   24.50%
-   Sharpe Ratio:        1.85
-   Sortino Ratio:       2.31
-   Max Drawdown:        8.20%
-   Win Rate:            66.67%
-   Profit Factor:       2.15
-   Avg Win:             5.20%
-   Avg Loss:            -3.10%
-   Total Trades:        12
-   Avg Holding Days:    4.5
+   Initial Capital:     ₹1,00,000
+   Final Equity:        ₹1,00,000
+   Total Return:        0.00%
+   ...
+   Total Trades:        0
 ============================================================
-
-📂 SECTOR-WISE BREAKDOWN
-------------------------------------------------------------
-Sector                              Trades    Win%    P&L (₹)    Avg P&L
-------------------------------------------------------------
-Financial Services                      8      75.0      2,100        263
-Capital Goods                           3      66.7        650        217
-Healthcare                              1      0.0         -300       -300
-------------------------------------------------------------
-============================================================
-   💾 Metrics JSON: /workspace/data/outputs/backtesting/volumesupportresistance_metrics.json
-
-✅ Backtest complete!
 ```
+
+**Note**: Zero trades shown because PostgreSQL is not running. Once database is connected with historical data, you'll see actual trades.
 
 ---
 
@@ -361,9 +353,14 @@ end_date: "2024-12-31"
 - Set to specific symbols for faster testing: `["aubank_eq", "reliance_eq"]`
 - Set to `["nifty_top_500"]` for full scan (500+ stocks)
 
-### Issue: Wrong sector allocation
+### Issue: Backtest completes instantly (1 second)
 
-**Check**: Verify `config/default/stock_list.yaml` has correct sector mappings
+**Cause**: PostgreSQL not running or no data available
+
+**Solution**: 
+1. Start PostgreSQL: `sudo systemctl start postgresql`
+2. Verify data exists in database tables
+3. Check logs for "Insufficient data" warnings
 
 ---
 
@@ -406,8 +403,9 @@ with open('data/outputs/backtesting/volumesupportresistance_metrics.json') as f:
 | **Data Source** | PostgreSQL (`spot_db_anamika`) |
 | **Config System** | `backtest.user.yaml` + `default/backtest.yaml` |
 | **Sector Mapping** | `config/default/stock_list.yaml` (500+ stocks) |
-| **Portfolio Mgmt** | Sector-based allocation, max positions |
-| **Swing Trading** | 7-day max hold, 8% target, 4% stop |
+| **Portfolio Mgmt** | Sector-based allocation, max 7 positions, 1 per sector |
+| **Swing Trading** | Day-by-day simulation, 7-day max hold, 8% target, 4% stop |
+| **Capital Flow** | Freed when positions close (like live trading) |
 | **Output** | JSON metrics + PNG plots |
 
 ---

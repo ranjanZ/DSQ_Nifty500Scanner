@@ -1,7 +1,22 @@
 ```
-# Configuration and metrics files
+# Configuration and output files
 config/backtest.user.yaml
-data/outputs/backtesting/*.json
+data/outputs/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Environment files
+.env
+.env.local
+*.env.*
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Python specific
 __pycache__/
@@ -10,37 +25,24 @@ __pycache__/
 *.pyd
 .Python
 *.so
-*.egg-info/
+
+# Build artifacts
 build/
 dist/
-.eggs/
+*.egg-info/
 
-# Virtual environments
+# Coverage reports
+.coverage
+htmlcov/
+coverage/
+
+# Dependency directories
 venv/
 .venv/
-env/
-ENV/
-
-# Logs
-*.log
-
-# IDE specific
-.vscode/
-.idea/
-*.swp
-*.swo
+.env/
+node_modules/
 
 # OS generated files
 .DS_Store
 Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Environment files
-.env
-.env.local
-*.env.*
 ```

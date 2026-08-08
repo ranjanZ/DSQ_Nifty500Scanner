@@ -5,7 +5,7 @@ backtest:
   
   start_date: "2024-01-01"          # start of backtesting period (historical date)
   end_date: "2024-12-31"            # end of backtesting period (historical date)
-  initial_capital: 10000
+  initial_capital: 100000           # ₹1,00,000 for proper swing trading simulation
   target_profit_pct: 0.08
   stop_loss_pct: 0.04               # 4%
   max_holding_days: 7
@@ -15,12 +15,12 @@ backtest:
   # - ["aubank_eq", "reliance_eq", "infy_eq"] - specific symbols (FAST for testing)
   watchlist: ["aubank_eq", "reliance_eq", "infy_eq", "hdfcbank_eq", "tcs_eq"]
   
-  # capital allocation weights for top-ranked buy signals (must sum to 1.0)
-  # Weights proportional to sector size (total = ~500 stocks)
+  # Capital allocation: Each day invest up to 10% of available capital per position
+  # With max_positions=7, each position gets ~14% of capital when fully invested
   position_weights:
     method: "sector_based"
-    max_positions: 7
-    max_per_sector: 1
+    max_positions: 7                # Maximum concurrent positions
+    max_per_sector: 1               # Only 1 stock per sector at a time
     # Weights proportional to sector size (total = ~500 stocks)
     sector_allocation:
       "Financial Services": 0.30
