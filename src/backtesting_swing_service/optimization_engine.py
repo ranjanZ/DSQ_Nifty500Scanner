@@ -183,7 +183,7 @@ class StrategyOptimizer:
 
     def _load_backtest_engine(self):
         """Load BacktestEngine directly from file."""
-        bt_file = os.path.join(self.project_root, "src", "backtesting_service", "backtest_engine.py")
+        bt_file = os.path.join(self.project_root, "src", "backtesting_swing_service", "backtest_engine.py")
         if not os.path.exists(bt_file):
             raise FileNotFoundError(f"BacktestEngine not found: {bt_file}")
         bt_mod = _load_module_from_file("opt_backtest_engine", bt_file)

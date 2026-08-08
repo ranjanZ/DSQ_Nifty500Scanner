@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, '/workspace/src')
 
 from strategy_service.strategies.random_strategy.strategy import RandomStrategy
-from backtesting_service.backtest_engine import BacktestEngine
+from backtesting_swing_service.backtest_engine import BacktestEngine
 
 # Generate mock data for 10 stocks
 def generate_mock_data(symbol: str, days: int = 400) -> pd.DataFrame:

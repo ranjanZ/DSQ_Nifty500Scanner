@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from strategy_service.strategies.random_strategy.strategy import RandomStrategy
-from backtesting_service.backtest_engine import BacktestEngine
+from backtesting_swing_service.backtest_engine import BacktestEngine
 
 # Generate realistic mock OHLCV data
 def generate_mock_data(symbol: str, days: int = 400) -> pd.DataFrame:
