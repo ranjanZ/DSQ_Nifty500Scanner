@@ -364,8 +364,8 @@ def create_agent():
     # Add conditional edges
     workflow.add_conditional_edges(
         source="agent",
-        condition=should_continue,
-        mapping={
+        path=should_continue,
+        path_map={
             "tools": "tools",
             "end": END
         }
