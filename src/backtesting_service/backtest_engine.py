@@ -595,9 +595,47 @@ class BacktestEngine:
 
     # ── Main run ──────────────────────────────────────────────────────
 
+    def _load_stock_list(self) -> Dict[str, str]:
+        """Load symbol to sector mapping from config/default/stock_list.yaml"""
+        stock_list_path = os.path.join(self.project_root, "config", "default", "stock_list.yaml")
+        symbol_to_sector = {}
+        
+        if not os.path.exists(stock_list_path):
+            return {}
+        
+        try:
+            with open(stock_list_path, "r") as f:
+                data = yaml.safe_load(f) or {}
+            
+            watchlists = data.get("watchlists", {})
+            for watchlist_name, stocks in watchlists.items():
+                if not isinstance(stocks, list):
+                    continue
+                for stock in stocks:
+                    if not isinstance(stock, dict):
+                        continue
+                    # Extract symbol from fyers_symbol (e.g., "NSE:AUBANK-EQ" -> "aubank_eq")
+                    fyers_sym = stock.get("fyers_symbol", "")
+                    sector = stock.get("sector", "Unknown")
+                    
+                    if fyers_sym:
+                        # Convert NSE:AUBANK-EQ to aubank_eq
+                        symbol = fyers_sym.replace("NSE:", "").replace("-EQ", "").lower() + "_eq"
+                        symbol_to_sector[symbol] = sector
+        except Exception as e:
+            if self.verbose:
+                print(f"   ⚠️  Failed to load stock_list.yaml: {e}")
+        
+        return symbol_to_sector
+
     def _get_sector(self, symbol: str) -> str:
-        """Lookup sector for a symbol. Try DB/cache first, fallback to unknown."""
-        # Try to load from cache file
+        """Lookup sector for a symbol from stock_list.yaml, fallback to cache or unknown."""
+        # Primary: load from config/default/stock_list.yaml
+        symbol_to_sector = self._load_stock_list()
+        if symbol in symbol_to_sector:
+            return symbol_to_sector[symbol]
+        
+        # Secondary: Try to load from cache file (legacy support)
         cache_path = os.path.join(self.project_root, "data", "sector_cache.json")
         if os.path.exists(cache_path):
             try:
@@ -606,6 +644,7 @@ class BacktestEngine:
                 return cache.get(symbol, "Unknown")
             except Exception:
                 pass
+        
         # Fallback: try common patterns
         sector_map = {
             "aubank_eq": "Financial Services",

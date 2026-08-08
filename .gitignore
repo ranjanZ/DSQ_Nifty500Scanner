@@ -1,44 +1,39 @@
-# Compiled Python files
-*.pyc
+```
+# Python
 __pycache__/
-
-# Logs and temp files
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.ENV
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
-*.tmp
-*.swp
+*.pot
+*.mo
+MoeMyself.db
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+.venv.bak/
 
-# Environment
+# Metrics and outputs
+data/outputs/backtesting/
+data/sector_cache.json
+
+# Environment variables
 .env
 .env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
+.env.*
 ```
-
-# Dependencies
-.venv/
-venv/
-node_modules/
-
-# Build artifacts
-dist/
-build/
-target/
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Python cache
-.mypy_cache/
-.pytest_cache/
-```
-*.pyc
-data/outputs/*
-src/broker_service/fyers/logs/
-
-data/outputs/strategy_plots/
-data/outputs/
