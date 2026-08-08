@@ -9,7 +9,6 @@ level/zone detection.
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, List, Tuple, Optional
-
 import sys
 from pathlib import Path
 
@@ -218,46 +217,83 @@ if __name__ == "__main__":
     import yaml
     from datetime import datetime, timedelta
     
-    # Adjust path if running directly
+    # Adjust path if running directly - walk up to src/
+    _file = Path(__file__).resolve()
+    _src_dir = _file.parent.parent.parent.parent
+    if _src_dir.name == "src" and str(_src_dir) not in sys.path:
+        sys.path.insert(0, str(_src_dir))
+    
     try:
-        from src.data_service.data_service import get_table_content
-    except ImportError:
-        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-        from src.data_service.data_service import get_table_content
+        from data_service.data_service import get_table_content
+    except ImportError as e:
+        print(f"Warning: Could not import data_service: {e}")
+        print("Using synthetic data for testing...")
+        get_table_content = None
 
-    config_path = "src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml"
+    config_path = Path(__file__).parent / "config.yaml"
     
     # Handle missing config gracefully
     params = {}
-    if Path(config_path).exists():
+    if config_path.exists():
         with open(config_path, "r") as f:
             cfg = yaml.safe_load(f)
             params = cfg.get("params", {})
     else:
         print(f"Warning: Config file not found at {config_path}. Using default params.")
 
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=200)
-    
-    # Note: Ensure 'axisbank_eq' and DB credentials are correctly configured in your data_service
-    data = get_table_content(
-        db_name="spot_db_anamika",
-        table_name="axisbank_eq",
-        start_date=start_date,
-        end_date=end_date,
-    )
-
-    if data is not None and not data.empty:
-        strategy = VolumeSupportResistanceStrategy(params=params)
-        signals_df = strategy.generate_signals(data, num_back_signals=100)
+    data = None
+    if get_table_content:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=200)
         
-        # Display results
-        buy_signals = signals_df[signals_df['signal'] == 1]
-        print(f"\nGenerated {len(buy_signals)} buy signals in the last 20 candles.")
-        if not buy_signals.empty:
-            # Print relevant columns for the signals
-            cols_to_show = ['date', 'open', 'high', 'low', 'close', 'volume', 'signal_strength', 'signal_support']
-            available_cols = [c for c in cols_to_show if c in buy_signals.columns]
-            print(buy_signals[available_cols].to_string())
-    else:
-        print("No data retrieved. Check database connection and table name.")
+        # Note: Ensure 'axisbank_eq' and DB credentials are correctly configured in your data_service
+        try:
+            data = get_table_content(
+                db_name="spot_db_anamika",
+                table_name="axisbank_eq",
+                start_date=start_date,
+                end_date=end_date,
+            )
+        except Exception as e:
+            print(f"Database error: {e}")
+            print("Falling back to synthetic data...")
+    
+    # Generate synthetic data if database failed
+    if data is None or data.empty:
+        print("Generating synthetic test data...")
+        dates = pd.date_range(end=datetime.now(), periods=200, freq='D')
+        np.random.seed(42)
+        base_price = 1000
+        prices = [base_price]
+        for i in range(1, 200):
+            change = np.random.randn() * 15
+            prices.append(prices[-1] + change)
+        
+        data = pd.DataFrame({
+            'date': dates,
+            'open': prices,
+            'high': [p + abs(np.random.randn() * 8) for p in prices],
+            'low': [p - abs(np.random.randn() * 8) for p in prices],
+            'close': prices,
+            'volume': np.random.randint(10000, 100000, 200)
+        })
+
+    strategy = VolumeSupportResistanceStrategy(params=params)
+    signals_df = strategy.generate_signals(data, num_back_signals=100)
+    
+    # Display results
+    buy_signals = signals_df[signals_df['signal'] == 1]
+    print(f"\n📊 Testing VolumeSupportResistanceStrategy with {len(data)} candles")
+    print("=" * 60)
+    print(f"✅ Strategy initialized: {strategy.name}")
+    print(f"   Parameters: {strategy.params}")
+    print(f"\n📈 Generated {len(buy_signals)} buy signals in the last 100 candles.")
+    if not buy_signals.empty:
+        # Print relevant columns for the signals
+        cols_to_show = ['date', 'close', 'volume', 'signal_strength']
+        available_cols = [c for c in cols_to_show if c in buy_signals.columns]
+        print("\nLast 5 Buy Signals:")
+        print(buy_signals[available_cols].tail().to_string(index=False))
+    
+    print("\n" + "=" * 60)
+    print("✅ VolumeSupportResistanceStrategy test completed!")

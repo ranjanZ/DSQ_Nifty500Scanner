@@ -1,14 +1,14 @@
 """
 All trading strategies available in the system
-Each strategy is now in its own folder with config.yaml
+Each strategy is in its own folder with config.yaml and strategy.py
 """
 
-from .volume_support_resistance_strategy import VolumeSupportResistanceStrategy as SupportResistanceStrategy
-from .rsi_w_strategy import RSIWPatternStrategy
-from .crossover_strategy import MovingAverageCrossoverStrategy
-from .random_strategy import RandomStrategy
+from .volume_support_resistance_strategy.strategy import VolumeSupportResistanceStrategy as SupportResistanceStrategy
+from .rsi_w_strategy.strategy import RSIWPatternStrategy
+from .crossover_strategy.strategy import MovingAverageCrossoverStrategy
+from .random_strategy.strategy import RandomStrategy
 
-# Strategy registry for easy lookup
+# Strategy registry for easy lookup - uses class names directly from config
 STRATEGY_REGISTRY = {
     'SupportResistance': SupportResistanceStrategy,
     'RSI_WPattern': RSIWPatternStrategy,
@@ -28,7 +28,7 @@ def list_strategies():
 
 __all__ = [
     'SupportResistanceStrategy',
-    'RSIWPatternStrategy',
+    'RSIWPatternStrategy', 
     'MovingAverageCrossoverStrategy',
     'RandomStrategy',
     'STRATEGY_REGISTRY',
