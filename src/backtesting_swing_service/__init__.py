@@ -1,5 +1,5 @@
 """
-Backtesting Service - Backtest and optimize trading strategies
+Backtesting Swing Service - Backtest and optimize swing trading strategies
 """
 
 from .backtest_engine import BacktestEngine

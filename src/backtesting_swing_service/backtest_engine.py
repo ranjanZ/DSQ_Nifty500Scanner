@@ -1,14 +1,14 @@
 """
 Backtest Engine
 ===============
-Strategy-agnostic backtesting framework.
+Strategy-agnostic backtesting framework for swing trading.
 Reads config from config/default/backtest.yaml + config/backtest.user.yaml
 Saves equity curves and metrics to data/outputs/backtesting/
 
 Run directly:
-    python src/backtesting_service/backtest_engine.py
-    python src/backtesting_service/backtest_engine.py --strategy volume_support_resistance
-    python src/backtesting_service/backtest_engine.py --symbols aubank_eq reliance_eq
+    python src/backtesting_swing_service/backtest_engine.py
+    python src/backtesting_swing_service/backtest_engine.py --strategy volume_support_resistance
+    python src/backtesting_swing_service/backtest_engine.py --symbols aubank_eq reliance_eq
 """
 
 import os
