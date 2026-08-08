@@ -15,6 +15,7 @@ import pickle
 import importlib.util
 import types
 import warnings
+import signal
 from typing import Dict, Any, List, Optional, Tuple, Callable
 from datetime import datetime
 from dataclasses import dataclass, asdict
@@ -22,6 +23,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+# Progress bar
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
 
 # Plotting
 try:
@@ -177,9 +185,75 @@ class StrategyOptimizer:
         self.results: List[TrialResult] = []
         self.best_result: Optional[TrialResult] = None
         self.trial_counter = 0
+        self._interrupted = False
+        self._avg_trial_time = 0.0
+        self._trial_times: List[float] = []
+
+        # Setup interrupt handler
+        signal.signal(signal.SIGINT, self._handle_interrupt)
 
         # Load backtest engine
         self._load_backtest_engine()
+
+    def _handle_interrupt(self, signum, frame):
+        """Handle Ctrl+C gracefully by saving current results."""
+        print("\n\n⚠️  Optimization interrupted by user (Ctrl+C)")
+        self._interrupted = True
+        self._save_interrupt_results()
+        sys.exit(0)
+
+    def _save_interrupt_results(self):
+        """Save results when interrupted by Ctrl+C."""
+        if not self.results:
+            print("   No results to save.")
+            return
+
+        # Save to strategy folder with different yaml name
+        strategy_output_dir = os.path.join(
+            self.project_root,
+            f"src/strategy_service/strategies/{self.strategy_folder}"
+        )
+        os.makedirs(strategy_output_dir, exist_ok=True)
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        interrupted_filename = f"optimization_interrupted_{timestamp}.yaml"
+        interrupted_path = os.path.join(strategy_output_dir, interrupted_filename)
+
+        # Prepare data
+        best_params = self.best_result.params if self.best_result else {}
+        best_metrics = self.best_result.metrics if self.best_result else {}
+        best_score = float(self.best_result.score) if self.best_result else None
+
+        all_results = []
+        for r in self.results:
+            all_results.append({
+                "trial_id": r.trial_id,
+                "params": r.params,
+                "metrics": r.metrics,
+                "score": float(r.score) if np.isfinite(r.score) else None,
+                "elapsed_sec": r.elapsed_sec,
+                "timestamp": r.timestamp,
+            })
+
+        interrupt_data = {
+            "strategy_name": self.strategy_name,
+            "algorithm": self.algo_name,
+            "metric": self.metric,
+            "direction": self.direction,
+            "interrupted_at": datetime.now().isoformat(),
+            "total_trials_completed": len(self.results),
+            "best_score": best_score,
+            "best_params": best_params,
+            "best_metrics": best_metrics,
+            "all_trials": all_results,
+        }
+
+        with open(interrupted_path, "w") as f:
+            yaml.dump(interrupt_data, f, default_flow_style=False, sort_keys=False)
+
+        print(f"💾 Interrupted results saved to: {interrupted_path}")
+        if self.best_result:
+            print(f"🏆 Best params saved (score={best_score:.4f})")
 
     def _load_backtest_engine(self):
         """Load BacktestEngine directly from file."""
@@ -324,6 +398,10 @@ class StrategyOptimizer:
             metrics_dict = {}
 
         elapsed = time.time() - start
+        
+        # Track trial times for ETA estimation
+        self._trial_times.append(elapsed)
+        self._avg_trial_time = sum(self._trial_times) / len(self._trial_times)
 
         result = TrialResult(
             trial_id=trial_id,
@@ -351,6 +429,25 @@ class StrategyOptimizer:
 
         return score, metrics_dict, elapsed
 
+    def _format_eta(self, remaining_trials: int) -> str:
+        """Format estimated time remaining."""
+        if not self._trial_times or len(self._trial_times) < 1:
+            return "calculating..."
+        avg_time = self._avg_trial_time
+        eta_seconds = avg_time * remaining_trials
+        if eta_seconds < 60:
+            return f"{eta_seconds:.0f}s"
+        elif eta_seconds < 3600:
+            return f"{eta_seconds/60:.1f}m"
+        else:
+            return f"{eta_seconds/3600:.1f}h"
+
+    def _check_interrupt(self) -> bool:
+        """Check if interrupted and raise if so."""
+        if self._interrupted:
+            raise KeyboardInterrupt("Optimization interrupted")
+        return True
+
     # ── Algorithms ────────────────────────────────────────────────────
 
     def run_grid_search(self) -> pd.DataFrame:
@@ -376,14 +473,39 @@ class StrategyOptimizer:
 
         if self.verbose:
             print(f"\n🔍 Grid Search: {total} combinations")
+            # Estimate time based on a few sample trials first
+            print(f"   Estimating time per trial...")
 
-        for i, combo in enumerate(combos):
-            if self.verbose and (i + 1) % 10 == 0:
-                print(f"   [{i+1}/{total}] ...")
-            params = dict(zip(keys, combo))
-            if not self._check_constraints(params):
-                continue
-            self._evaluate(params)
+        # Use progress bar if available
+        if HAS_TQDM and self.verbose:
+            pbar = tqdm(total=total, desc="Grid Search", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]')
+        else:
+            pbar = None
+
+        try:
+            for i, combo in enumerate(combos):
+                self._check_interrupt()
+                params = dict(zip(keys, combo))
+                if not self._check_constraints(params):
+                    if pbar:
+                        pbar.update(1)
+                    continue
+                self._evaluate(params)
+                
+                # Update progress bar with ETA
+                if pbar:
+                    remaining = total - (i + 1)
+                    eta = self._format_eta(remaining)
+                    pbar.set_postfix({'ETA': eta, 'Best': f"{self.best_result.score:.4f}" if self.best_result else "N/A"})
+                    pbar.update(1)
+                elif self.verbose and (i + 1) % 10 == 0:
+                    remaining = total - (i + 1)
+                    eta = self._format_eta(remaining)
+                    best_str = f"{self.best_result.score:.4f}" if self.best_result else "N/A"
+                    print(f"   [{i+1}/{total}] ETA: {eta} | Best: {best_str}")
+        finally:
+            if pbar:
+                pbar.close()
 
         return self._to_dataframe()
 
@@ -392,13 +514,36 @@ class StrategyOptimizer:
         if self.verbose:
             print(f"\n🎲 Random Search: {self.n_trials} trials")
 
-        for i in range(self.n_trials):
-            if self.verbose and (i + 1) % 10 == 0:
-                print(f"   [{i+1}/{self.n_trials}] best={self.best_result.score:.4f if self.best_result else 'N/A'}")
-            params = self._sample_params()
-            if not self._check_constraints(params):
-                continue
-            self._evaluate(params)
+        # Use progress bar if available
+        if HAS_TQDM and self.verbose:
+            pbar = tqdm(total=self.n_trials, desc="Random Search", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]')
+        else:
+            pbar = None
+
+        try:
+            for i in range(self.n_trials):
+                self._check_interrupt()
+                params = self._sample_params()
+                if not self._check_constraints(params):
+                    if pbar:
+                        pbar.update(1)
+                    continue
+                self._evaluate(params)
+                
+                # Update progress bar with ETA
+                if pbar:
+                    remaining = self.n_trials - (i + 1)
+                    eta = self._format_eta(remaining)
+                    pbar.set_postfix({'ETA': eta, 'Best': f"{self.best_result.score:.4f}" if self.best_result else "N/A"})
+                    pbar.update(1)
+                elif self.verbose and (i + 1) % 10 == 0:
+                    remaining = self.n_trials - (i + 1)
+                    eta = self._format_eta(remaining)
+                    best_str = f"{self.best_result.score:.4f}" if self.best_result else "N/A"
+                    print(f"   [{i+1}/{self.n_trials}] ETA: {eta} | Best: {best_str}")
+        finally:
+            if pbar:
+                pbar.close()
 
         return self._to_dataframe()
 
@@ -410,31 +555,51 @@ class StrategyOptimizer:
         best_score = -np.inf if self.direction == "maximize" else np.inf
         no_improve_count = 0
 
-        for i in range(self.n_trials):
-            params = self._sample_params()
-            if not self._check_constraints(params):
-                continue
-            score, _, _ = self._evaluate(params)
+        # Use progress bar if available
+        if HAS_TQDM and self.verbose:
+            pbar = tqdm(total=self.n_trials, desc="Fast Search", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]')
+        else:
+            pbar = None
 
-            improved = False
-            if self.direction == "maximize" and score > best_score:
-                best_score = score
-                improved = True
-            elif self.direction == "minimize" and score < best_score:
-                best_score = score
-                improved = True
+        try:
+            for i in range(self.n_trials):
+                self._check_interrupt()
+                params = self._sample_params()
+                if not self._check_constraints(params):
+                    if pbar:
+                        pbar.update(1)
+                    continue
+                score, _, _ = self._evaluate(params)
 
-            if improved:
-                no_improve_count = 0
-                if self.verbose:
-                    print(f"   [{i+1}] 🏆 New best {self.metric}={score:.4f}")
-            else:
-                no_improve_count += 1
+                improved = False
+                if self.direction == "maximize" and score > best_score:
+                    best_score = score
+                    improved = True
+                elif self.direction == "minimize" and score < best_score:
+                    best_score = score
+                    improved = True
 
-            if no_improve_count >= self.early_stop_patience:
-                if self.verbose:
-                    print(f"   ⏹️  Early stop at trial {i+1} (no improvement for {self.early_stop_patience} trials)")
-                break
+                if improved:
+                    no_improve_count = 0
+                    if self.verbose:
+                        print(f"   [{i+1}] 🏆 New best {self.metric}={score:.4f}")
+                else:
+                    no_improve_count += 1
+
+                # Update progress bar with ETA
+                if pbar:
+                    remaining = self.n_trials - (i + 1)
+                    eta = self._format_eta(remaining)
+                    pbar.set_postfix({'ETA': eta, 'Best': f"{best_score:.4f}" if np.isfinite(best_score) else "N/A"})
+                    pbar.update(1)
+
+                if no_improve_count >= self.early_stop_patience:
+                    if self.verbose:
+                        print(f"   ⏹️  Early stop at trial {i+1} (no improvement for {self.early_stop_patience} trials)")
+                    break
+        finally:
+            if pbar:
+                pbar.close()
 
         return self._to_dataframe()
 
@@ -448,6 +613,7 @@ class StrategyOptimizer:
             print(f"\n🧠 Bayesian Optimization: {self.n_trials} trials")
 
         def objective(trial):
+            self._check_interrupt()
             params = self._sample_params(trial)
             if not self._check_constraints(params):
                 raise optuna.TrialPruned("Constraint violation")
@@ -457,6 +623,7 @@ class StrategyOptimizer:
         study = optuna.create_study(
             direction="maximize" if self.direction == "maximize" else "minimize"
         )
+        # Note: Optuna has its own progress bar via show_progress_bar
         study.optimize(objective, n_trials=self.n_trials, n_jobs=self.n_jobs, show_progress_bar=self.verbose)
 
         return self._to_dataframe()
@@ -520,34 +687,48 @@ class StrategyOptimizer:
         # Initialize population
         population = [random_individual() for _ in range(self.population_size)]
 
-        for gen in range(self.generations):
-            # Evaluate
-            scores = []
-            for ind in population:
-                params = decode(ind)
-                if not self._check_constraints(params):
-                    scores.append(-np.inf if self.direction == "maximize" else np.inf)
-                    continue
-                score, _, _ = self._evaluate(params)
-                scores.append(score)
+        # Use progress bar for generations
+        if HAS_TQDM and self.verbose:
+            pbar = tqdm(total=self.generations, desc="Genetic Algo", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]')
+        else:
+            pbar = None
 
-            # Sort
-            sorted_idx = np.argsort(scores)[::-1] if self.direction == "maximize" else np.argsort(scores)
-            population = [population[i] for i in sorted_idx]
-            scores = [scores[i] for i in sorted_idx]
+        try:
+            for gen in range(self.generations):
+                self._check_interrupt()
+                
+                # Evaluate
+                scores = []
+                for ind in population:
+                    params = decode(ind)
+                    if not self._check_constraints(params):
+                        scores.append(-np.inf if self.direction == "maximize" else np.inf)
+                        continue
+                    score, _, _ = self._evaluate(params)
+                    scores.append(score)
 
-            if self.verbose:
-                print(f"   Gen {gen+1}/{self.generations} | best={scores[0]:.4f} | avg={np.mean([s for s in scores if np.isfinite(s)]):.4f}")
+                # Sort
+                sorted_idx = np.argsort(scores)[::-1] if self.direction == "maximize" else np.argsort(scores)
+                population = [population[i] for i in sorted_idx]
+                scores = [scores[i] for i in sorted_idx]
 
-            # Elite selection + crossover + mutation
-            n_elite = max(1, int(self.elite_ratio * self.population_size))
-            next_pop = population[:n_elite]
-            while len(next_pop) < self.population_size:
-                p1, p2 = np.random.choice(n_elite, size=2, replace=False)
-                child = crossover(population[p1], population[p2])
-                child = mutate(child)
-                next_pop.append(child)
-            population = next_pop
+                if self.verbose:
+                    avg_score = np.mean([s for s in scores if np.isfinite(s)])
+                    pbar.set_postfix({'Best': f"{scores[0]:.4f}", 'Avg': f"{avg_score:.4f}"})
+                    pbar.update(1)
+
+                # Elite selection + crossover + mutation
+                n_elite = max(1, int(self.elite_ratio * self.population_size))
+                next_pop = population[:n_elite]
+                while len(next_pop) < self.population_size:
+                    p1, p2 = np.random.choice(n_elite, size=2, replace=False)
+                    child = crossover(population[p1], population[p2])
+                    child = mutate(child)
+                    next_pop.append(child)
+                population = next_pop
+        finally:
+            if pbar:
+                pbar.close()
 
         return self._to_dataframe()
 
@@ -734,19 +915,87 @@ class StrategyOptimizer:
 
     # ── Main entry ──────────────────────────────────────────────────
 
+    def _ask_user_confirmation(self) -> bool:
+        """Ask user for number of iterations and confirmation to proceed."""
+        print("\n" + "=" * 60)
+        print("🔬 Strategy Parameter Optimization Setup")
+        print("=" * 60)
+        print(f"   Strategy:  {self.strategy_name}")
+        print(f"   Algorithm: {self.algo_name}")
+        print(f"   Metric:    {self.metric} ({self.direction})")
+        print(f"   Default Trials: {self.n_trials}")
+        print("=" * 60)
+        
+        # Ask for number of iterations
+        try:
+            user_input = input(f"\n📊 Enter number of iterations/trials [{self.n_trials}]: ").strip()
+            if user_input:
+                new_trials = int(user_input)
+                if new_trials > 0:
+                    self.n_trials = new_trials
+                    print(f"   ✓ Using {self.n_trials} trials")
+                else:
+                    print("   ⚠️  Invalid number, using default")
+            else:
+                print(f"   ✓ Using default {self.n_trials} trials")
+        except ValueError:
+            print("   ⚠️  Invalid input, using default")
+        except KeyboardInterrupt:
+            print("\n\n⚠️  Cancelled by user")
+            return False
+        
+        # Estimate time based on a quick sample (optional, can be skipped)
+        print("\n⏱️  Running a quick estimation trial...")
+        try:
+            test_params = self._sample_params()
+            start_est = time.time()
+            _, _, elapsed = self._evaluate(test_params)
+            est_total = elapsed * self.n_trials
+            
+            print(f"   Average trial time: ~{elapsed:.1f}s")
+            if est_total < 60:
+                est_str = f"{est_total:.0f}s"
+            elif est_total < 3600:
+                est_str = f"{est_total/60:.1f}m"
+            else:
+                est_str = f"{est_total/3600:.1f}h"
+            print(f"   Estimated total time: ~{est_str}")
+            
+            # Remove the test trial from results since it was just for estimation
+            if self.results:
+                self.results.pop()
+                self.trial_counter -= 1
+                if self._trial_times:
+                    self._trial_times.pop()
+                    if self._trial_times:
+                        self._avg_trial_time = sum(self._trial_times) / len(self._trial_times)
+                    else:
+                        self._avg_trial_time = 0.0
+        except Exception as e:
+            print(f"   ⚠️  Could not estimate time: {e}")
+        
+        # Ask for confirmation
+        print("\n" + "-" * 60)
+        try:
+            confirm = input("🚀 Proceed with optimization? (y/n): ").strip().lower()
+            if confirm in ['y', 'yes']:
+                print("\n" + "=" * 60)
+                print("▶️  Starting optimization...")
+                print("=" * 60)
+                return True
+            else:
+                print("⚠️  Optimization cancelled by user")
+                return False
+        except KeyboardInterrupt:
+            print("\n\n⚠️  Cancelled by user")
+            return False
+
     def run(self) -> pd.DataFrame:
         """Run the selected optimization algorithm."""
-        if self.verbose:
-            print("=" * 60)
-            print("🔬 Strategy Parameter Optimization")
-            print("=" * 60)
-            print(f"   Strategy:  {self.strategy_name}")
-            print(f"   Algorithm: {self.algo_name}")
-            print(f"   Metric:    {self.metric} ({self.direction})")
-            print(f"   Trials:    {self.n_trials}")
-            print(f"   Output:    {self.run_dir}")
-            print("=" * 60)
-
+        # Ask user for iterations and confirmation
+        if not self._ask_user_confirmation():
+            return pd.DataFrame()
+        
         if self.algo_name == "grid":
             df = self.run_grid_search()
         elif self.algo_name == "random":
