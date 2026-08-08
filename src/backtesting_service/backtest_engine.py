@@ -356,7 +356,8 @@ class BacktestEngine:
         active_positions: Dict[str, Dict] = {}
         
         # Track used capital and available slots
-        max_positions = self.position_weights.get('max_positions', len(symbols))
+        # max_new_positions: Maximum new positions we can open per day (not total concurrent positions)
+        max_new_positions = self.position_weights.get('max_new_positions', len(symbols))
         max_per_sector = self.position_weights.get('max_per_sector', 1)
         
         # Get all unique dates across all symbols
@@ -372,17 +373,25 @@ class BacktestEngine:
         if not sorted_dates:
             return trades
         
-        # Track sector counts for current positions
-        def get_sector_count(sector: str) -> int:
-            return sum(1 for pos_sym, pos_info in active_positions.items() 
-                      if self._get_sector(pos_sym) == sector)
+        # Track sector counts for NEW positions opened today
+        def get_today_sector_count(sector: str, today_signals: dict) -> int:
+            """Count how many positions from a sector were opened TODAY."""
+            return sum(1 for sig in today_signals.values() 
+                      if sig.get('sector', 'Unknown') == sector)
         
-        def can_open_position(symbol: str) -> bool:
-            """Check if we can open a new position respecting limits."""
-            if len(active_positions) >= max_positions:
+        def can_open_position(symbol: str, today_opened: Dict[str, str]) -> bool:
+            """Check if we can open a new position respecting daily limits.
+            
+            Args:
+                symbol: Symbol to check
+                today_opened: Dict of {symbol: sector} for positions opened today
+            """
+            # Check if we've reached the daily limit for new positions
+            if len(today_opened) >= max_new_positions:
                 return False
             sector = self._get_sector(symbol)
-            if get_sector_count(sector) >= max_per_sector:
+            # Check if we've reached the per-sector limit for today
+            if get_today_sector_count(sector, today_opened) >= max_per_sector:
                 return False
             return True
         
@@ -447,13 +456,12 @@ class BacktestEngine:
             for symbol in symbols_to_remove:
                 del active_positions[symbol]
             
-            # Step 2: Scan for new signals (only if we have capacity)
-            if len(active_positions) >= max_positions:
-                continue
+            # Step 2: Scan for new signals (track positions opened TODAY)
+            today_opened: Dict[str, str] = {}  # {symbol: sector}
             
             for symbol in symbols:
                 if symbol not in active_positions and symbol in capital_alloc and symbol in all_data:
-                    if not can_open_position(symbol):
+                    if not can_open_position(symbol, today_opened):
                         continue
                     
                     df = all_data[symbol]
@@ -509,6 +517,10 @@ class BacktestEngine:
                         'max_exit_date': max_exit_date,
                         'allocated_capital': allocated_capital,
                     }
+                    
+                    # Track this position as opened today
+                    sector = self._get_sector(symbol)
+                    today_opened[symbol] = sector
         
         return trades
 
@@ -543,7 +555,8 @@ class BacktestEngine:
         active_positions: Dict[str, Dict] = {}
         
         # Track used capital and available slots
-        max_positions = self.position_weights.get('max_positions', len(symbols))
+        # max_new_positions: Maximum new positions we can open per day (not total concurrent positions)
+        max_new_positions = self.position_weights.get('max_new_positions', len(symbols))
         max_per_sector = self.position_weights.get('max_per_sector', 1)
         
         if not sorted_dates:
@@ -552,17 +565,24 @@ class BacktestEngine:
         # Pre-compute sector for each symbol to avoid repeated lookups
         symbol_sectors = {sym: self._get_sector(sym) for sym in symbols}
         
-        # Track sector counts for current positions
-        def get_sector_count(sector: str) -> int:
-            return sum(1 for pos_sym in active_positions 
-                      if symbol_sectors.get(pos_sym, 'Unknown') == sector)
+        # Track sector counts for NEW positions opened today
+        def get_today_sector_count(sector: str, today_opened: Dict[str, str]) -> int:
+            """Count how many positions from a sector were opened TODAY."""
+            return sum(1 for sym in today_opened if symbol_sectors.get(sym, 'Unknown') == sector)
         
-        def can_open_position(symbol: str) -> bool:
-            """Check if we can open a new position respecting limits."""
-            if len(active_positions) >= max_positions:
+        def can_open_position(symbol: str, today_opened: Dict[str, str]) -> bool:
+            """Check if we can open a new position respecting daily limits.
+            
+            Args:
+                symbol: Symbol to check
+                today_opened: Dict of {symbol: sector} for positions opened today
+            """
+            # Check if we've reached the daily limit for new positions
+            if len(today_opened) >= max_new_positions:
                 return False
             sector = symbol_sectors.get(symbol, 'Unknown')
-            if get_sector_count(sector) >= max_per_sector:
+            # Check if we've reached the per-sector limit for today
+            if get_today_sector_count(sector, today_opened) >= max_per_sector:
                 return False
             return True
         
@@ -708,7 +728,9 @@ class BacktestEngine:
             
             # Step 2: Scan for signals from PRE-GENERATED cache (O(1) lookup)
             daily_signals = []
-            has_capacity = len(active_positions) < max_positions
+            
+            # Track positions opened TODAY for limit checking
+            today_opened: Dict[str, str] = {}
             
             for symbol in symbols:
                 if symbol in active_positions:
@@ -726,7 +748,7 @@ class BacktestEngine:
             # Step 4: Execute trades at closing price for allocated signals
             for sig in allocated_signals:
                 symbol = sig['symbol']
-                if not can_open_position(symbol):
+                if not can_open_position(symbol, today_opened):
                     continue
                 
                 df = all_data[symbol]
@@ -758,6 +780,10 @@ class BacktestEngine:
                     'max_exit_date': max_exit_date,
                     'allocated_capital': allocated_capital,
                 }
+                
+                # Track this position as opened today
+                sector = symbol_sectors.get(symbol, 'Unknown')
+                today_opened[symbol] = sector
         
         return trades
     
@@ -783,7 +809,7 @@ class BacktestEngine:
         
         pw = self.position_weights
         sector_alloc = pw.get("sector_allocation", {}) if pw else {}
-        max_positions = pw.get("max_positions", len(daily_signals)) if pw else len(daily_signals)
+        max_new_positions = pw.get("max_new_positions", len(daily_signals)) if pw else len(daily_signals)
         max_per_sector = pw.get("max_per_sector", 1) if pw else 1
         
         # Group signals by sector
@@ -803,7 +829,7 @@ class BacktestEngine:
                            s.get('strength', 0)),
             reverse=True
         )
-        selected = selected[:max_positions]
+        selected = selected[:max_new_positions]
         
         # Allocate capital proportional to sector weight, capped by max_capital_allocation_per_day
         if pw and pw.get("method") == "sector_based" and sector_alloc:
@@ -1132,7 +1158,7 @@ class BacktestEngine:
             return {sym: self.initial_capital / max(len(symbols), 1) for sym in symbols}
 
         sector_alloc = pw.get("sector_allocation", {})
-        max_positions = pw.get("max_positions", len(symbols))
+        max_new_positions = pw.get("max_new_positions", len(symbols))
         max_per_sector = pw.get("max_per_sector", 1)
 
         # Group symbols by sector
@@ -1148,12 +1174,12 @@ class BacktestEngine:
             selected_symbols.extend(selected)
 
         # Limit total positions
-        if len(selected_symbols) > max_positions:
+        if len(selected_symbols) > max_new_positions:
             # Sort by sector weight (higher weight first)
             def sector_weight(sym):
                 return sector_alloc.get(self._get_sector(sym), 0)
             selected_symbols.sort(key=sector_weight, reverse=True)
-            selected_symbols = selected_symbols[:max_positions]
+            selected_symbols = selected_symbols[:max_new_positions]
 
         # Calculate capital per selected symbol based on sector weights
         total_weight = sum(
@@ -1187,7 +1213,7 @@ class BacktestEngine:
             print(f"   Symbols: {len(symbols)} total")
             print(f"   Target: {self.target_profit_pct*100:.1f}% | Stop: {self.stop_loss_pct*100:.1f}% | Max Hold: {self.max_holding_days}d")
             if self.position_weights.get("method") == "sector_based":
-                print(f"   Allocation: Sector-based (max_pos={self.position_weights.get('max_positions')}, max_per_sector={self.position_weights.get('max_per_sector')})")
+                print(f"   Allocation: Sector-based (max_new_pos/day={self.position_weights.get('max_new_positions')}, max_per_sector={self.position_weights.get('max_per_sector')})")
             print("=" * 60)
 
         all_trades: List[Trade] = []
@@ -1230,7 +1256,7 @@ class BacktestEngine:
                 print(f"📈 {sym:<15} | Sector: {sector:<35} | Days: {data_days}")
             print("=" * 60)
             print(f"\n💰 Max Capital per Day: ₹{self.max_capital_allocation_per_day:,.0f}")
-            print(f"📋 Position Limits: max_pos={self.position_weights.get('max_positions', 'N/A')}, max_per_sector={self.position_weights.get('max_per_sector', 'N/A')}")
+            print(f"📋 Position Limits: max_new_pos/day={self.position_weights.get('max_new_positions', 'N/A')}, max_per_sector={self.position_weights.get('max_per_sector', 'N/A')}")
             print("=" * 60)
 
         # Step 2: Run day-by-day simulation with progress bar (mimics live trading workflow)

@@ -14,8 +14,8 @@ backtest:
   # top 1 gets 50%, top 2 gets 30%, top 3 gets 20%
   position_weights:
     method: "sector_based"
-    max_positions: 7
-    max_per_sector: 1
+    max_new_positions: 7            # Maximum new positions per day
+    max_per_sector: 1               # Only 1 stock per sector at a time
     # Weights proportional to sector size (total = ~500 stocks)
     sector_allocation:
       "Financial Services": 0.1
