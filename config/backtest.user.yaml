@@ -1,31 +1,25 @@
 # Backtest Service Configuration - User Overrides
-# Copy this file and modify only what you need to override
 backtest:
-  strategy_name: "volume_support_resistance"   # ← change this to switch strategies
-  
-  start_date: "2026-01-01"          # start of backtesting period (historical date)
-  end_date: "2026-02-01"            # end of backtesting period (historical date)
-  initial_capital: 100000           # ₹1,00,000 for proper swing trading simulation
+  strategy_name: "random_strategy"   # Using random strategy for testing
+
+  start_date: "2025-01-01"          # start of backtesting period
+  end_date: "2025-12-31"            # end of backtesting period
+  initial_capital: 100000           # ₹1,00,000
   target_profit_pct: 0.08
   stop_loss_pct: 0.04               # 4%
   max_holding_days: 7
-  
+
   # Max capital that can be allocated per day for new positions
-  # This limits daily exposure regardless of how many signals are found
-  max_capital_allocation_per_day: 50000  # ₹50,000 max per day (50% of capital)
-  
-  # Watchlist options:
-  # - ["nifty_top_500"] - loads all 500 stocks from config/default/stock_list.yaml (SLOW - requires DB)
-  # - ["aubank_eq", "reliance_eq", "infy_eq"] - specific symbols (FAST for testing)
-  watchlist: ["aubank_eq", "reliance_eq", "infy_eq", "hdfcbank_eq", "tcs_eq"]
-  
-  # Capital allocation: Each day invest up to 10% of available capital per position
-  # With max_positions=7, each position gets ~14% of capital when fully invested
+  max_capital_allocation_per_day: 50000  # ₹50,000 max per day
+
+  # Watchlist: nifty_top_500 loads all 500 stocks
+  watchlist: ["nifty_top_500"]
+
+  # Capital allocation based on sector
   position_weights:
     method: "sector_based"
     max_positions: 7                # Maximum concurrent positions
     max_per_sector: 1               # Only 1 stock per sector at a time
-    # Weights proportional to sector size (total = ~500 stocks)
     sector_allocation:
       "Financial Services": 0.30
       "Capital Goods": 0.20
@@ -35,17 +29,3 @@ backtest:
       "Fast Moving Consumer Goods": 0.08
       "Consumer Services": 0.05
       "Chemicals": 0.04
-      "Oil Gas & Consumable Fuels": 0.00
-      "Consumer Durables": 0.00
-      "Power": 0.00
-      "Metals & Mining": 0.00
-      "Services": 0.00
-      "Construction": 0.00
-      "Construction Materials": 0.00
-      "Realty": 0.00
-      "Telecommunication": 0.00
-      "Textiles": 0.00
-      "Diversified": 0.00
-      "Media Entertainment & Publication": 0.00
-      "Energy": 0.00
-      "Forest Materials": 0.00
