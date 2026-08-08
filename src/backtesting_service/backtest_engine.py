@@ -533,6 +533,8 @@ class BacktestEngine:
         
         Capital allocation is done per-day based on available signals,
         not pre-allocated upfront. Uses industry/sector-based allocation logic.
+        
+        Optimized for large universes (500+ stocks) by avoiding multiprocessing.
         """
         trades = []
         
@@ -546,19 +548,27 @@ class BacktestEngine:
         if not sorted_dates:
             return trades
         
+        # Pre-compute sector for each symbol to avoid repeated lookups
+        symbol_sectors = {sym: self._get_sector(sym) for sym in symbols}
+        
         # Track sector counts for current positions
         def get_sector_count(sector: str) -> int:
-            return sum(1 for pos_sym, pos_info in active_positions.items() 
-                      if self._get_sector(pos_sym) == sector)
+            return sum(1 for pos_sym in active_positions 
+                      if symbol_sectors.get(pos_sym, 'Unknown') == sector)
         
         def can_open_position(symbol: str) -> bool:
             """Check if we can open a new position respecting limits."""
             if len(active_positions) >= max_positions:
                 return False
-            sector = self._get_sector(symbol)
+            sector = symbol_sectors.get(symbol, 'Unknown')
             if get_sector_count(sector) >= max_per_sector:
                 return False
             return True
+        
+        # Get strategy params once
+        strategy_lookback = getattr(self.strategy, 'params', {}).get('lookback_window', 300)
+        min_history = getattr(self.strategy, 'params', {}).get('min_history_candles', 2)
+        required_lookback = max(strategy_lookback, self.lookback_days)
         
         # Process each day with progress bar
         for current_date in tqdm(sorted_dates, desc="Simulating days", disable=not self.verbose):
@@ -622,9 +632,6 @@ class BacktestEngine:
                 del active_positions[symbol]
             
             # Step 2: Scan ALL symbols for signals on this day (mimics live trading)
-            # Always scan all stocks even if at max positions (for logging/debugging)
-            # but only allocate capital if we have capacity
-            
             # Collect all signals for the day first (like live trading scan)
             daily_signals = []
             has_capacity = len(active_positions) < max_positions
@@ -637,14 +644,7 @@ class BacktestEngine:
                 
                 df = all_data[symbol]
                 
-                # Get strategy's required lookback from params if available
-                strategy_lookback = getattr(self.strategy, 'params', {}).get('lookback_window', 300)
-                min_history = getattr(self.strategy, 'params', {}).get('min_history_candles', 2)
-                
-                # Need enough historical data for strategy calculations
-                # Use the larger of: strategy lookback or backtest lookback
-                required_lookback = max(strategy_lookback, self.lookback_days)
-                
+                # Efficient lookback window calculation
                 lookback_start = current_dt - timedelta(days=required_lookback + 30)
                 hist_data = df[(df['date'] >= lookback_start) & (df['date'] <= current_dt)]
                 
@@ -654,12 +654,16 @@ class BacktestEngine:
                 
                 # Generate signals up to previous day (to avoid lookahead bias)
                 prev_day = current_dt - pd.Timedelta(days=1)
-                hist_data = hist_data[hist_data['date'] <= prev_day]
+                hist_data = hist_data[hist_data['date'] <= prev_day].copy()
                 
                 if len(hist_data) < min_history:
                     continue
                 
-                signals_df = self.generate_signals(hist_data)
+                try:
+                    signals_df = self.generate_signals(hist_data)
+                except Exception as e:
+                    # Skip symbols that fail signal generation
+                    continue
                 
                 if signals_df is None or signals_df.empty:
                     continue
@@ -673,15 +677,12 @@ class BacktestEngine:
                 sig_info = {
                     'symbol': symbol,
                     'strength': latest_signal.get('signal_strength', 0),
-                    'sector': self._get_sector(symbol),
+                    'sector': symbol_sectors.get(symbol, 'Unknown'),
                 }
                 
                 # Only add to allocation list if we have capacity
                 if has_capacity:
                     daily_signals.append(sig_info)
-                elif self.verbose and current_date == sorted_dates[0]:
-                    # Log first day only to avoid spam
-                    print(f"   ⚠️ At max positions ({len(active_positions)}/{max_positions}), skipping new signals")
             
             # Step 3: Allocate capital to signals based on sector weights (like live trading)
             allocated_signals = self._allocate_capital_to_daily_signals(daily_signals, capital_alloc)
@@ -1137,22 +1138,12 @@ class BacktestEngine:
         all_trades: List[Trade] = []
         daily_prices: Dict[str, pd.DataFrame] = {}
 
-        # Fetch data for ALL symbols first with progress bar (parallelized)
-        num_cores = max(1, multiprocessing.cpu_count() - 1)  # Leave 1 core free
-        
+        # Fetch data for ALL symbols first with progress bar (sequential to avoid segfault)
         if self.verbose:
-            print(f"\n📥 Fetching data from database ({num_cores} cores)...")
+            print(f"\n📥 Fetching data from database...")
         
-        def fetch_symbol_data(sym):
+        for sym in tqdm(active_symbols, desc="Fetching data", disable=not self.verbose):
             df = self.fetch_data(sym, start_date, end_date)
-            return sym, df
-        
-        results = Parallel(n_jobs=num_cores)(
-            delayed(fetch_symbol_data)(sym) 
-            for sym in tqdm(active_symbols, desc="Fetching data", disable=not self.verbose)
-        )
-        
-        for sym, df in results:
             if df is None:
                 if self.verbose:
                     print(f"   ⚠️ No data for {sym}")
