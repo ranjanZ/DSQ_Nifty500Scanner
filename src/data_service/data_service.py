@@ -60,7 +60,7 @@ class DataService:
         self.stock_list_path = self._resolve_path(
             self.config.get('stock_list_path', 'config/default/stock_list.yaml')
         )
-        self.db_name = self.config.get('db_name', 'spot_db')
+        self.db_name = self.config.get('db_name', 'spot_db_anamika')
         
         create_all_db([self.db_name])
         
@@ -417,7 +417,7 @@ def run_test():
     print("=" * 50)
     
     service = DataService({
-        'db_name': 'spot_db',
+        'db_name': 'spot_db_anamika',
         'stock_list_path': 'config/default/stock_list.yaml'
     })
     

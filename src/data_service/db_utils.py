@@ -26,14 +26,14 @@ def get_db_config(config: dict = None) -> dict:
     """Get DB config from dict or env vars with fallbacks"""
     if config:
         return {
-            'dbname': config.get('db_name', 'spot_db'),
+            'dbname': config.get('db_name', 'spot_db_anamika'),
             'user': config.get('user', DEFAULT_DB_USER),
             'password': config.get('password', DEFAULT_DB_PASSWORD),
             'host': config.get('host', DEFAULT_DB_HOST),
             'port': config.get('port', DEFAULT_DB_PORT),
         }
     return {
-        'dbname': os.getenv('DB_NAME', 'spot_db'),
+        'dbname': os.getenv('DB_NAME', 'spot_db_anamika'),
         'user': os.getenv('DB_USER', DEFAULT_DB_USER),
         'password': os.getenv('DB_PASSWORD', DEFAULT_DB_PASSWORD),
         'host': os.getenv('DB_HOST', DEFAULT_DB_HOST),
@@ -56,7 +56,7 @@ def create_connection(db_name=None, user=None, password=None, host=None, port=No
 def create_all_db(db_list=None):
     """Create databases if they don't exist"""
     if db_list is None:
-        db_list = ["spot_db"]
+        db_list = ["spot_db_anamika"]
 
     try:
         conn = create_connection(db_name=DEFAULT_DB_NAME)
