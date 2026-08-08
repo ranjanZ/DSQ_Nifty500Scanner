@@ -25,6 +25,9 @@ import matplotlib.dates as mdates
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field, asdict
+from tqdm import tqdm
+from joblib import Parallel, delayed
+import multiprocessing
 
 plt.rcParams['axes.unicode_minus'] = False
 
@@ -502,6 +505,169 @@ class BacktestEngine:
         
         return trades
 
+    def simulate_trades_daily_with_progress(
+        self, 
+        all_data: Dict[str, pd.DataFrame], 
+        symbols: List[str], 
+        capital_alloc: Dict[str, float],
+        sorted_dates: List
+    ) -> List[Trade]:
+        """
+        Simulate trading day-by-day with progress bar.
+        Same logic as simulate_trades_daily but shows progress.
+        """
+        trades = []
+        
+        # Track active positions: {symbol: {entry_date, entry_price, qty, target, stop, max_exit_date}}
+        active_positions: Dict[str, Dict] = {}
+        
+        # Track used capital and available slots
+        max_positions = self.position_weights.get('max_positions', len(symbols))
+        max_per_sector = self.position_weights.get('max_per_sector', 1)
+        
+        if not sorted_dates:
+            return trades
+        
+        # Track sector counts for current positions
+        def get_sector_count(sector: str) -> int:
+            return sum(1 for pos_sym, pos_info in active_positions.items() 
+                      if self._get_sector(pos_sym) == sector)
+        
+        def can_open_position(symbol: str) -> bool:
+            """Check if we can open a new position respecting limits."""
+            if len(active_positions) >= max_positions:
+                return False
+            sector = self._get_sector(symbol)
+            if get_sector_count(sector) >= max_per_sector:
+                return False
+            return True
+        
+        # Process each day with progress bar
+        for current_date in tqdm(sorted_dates, desc="Simulating days", disable=not self.verbose):
+            current_dt = pd.Timestamp(current_date)
+            
+            # Step 1: Check existing positions for exits
+            symbols_to_remove = []
+            for symbol, pos in list(active_positions.items()):
+                if symbol not in all_data:
+                    continue
+                df = all_data[symbol]
+                day_data = df[df['date'].dt.date == current_date]
+                
+                if day_data.empty:
+                    continue
+                
+                high = day_data.iloc[0]['high']
+                low = day_data.iloc[0]['low']
+                close = day_data.iloc[0]['close']
+                
+                exit_price = None
+                exit_reason = None
+                
+                # Check stop loss first (priority)
+                if low <= pos['stop']:
+                    exit_price = pos['stop']
+                    exit_reason = 'stoploss'
+                # Check target
+                elif high >= pos['target']:
+                    exit_price = pos['target']
+                    exit_reason = 'target'
+                # Check max holding period
+                elif current_date > pos['max_exit_date']:
+                    exit_price = close
+                    exit_reason = 'max_hold'
+                
+                if exit_price and exit_reason:
+                    # Close position
+                    entry_price = pos['entry_price']
+                    qty = pos['qty']
+                    pnl = (exit_price - entry_price) * qty
+                    pnl_pct = (exit_price / entry_price - 1) * 100 if entry_price > 0 else 0
+                    holding_days = (current_date - pos['entry_date'].date()).days
+                    
+                    trades.append(Trade(
+                        symbol=symbol,
+                        entry_date=pos['entry_date'],
+                        entry_price=entry_price,
+                        exit_date=current_dt.to_pydatetime(),
+                        exit_price=exit_price,
+                        qty=qty,
+                        pnl=pnl,
+                        pnl_pct=pnl_pct,
+                        exit_reason=exit_reason,
+                        holding_days=holding_days,
+                    ))
+                    symbols_to_remove.append(symbol)
+            
+            # Remove closed positions
+            for symbol in symbols_to_remove:
+                del active_positions[symbol]
+            
+            # Step 2: Scan for new signals (only if we have capacity)
+            if len(active_positions) >= max_positions:
+                continue
+            
+            for symbol in symbols:
+                if symbol not in active_positions and symbol in capital_alloc and symbol in all_data:
+                    if not can_open_position(symbol):
+                        continue
+                    
+                    df = all_data[symbol]
+                    # Need lookback data for signal generation
+                    lookback_start = current_dt - timedelta(days=self.lookback_days)
+                    hist_data = df[(df['date'] >= lookback_start) & (df['date'] <= current_dt)]
+                    
+                    if len(hist_data) < self.lookback_days:
+                        continue
+                    
+                    # Generate signals up to previous day (to avoid lookahead bias)
+                    prev_day = current_dt - pd.Timedelta(days=1)
+                    hist_data = hist_data[hist_data['date'] <= prev_day]
+                    
+                    if len(hist_data) < self.lookback_days:
+                        continue
+                    
+                    signals_df = self.generate_signals(hist_data)
+                    
+                    if signals_df is None or signals_df.empty:
+                        continue
+                    
+                    # Check if latest signal is a buy
+                    latest_signal = signals_df.iloc[-1]
+                    if latest_signal.get('signal') != 1:
+                        continue
+                    
+                    # Open position next day at open price
+                    entry_day_data = df[df['date'].dt.date == current_date]
+                    if entry_day_data.empty:
+                        continue
+                    
+                    entry_price = entry_day_data.iloc[0]['open']
+                    allocated_capital = capital_alloc.get(symbol, 0)
+                    
+                    if entry_price <= 0 or allocated_capital <= 0:
+                        continue
+                    
+                    qty = int(allocated_capital / entry_price)
+                    if qty <= 0:
+                        continue
+                    
+                    target_price = entry_price * (1 + self.target_profit_pct)
+                    stop_price = entry_price * (1 - self.stop_loss_pct)
+                    max_exit_date = current_date + timedelta(days=self.max_holding_days)
+                    
+                    active_positions[symbol] = {
+                        'entry_date': current_dt.to_pydatetime(),
+                        'entry_price': entry_price,
+                        'qty': qty,
+                        'target': target_price,
+                        'stop': stop_price,
+                        'max_exit_date': max_exit_date,
+                        'allocated_capital': allocated_capital,
+                    }
+        
+        return trades
+
     # ── Portfolio & equity curve ──────────────────────────────────────
 
     def build_equity_curve(self, all_trades: List[Trade], daily_prices: Dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -851,22 +1017,52 @@ class BacktestEngine:
         all_trades: List[Trade] = []
         daily_prices: Dict[str, pd.DataFrame] = {}
 
-        # Fetch data for ALL symbols first (needed for day-by-day simulation)
-        for sym in active_symbols:
-            if self.verbose:
-                print(f"\n📈 {sym} (sector: {self._get_sector(sym)}, alloc: ₹{capital_alloc[sym]:,.0f})")
-
+        # Fetch data for ALL symbols first with progress bar (parallelized)
+        num_cores = max(1, multiprocessing.cpu_count() - 1)  # Leave 1 core free
+        
+        if self.verbose:
+            print(f"\n📥 Fetching data from database ({num_cores} cores)...")
+        
+        def fetch_symbol_data(sym):
             df = self.fetch_data(sym, start_date, end_date)
+            return sym, df
+        
+        results = Parallel(n_jobs=num_cores)(
+            delayed(fetch_symbol_data)(sym) 
+            for sym in tqdm(active_symbols, desc="Fetching data", disable=not self.verbose)
+        )
+        
+        for sym, df in results:
             if df is None or len(df) < self.lookback_days:
                 if self.verbose:
-                    print(f"   ⚠️  Insufficient data")
+                    print(f"   ⚠️  Insufficient data for {sym}")
                 continue
-
             daily_prices[sym] = df
+        
+        # Print sector and allocation info after data fetch
+        if self.verbose:
+            print("\n" + "=" * 60)
+            for sym in daily_prices.keys():
+                print(f"📈 {sym} (sector: {self._get_sector(sym)}, alloc: ₹{capital_alloc.get(sym, 0):,.0f})")
+            print("=" * 60)
 
-        # Run day-by-day simulation (mimics live trading workflow)
+        # Run day-by-day simulation with progress bar (mimics live trading workflow)
         if daily_prices:
-            all_trades = self.simulate_trades_daily(daily_prices, list(daily_prices.keys()), capital_alloc)
+            all_dates = set()
+            for sym, df in daily_prices.items():
+                if 'date' in df.columns:
+                    all_dates.update(df['date'].dt.date)
+            sorted_dates = sorted(all_dates)
+            
+            if self.verbose:
+                print(f"\n🔄 Simulating {len(sorted_dates)} trading days...")
+            
+            all_trades = self.simulate_trades_daily_with_progress(
+                daily_prices, 
+                list(daily_prices.keys()), 
+                capital_alloc,
+                sorted_dates
+            )
 
             if self.verbose and all_trades:
                 print(f"\n   ✅ Total Trades: {len(all_trades)}")

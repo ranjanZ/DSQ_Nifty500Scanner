@@ -1,6 +1,6 @@
 {
   "strategy": "VolumeSupportResistance",
-  "timestamp": "2026-08-08T07:05:51.138130",
+  "timestamp": "2026-08-08T07:24:14.718211",
   "metrics": {
     "total_return_pct": 0.0,
     "annualized_return_pct": 0.0,
@@ -16,8 +16,8 @@
     "winning_trades": 0,
     "losing_trades": 0,
     "avg_holding_days": 0.0,
-    "initial_capital": 10000,
-    "final_equity": 10000,
+    "initial_capital": 100000,
+    "final_equity": 100000,
     "benchmark_return_pct": 0.0,
     "sector_metrics": []
   },

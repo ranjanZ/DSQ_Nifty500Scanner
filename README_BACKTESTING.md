@@ -14,6 +14,8 @@ This guide explains how to run backtests for the **Volume Support/Resistance Str
    - Closes positions on target/stop/max-hold
    - **Frees capital when positions close** for new opportunities
    - Repeats for every trading day in the backtest period
+6. ✅ **Progress bars** - Shows real-time progress during data fetching and simulation
+7. ✅ **Parallel processing** - Uses all CPU cores minus 1 for faster execution
 
 ---
 
@@ -24,6 +26,7 @@ This guide explains how to run backtests for the **Volume Support/Resistance Str
 ```bash
 cd /workspace
 pip install -r requirements.txt
+pip install tqdm joblib  # For progress bars and parallelization
 ```
 
 Required packages:
@@ -32,6 +35,8 @@ Required packages:
 - `pyyaml` - Config loading
 - `scikit-learn` - KDE for support/resistance levels
 - `psycopg2-binary` - PostgreSQL connection
+- `tqdm` - Progress bars
+- `joblib` - Parallel processing
 
 ### 2. Database Setup
 
@@ -243,6 +248,160 @@ Shows:
 - Equity growth over time
 - Drawdown periods
 - Key metrics in title
+
+### 3. Sector Breakdown Plot
+```
+data/outputs/backtesting/volumesupportresistance_sector_breakdown_20240101_20241231.png
+```
+
+Shows:
+- P&L by sector
+- Number of trades per sector
+- Win rate per sector
+
+---
+
+## Progress Bars & Parallelization
+
+The backtest engine now includes:
+
+### 1. Progress Bars
+- **Data Fetching**: Shows progress while loading stocks from database
+- **Day-by-Day Simulation**: Shows progress through trading days
+
+Example output:
+```
+📥 Fetching data from database (7 cores)...
+Fetching data: 100%|██████████| 500/500 [00:45<00:00, 11.0it/s]
+
+🔄 Simulating 252 trading days...
+Simulating days: 100%|██████████| 252/252 [00:18<00:00, 14.0it/s]
+```
+
+### 2. Multi-Core Processing
+- Automatically uses `CPU_COUNT - 1` cores for data fetching
+- Leaves 1 core free for system responsiveness
+- Uses `joblib.Parallel` for parallel database queries
+
+Example on 8-core system:
+```
+📥 Fetching data from database (7 cores)...
+```
+
+### 3. Performance Estimates
+- **5 symbols, 1 year**: ~2-5 seconds
+- **100 symbols, 1 year**: ~15-30 seconds  
+- **500 symbols, 1 year**: ~1-2 minutes (with parallel fetching)
+
+---
+
+## Troubleshooting
+
+### Issue: "Insufficient data" for all symbols
+**Cause**: PostgreSQL is not running or tables don't exist
+
+**Solution**:
+```bash
+# Start PostgreSQL
+sudo systemctl start postgresql
+
+# Verify database exists
+psql -U postgres -l | grep spot_db_anamika
+
+# Check if table exists
+psql -U postgres -d spot_db_anamika -c "\dt aubank_eq"
+```
+
+### Issue: Wrong number of symbols loaded
+**Cause**: Using `nifty_top_500` watchlist without complete database
+
+**Solution**: Use specific symbols for testing:
+```yaml
+watchlist: ["aubank_eq", "reliance_eq", "infy_eq"]
+```
+
+### Issue: Backtest completes instantly (0 trades)
+**Possible causes**:
+1. No database connection (see above)
+2. Date range in future (use historical dates)
+3. Strategy not generating signals (check strategy config)
+
+**Solution**:
+```yaml
+# Use historical dates, NOT future dates!
+start_date: "2024-01-01"
+end_date: "2024-12-31"
+```
+
+### Issue: Slow performance with many symbols
+**Solution**: Enable parallel processing (already enabled by default):
+```python
+# Uses CPU_COUNT - 1 cores automatically
+num_cores = max(1, multiprocessing.cpu_count() - 1)
+```
+
+---
+
+## Advanced Usage
+
+### Custom Capital Allocation
+
+Edit `config/backtest.user.yaml`:
+```yaml
+position_weights:
+  method: "sector_based"
+  max_positions: 10       # More concurrent positions
+  max_per_sector: 2       # Allow 2 stocks per sector
+  sector_allocation:
+    "Financial Services": 0.40
+    "Technology": 0.30
+    # ... adjust weights as needed
+```
+
+### Adjust Swing Trading Parameters
+
+```yaml
+backtest:
+  target_profit_pct: 0.10    # 10% target instead of 8%
+  stop_loss_pct: 0.05        # 5% stop instead of 4%
+  max_holding_days: 10       # Hold up to 10 days
+  lookback_days: 150         # More history for signals
+```
+
+### Export Trade Log
+
+The metrics JSON includes all trades. Extract with:
+```bash
+jq '.trades[] | select(.pnl > 0)' \
+  data/outputs/backtesting/volumesupportresistance_metrics.json
+```
+
+---
+
+## Live Trading Integration
+
+This backtest engine mirrors the live trading workflow:
+
+1. **Same signal generation** as live service
+2. **Same portfolio management** rules
+3. **Same exit logic** (target/stop/max-hold)
+4. **Same capital allocation** methodology
+
+To transition from backtest to live:
+1. Validate strategy with backtest
+2. Run paper trading (same code, fake money)
+3. Deploy to live with small capital
+4. Monitor and adjust parameters
+
+---
+
+## Support
+
+For issues or questions:
+1. Check this README first
+2. Review `config/backtest.user.yaml` settings
+3. Verify database connectivity
+4. Check strategy-specific config in `src/strategy_service/strategies/`
 
 ### 3. Sector Breakdown Plot
 ```
