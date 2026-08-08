@@ -95,7 +95,7 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
         resistance_zones_list = []
         
         # Optimization: Calculate S/R every N candles to speed up the loop
-        calc_every = self.params.get('calc_every_n_candles', 1)
+        calc_every = self.params['calc_every_n_candles']
         min_hist = self.params['min_history_candles']
         
         last_sup_zones = []

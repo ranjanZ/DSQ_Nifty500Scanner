@@ -240,7 +240,7 @@ class BacktestEngine:
         self.project_root = project_root
         self.db_getter = db_getter
 
-        bt_cfg = config.get("backtest", {})
+        bt_cfg = config["backtest"]
         self.initial_capital = bt_cfg["initial_capital"]
         self.target_profit_pct = bt_cfg["target_profit_pct"]
         self.stop_loss_pct = bt_cfg["stop_loss_pct"]
@@ -250,7 +250,7 @@ class BacktestEngine:
         self.watchlist = bt_cfg["watchlist"]
         self.max_capital_allocation_per_day = bt_cfg["max_capital_allocation_per_day"]
 
-        svc_cfg = config.get("backtest_service", {})
+        svc_cfg = config["backtest_service"]
         self.save_plots = svc_cfg["save_plots"]
         self.save_metrics = svc_cfg["save_metrics"]
         self.verbose = svc_cfg["verbose"]
@@ -284,8 +284,11 @@ class BacktestEngine:
                 print(f"   ⚠️  No DB getter available for {symbol}")
             return None
 
-        # Get strategy's required lookback from params if available
-        strategy_lookback = getattr(self.strategy, 'params', {}).get('lookback_window', 300)
+        # Get strategy's required lookback from params
+        strategy_params = getattr(self.strategy, 'params', {})
+        strategy_lookback = strategy_params.get('lookback_window')
+        if strategy_lookback is None:
+            raise ValueError("Strategy must define 'lookback_window' in params config")
         # Fetch enough data for strategy's lookback + backtest period
         fetch_start = start_date - timedelta(days=strategy_lookback + 30)
         try:
@@ -556,9 +559,12 @@ class BacktestEngine:
                 return False
             return True
         
-        # Get strategy params once
-        strategy_lookback = getattr(self.strategy, 'params', {}).get('lookback_window', 300)
-        min_history = getattr(self.strategy, 'params', {}).get('min_history_candles', 2)
+        # Get strategy params - must be defined in config
+        strategy_params = getattr(self.strategy, 'params', {})
+        strategy_lookback = strategy_params.get('lookback_window')
+        min_history = strategy_params.get('min_history_candles')
+        if strategy_lookback is None or min_history is None:
+            raise ValueError("Strategy must define 'lookback_window' and 'min_history_candles' in params config")
         required_lookback = max(strategy_lookback, self.lookback_days)
         
         # ═══════════════════════════════════════════════════════════════
@@ -1150,9 +1156,12 @@ class BacktestEngine:
                     print(f"   ⚠️ No data for {sym}")
                 continue
             
-            # Get strategy's required lookback from params if available
-            strategy_lookback = getattr(self.strategy, 'params', {}).get('lookback_window', 300)
-            min_history = getattr(self.strategy, 'params', {}).get('min_history_candles', 2)
+            # Get strategy's required lookback from params
+            strategy_params = getattr(self.strategy, 'params', {})
+            strategy_lookback = strategy_params.get('lookback_window')
+            min_history = strategy_params.get('min_history_candles')
+            if strategy_lookback is None or min_history is None:
+                raise ValueError("Strategy must define 'lookback_window' and 'min_history_candles' in params config")
             
             # Check if we have minimum required history for the strategy
             if len(df) < min_history:

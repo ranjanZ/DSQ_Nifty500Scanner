@@ -4,23 +4,15 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Dependencies
-.venv/
+.Python
 venv/
-env/
-requirements.txt.bak
-
-# Logs and temporary files
-*.log
-*.tmp
-*.swp
-*.swo
-
-# Environment variables
+.venv/
 .env
 .env.local
-*.env.*
+.env.*
+
+# Logs
+*.log
 
 # Coverage
 .coverage
@@ -30,8 +22,17 @@ htmlcov/
 # IDE
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
+*.swp
+*.swo
+*.tmp
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+target/
+.mypy_cache/
+.pytest_cache/
 
 # OS
 .DS_Store

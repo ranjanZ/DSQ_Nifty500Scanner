@@ -29,18 +29,15 @@ class RandomStrategy(TradingStrategy):
     """
     
     def __init__(self, params: Dict[str, Any] = None):
-        default_params = {
-            'signal_probability': 0.05,  # 5% chance of signal
-            'use_volume_filter': True,
-            'volume_threshold': 1.5,  # 1.5x average volume
-            'lookback_window': 20,  # For volume average
-            'seed': 42,  # For reproducibility
-        }
+        if params is None:
+            raise ValueError("RandomStrategy requires params dict from config.yaml")
         
-        if params:
-            default_params.update(params)
+        required_keys = ['signal_probability', 'use_volume_filter', 'volume_threshold', 'lookback_window', 'seed']
+        missing = [k for k in required_keys if k not in params]
+        if missing:
+            raise ValueError(f"RandomStrategy missing required params: {missing}")
         
-        self.params = default_params
+        self.params = params
         self.name = "RandomStrategy"
         
         # Set random seed for reproducibility
@@ -51,8 +48,8 @@ class RandomStrategy(TradingStrategy):
         df = data.copy()
         
         # Calculate average volume for filtering
-        if self.params.get('use_volume_filter', True) and 'volume' in df.columns:
-            lookback = self.params.get('lookback_window', 20)
+        if self.params['use_volume_filter'] and 'volume' in df.columns:
+            lookback = self.params['lookback_window']
             df['avg_volume'] = df['volume'].rolling(window=lookback).mean()
             df['volume_ratio'] = df['volume'] / df['avg_volume']
         
@@ -76,22 +73,22 @@ class RandomStrategy(TradingStrategy):
         df['signal_strength'] = 0.0
         
         # Determine start index for signal generation
-        min_history = self.params.get('lookback_window', 20) + 10
+        min_history = self.params['lookback_window'] + 10
         start_idx = max(min_history, 0)
         
         if num_back_signals is not None and len(df) > num_back_signals:
             start_idx = max(start_idx, len(df) - num_back_signals)
         
         # Generate random signals
-        signal_prob = self.params.get('signal_probability', 0.05)
+        signal_prob = self.params['signal_probability']
         
         for i in range(start_idx, len(df)):
             # Base random signal
             is_signal = np.random.random() < signal_prob
             
             # Apply volume filter if enabled
-            if self.params.get('use_volume_filter', True) and 'volume_ratio' in df.columns:
-                vol_threshold = self.params.get('volume_threshold', 1.5)
+            if self.params['use_volume_filter'] and 'volume_ratio' in df.columns:
+                vol_threshold = self.params['volume_threshold']
                 volume_ok = df.iloc[i]['volume_ratio'] > vol_threshold if pd.notna(df.iloc[i]['volume_ratio']) else False
                 
                 # Either pure random (lower prob) or random + volume condition
@@ -109,13 +106,13 @@ class RandomStrategy(TradingStrategy):
     def get_required_columns(self) -> List[str]:
         """Return required columns for this strategy."""
         cols = ['date', 'open', 'high', 'low', 'close']
-        if self.params.get('use_volume_filter', True):
+        if self.params['use_volume_filter']:
             cols.append('volume')
         return cols
     
     def get_minimum_history(self) -> int:
         """Return minimum history required for this strategy."""
-        return self.params.get('lookback_window', 20) + 10
+        return self.params['lookback_window'] + 10
 
 
 # ==================================================================== #
