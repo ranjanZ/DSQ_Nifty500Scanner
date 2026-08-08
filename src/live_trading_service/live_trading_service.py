@@ -38,24 +38,16 @@ def load_strategy_class(strategy_name: str, project_root: str):
     """Load a strategy class directly from its file (mirrors backtest engine)."""
     strategies_dir = os.path.join(project_root, "src", "strategy_service", "strategies")
 
-    aliases = {
-        "volume_support_resistance": "volume_support_resistance_strategy",
-        "support_resistance": "volume_support_resistance_strategy",
-        "vss": "volume_support_resistance_strategy",
-        "Support_Resistance": "volume_support_resistance_strategy",
-    }
-    folder = aliases.get(strategy_name, strategy_name)
-
+    # Strategy name must match folder name exactly
+    folder = strategy_name
     strategy_folder = os.path.join(strategies_dir, folder)
+    
     if not os.path.isdir(strategy_folder):
-        for f in os.listdir(strategies_dir):
-            if os.path.isdir(os.path.join(strategies_dir, f)):
-                if strategy_name.replace("_", "").lower() in f.replace("_", "").lower():
-                    folder = f
-                    strategy_folder = os.path.join(strategies_dir, folder)
-                    break
-        else:
-            raise ValueError(f"Strategy folder not found: {strategy_name} (looked in {strategies_dir})")
+        available = [f for f in os.listdir(strategies_dir) if os.path.isdir(os.path.join(strategies_dir, f))]
+        raise ValueError(
+            f"Strategy '{strategy_name}' not found. "
+            f"Available strategies: {available}"
+        )
 
     config_file = os.path.join(strategy_folder, "config.yaml")
     class_name = None
@@ -126,22 +118,22 @@ class LiveTradingService:
             'date': None
         }
 
-        self.enabled = self.trading_config.get('enabled', False)
-        self.initial_capital = self.trading_config.get('initial_capital', 20000)
-        self.risk_per_trade = self.trading_config.get('risk_per_trade', 0.02)
-        self.target_profit_pct = self.trading_config.get('target_profit_pct', 0.05)
-        self.stop_loss_pct = self.trading_config.get('stop_loss_pct', 0.02)
-        self.max_holding_days = self.trading_config.get('max_holding_days', 7)
+        self.enabled = self.trading_config['enabled']
+        self.initial_capital = self.trading_config['initial_capital']
+        self.risk_per_trade = self.trading_config['risk_per_trade']
+        self.target_profit_pct = self.trading_config['target_profit_pct']
+        self.stop_loss_pct = self.trading_config['stop_loss_pct']
+        self.max_holding_days = self.trading_config['max_holding_days']
 
-        self.market_open = self.trading_config.get('market_open', '09:15')
-        self.market_close = self.trading_config.get('market_close', '15:30')
+        self.market_open = self.trading_config['market_open']
+        self.market_close = self.trading_config['market_close']
 
-        self.scan_time = self.trading_config.get('scan_time')
-        self.trade_time = self.trading_config.get('trade_time')
+        self.scan_time = self.trading_config['scan_time']
+        self.trade_time = self.trading_config['trade_time']
 
-        self.price_update_interval = self.trading_config.get('price_update_interval', 5)
+        self.price_update_interval = self.trading_config['price_update_interval']
 
-        self.position_weights = self.trading_config.get('position_weights', {})
+        self.position_weights = self.trading_config['position_weights']
 
         self._sector_lookup: Dict[str, str] = {}
 
@@ -245,7 +237,7 @@ class LiveTradingService:
                 raise Exception("Failed to connect to broker")
             self.logger.info("✅ Broker connected")
 
-            strategy_name = self.trading_config.get('strategy_type', 'Support_Resistance')
+            strategy_name = self.trading_config['strategy_type']
             StrategyClass = load_strategy_class(strategy_name, _PROJECT_ROOT)
             self.strategy = StrategyClass()
             self.logger.info(f"✅ Strategy initialized: {self.strategy.name}")
@@ -287,7 +279,7 @@ class LiveTradingService:
         self.is_running = True
         self.logger.info("🚀 Starting live trading...")
 
-        tz = pytz.timezone(self.config.get('timezone', 'Asia/Kolkata'))
+        tz = pytz.timezone(self.config['timezone'])
         last_scan_minute = None
         last_trade_minute = None
         last_price_check = 0
@@ -431,7 +423,7 @@ class LiveTradingService:
             import pytz
             import tempfile
             
-            tz = pytz.timezone(self.config.get('timezone', 'Asia/Kolkata'))
+            tz = pytz.timezone(self.config['timezone'])
             now = datetime.now(tz)
             date_str = now.strftime('%Y-%m-%d')
             timestamp_str = now.strftime('%Y-%m-%d %H:%M:%S')

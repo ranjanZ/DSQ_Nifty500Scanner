@@ -164,27 +164,16 @@ def load_strategy_class(strategy_name: str, project_root: str):
     """Load a strategy class directly from its file."""
     strategies_dir = os.path.join(project_root, "src", "strategy_service", "strategies")
 
-    # Map common aliases
-    aliases = {
-        "volume_support_resistance": "volume_support_resistance_strategy",
-        "support_resistance": "volume_support_resistance_strategy",
-        "vss": "volume_support_resistance_strategy",
-        "Support_Resistance": "volume_support_resistance_strategy",
-    }
-    folder = aliases.get(strategy_name, strategy_name)
-
+    # Strategy name must match folder name exactly
+    folder = strategy_name
     strategy_folder = os.path.join(strategies_dir, folder)
+    
     if not os.path.isdir(strategy_folder):
-        # Try to find matching folder
-        for f in os.listdir(strategies_dir):
-            if os.path.isdir(os.path.join(strategies_dir, f)):
-                # Match by removing underscores and case-insensitive compare
-                if strategy_name.replace("_", "").lower() in f.replace("_", "").lower():
-                    folder = f
-                    strategy_folder = os.path.join(strategies_dir, folder)
-                    break
-        else:
-            raise ValueError(f"Strategy folder not found: {strategy_name} (looked in {strategies_dir})")
+        available = [f for f in os.listdir(strategies_dir) if os.path.isdir(os.path.join(strategies_dir, f))]
+        raise ValueError(
+            f"Strategy '{strategy_name}' not found. "
+            f"Available strategies: {available}"
+        )
 
     # Read class name from config.yaml
     config_file = os.path.join(strategy_folder, "config.yaml")
@@ -252,20 +241,20 @@ class BacktestEngine:
         self.db_getter = db_getter
 
         bt_cfg = config.get("backtest", {})
-        self.initial_capital = bt_cfg.get("initial_capital", 10000)
-        self.target_profit_pct = bt_cfg.get("target_profit_pct", 0.08)
-        self.stop_loss_pct = bt_cfg.get("stop_loss_pct", 0.04)
-        self.max_holding_days = bt_cfg.get("max_holding_days", 7)
-        self.lookback_days = bt_cfg.get("lookback_days", 5)
-        self.position_weights = bt_cfg.get("position_weights", {})
-        self.watchlist = bt_cfg.get("watchlist", ["nifty_top_500"])
+        self.initial_capital = bt_cfg["initial_capital"]
+        self.target_profit_pct = bt_cfg["target_profit_pct"]
+        self.stop_loss_pct = bt_cfg["stop_loss_pct"]
+        self.max_holding_days = bt_cfg["max_holding_days"]
+        self.lookback_days = bt_cfg["lookback_days"]
+        self.position_weights = bt_cfg["position_weights"]
+        self.watchlist = bt_cfg["watchlist"]
         # Max capital that can be allocated per day (for new positions)
         self.max_capital_allocation_per_day = bt_cfg.get("max_capital_allocation_per_day", self.initial_capital)
 
         svc_cfg = config.get("backtest_service", {})
-        self.save_plots = svc_cfg.get("save_plots", True)
-        self.save_metrics = svc_cfg.get("save_metrics", True)
-        self.verbose = svc_cfg.get("verbose", True)
+        self.save_plots = svc_cfg["save_plots"]
+        self.save_metrics = svc_cfg["save_metrics"]
+        self.verbose = svc_cfg["verbose"]
 
         # Changed output directory to data/outputs/backtesting/
         self.output_dir = os.path.join(project_root, "data", "outputs", "backtesting")
@@ -1131,8 +1120,8 @@ class BacktestEngine:
 
     def run(self, symbols: Optional[List[str]] = None) -> BacktestMetrics:
         bt_cfg = self.config.get("backtest", {})
-        start_date = pd.to_datetime(bt_cfg.get("start_date", "2026-01-01"))
-        end_date = pd.to_datetime(bt_cfg.get("end_date", "2026-06-04"))
+        start_date = pd.to_datetime(bt_cfg["start_date"])
+        end_date = pd.to_datetime(bt_cfg["end_date"])
 
         if symbols is None:
             symbols = self._resolve_watchlist()
