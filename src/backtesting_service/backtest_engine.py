@@ -296,7 +296,10 @@ class BacktestEngine:
                 print(f"   ⚠️  No DB getter available for {symbol}")
             return None
 
-        fetch_start = start_date - timedelta(days=self.lookback_days + 30)
+        # Get strategy's required lookback from params if available
+        strategy_lookback = getattr(self.strategy, 'params', {}).get('lookback_window', 300)
+        # Fetch enough data for strategy's lookback + backtest period
+        fetch_start = start_date - timedelta(days=strategy_lookback + 30)
         try:
             df = getter(
                 db_name="spot_db_anamika",
@@ -316,7 +319,9 @@ class BacktestEngine:
                 df = df.copy()
                 df["date"] = pd.to_datetime(df.index)
 
-            df = df[df["date"] >= start_date].reset_index(drop=True)
+            # Keep all data from fetch_start for strategy calculations
+            # But mark where backtest period starts
+            df = df[df["date"] >= fetch_start].reset_index(drop=True)
             print(f"🎉  Successfully fetched {symbol} len:{len(df)}")
 
             return df
@@ -617,12 +622,13 @@ class BacktestEngine:
                 del active_positions[symbol]
             
             # Step 2: Scan ALL symbols for signals on this day (mimics live trading)
-            # Only scan if we have capacity for new positions
-            if len(active_positions) >= max_positions:
-                continue
+            # Always scan all stocks even if at max positions (for logging/debugging)
+            # but only allocate capital if we have capacity
             
             # Collect all signals for the day first (like live trading scan)
             daily_signals = []
+            has_capacity = len(active_positions) < max_positions
+            
             for symbol in symbols:
                 if symbol in active_positions:
                     continue  # Already have position
@@ -630,18 +636,27 @@ class BacktestEngine:
                     continue
                 
                 df = all_data[symbol]
-                # Need lookback data for signal generation
-                lookback_start = current_dt - timedelta(days=self.lookback_days)
+                
+                # Get strategy's required lookback from params if available
+                strategy_lookback = getattr(self.strategy, 'params', {}).get('lookback_window', 300)
+                min_history = getattr(self.strategy, 'params', {}).get('min_history_candles', 2)
+                
+                # Need enough historical data for strategy calculations
+                # Use the larger of: strategy lookback or backtest lookback
+                required_lookback = max(strategy_lookback, self.lookback_days)
+                
+                lookback_start = current_dt - timedelta(days=required_lookback + 30)
                 hist_data = df[(df['date'] >= lookback_start) & (df['date'] <= current_dt)]
                 
-                if len(hist_data) < self.lookback_days:
+                # Check if we have minimum required history
+                if len(hist_data) < min_history:
                     continue
                 
                 # Generate signals up to previous day (to avoid lookahead bias)
                 prev_day = current_dt - pd.Timedelta(days=1)
                 hist_data = hist_data[hist_data['date'] <= prev_day]
                 
-                if len(hist_data) < self.lookback_days:
+                if len(hist_data) < min_history:
                     continue
                 
                 signals_df = self.generate_signals(hist_data)
@@ -655,11 +670,18 @@ class BacktestEngine:
                     continue
                 
                 # Store signal with strength for ranking
-                daily_signals.append({
+                sig_info = {
                     'symbol': symbol,
                     'strength': latest_signal.get('signal_strength', 0),
                     'sector': self._get_sector(symbol),
-                })
+                }
+                
+                # Only add to allocation list if we have capacity
+                if has_capacity:
+                    daily_signals.append(sig_info)
+                elif self.verbose and current_date == sorted_dates[0]:
+                    # Log first day only to avoid spam
+                    print(f"   ⚠️ At max positions ({len(active_positions)}/{max_positions}), skipping new signals")
             
             # Step 3: Allocate capital to signals based on sector weights (like live trading)
             allocated_signals = self._allocate_capital_to_daily_signals(daily_signals, capital_alloc)
@@ -1131,17 +1153,35 @@ class BacktestEngine:
         )
         
         for sym, df in results:
-            if df is None or len(df) < self.lookback_days:
+            if df is None:
                 if self.verbose:
-                    print(f"   ⚠️ Insufficient data for lookback {sym}")
+                    print(f"   ⚠️ No data for {sym}")
                 continue
+            
+            # Get strategy's required lookback from params if available
+            strategy_lookback = getattr(self.strategy, 'params', {}).get('lookback_window', 300)
+            min_history = getattr(self.strategy, 'params', {}).get('min_history_candles', 2)
+            
+            # Check if we have minimum required history for the strategy
+            if len(df) < min_history:
+                if self.verbose:
+                    print(f"   ⚠️ Insufficient data ({len(df)} candles) for {sym} (needs {min_history})")
+                continue
+                
             daily_prices[sym] = df
         
-        # Print sector and allocation info after data fetch
+        # Print sector info after data fetch (capital is allocated daily based on signals)
         if self.verbose:
             print("\n" + "=" * 60)
+            print("📊 Data loaded for backtesting (capital allocated daily based on signals)")
+            print("-" * 60)
             for sym in daily_prices.keys():
-                print(f"📈 {sym} (sector: {self._get_sector(sym)}, alloc: ₹{capital_alloc.get(sym, 0):,.0f})")
+                sector = self._get_sector(sym)
+                data_days = len(daily_prices[sym])
+                print(f"📈 {sym:<15} | Sector: {sector:<35} | Days: {data_days}")
+            print("=" * 60)
+            print(f"\n💰 Max Capital per Day: ₹{self.max_capital_allocation_per_day:,.0f}")
+            print(f"📋 Position Limits: max_pos={self.position_weights.get('max_positions', 'N/A')}, max_per_sector={self.position_weights.get('max_per_sector', 'N/A')}")
             print("=" * 60)
 
         # Run day-by-day simulation with progress bar (mimics live trading workflow)
