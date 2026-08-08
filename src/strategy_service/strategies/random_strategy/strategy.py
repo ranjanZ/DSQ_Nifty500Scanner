@@ -6,6 +6,16 @@ Generates random buy signals based on probability threshold
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, List, Optional
+import sys
+from pathlib import Path
+
+# Set up path like other strategies do
+_file = Path(__file__).resolve()
+# Walk up to src/ : strategy.py -> strategy_folder -> strategies -> strategy_service -> src
+_src_dir = _file.parent.parent.parent.parent
+if _src_dir.name == "src" and str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
+
 from strategy_service.strategy_base import TradingStrategy
 
 
