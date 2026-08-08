@@ -259,6 +259,8 @@ class BacktestEngine:
         self.lookback_days = bt_cfg.get("lookback_days", 5)
         self.position_weights = bt_cfg.get("position_weights", {})
         self.watchlist = bt_cfg.get("watchlist", ["nifty_top_500"])
+        # Max capital that can be allocated per day (for new positions)
+        self.max_capital_allocation_per_day = bt_cfg.get("max_capital_allocation_per_day", self.initial_capital)
 
         svc_cfg = config.get("backtest_service", {})
         self.save_plots = svc_cfg.get("save_plots", True)
@@ -516,7 +518,16 @@ class BacktestEngine:
     ) -> List[Trade]:
         """
         Simulate trading day-by-day with progress bar.
-        Same logic as simulate_trades_daily but shows progress.
+        
+        Mimics live trading workflow:
+        1. Each day, scan all stocks based on strategy using lookback data
+        2. Allocate capital to signals respecting max_capital_allocation_per_day
+        3. Execute trades at closing price on signal day
+        4. Check existing positions for exit (TP/SL/max_hold)
+        5. Close positions and free capital
+        
+        Capital allocation is done per-day based on available signals,
+        not pre-allocated upfront. Uses industry/sector-based allocation logic.
         """
         trades = []
         
@@ -548,7 +559,7 @@ class BacktestEngine:
         for current_date in tqdm(sorted_dates, desc="Simulating days", disable=not self.verbose):
             current_dt = pd.Timestamp(current_date)
             
-            # Step 1: Check existing positions for exits
+            # Step 1: Check existing positions for exits (using close price)
             symbols_to_remove = []
             for symbol, pos in list(active_positions.items()):
                 if symbol not in all_data:
@@ -605,70 +616,150 @@ class BacktestEngine:
             for symbol in symbols_to_remove:
                 del active_positions[symbol]
             
-            # Step 2: Scan for new signals (only if we have capacity)
+            # Step 2: Scan ALL symbols for signals on this day (mimics live trading)
+            # Only scan if we have capacity for new positions
             if len(active_positions) >= max_positions:
                 continue
             
+            # Collect all signals for the day first (like live trading scan)
+            daily_signals = []
             for symbol in symbols:
-                if symbol not in active_positions and symbol in capital_alloc and symbol in all_data:
-                    if not can_open_position(symbol):
-                        continue
-                    
-                    df = all_data[symbol]
-                    # Need lookback data for signal generation
-                    lookback_start = current_dt - timedelta(days=self.lookback_days)
-                    hist_data = df[(df['date'] >= lookback_start) & (df['date'] <= current_dt)]
-                    
-                    if len(hist_data) < self.lookback_days:
-                        continue
-                    
-                    # Generate signals up to previous day (to avoid lookahead bias)
-                    prev_day = current_dt - pd.Timedelta(days=1)
-                    hist_data = hist_data[hist_data['date'] <= prev_day]
-                    
-                    if len(hist_data) < self.lookback_days:
-                        continue
-                    
-                    signals_df = self.generate_signals(hist_data)
-                    
-                    if signals_df is None or signals_df.empty:
-                        continue
-                    
-                    # Check if latest signal is a buy
-                    latest_signal = signals_df.iloc[-1]
-                    if latest_signal.get('signal') != 1:
-                        continue
-                    
-                    # Open position next day at open price
-                    entry_day_data = df[df['date'].dt.date == current_date]
-                    if entry_day_data.empty:
-                        continue
-                    
-                    entry_price = entry_day_data.iloc[0]['open']
-                    allocated_capital = capital_alloc.get(symbol, 0)
-                    
-                    if entry_price <= 0 or allocated_capital <= 0:
-                        continue
-                    
-                    qty = int(allocated_capital / entry_price)
-                    if qty <= 0:
-                        continue
-                    
-                    target_price = entry_price * (1 + self.target_profit_pct)
-                    stop_price = entry_price * (1 - self.stop_loss_pct)
-                    max_exit_date = current_date + timedelta(days=self.max_holding_days)
-                    
-                    active_positions[symbol] = {
-                        'entry_date': current_dt.to_pydatetime(),
-                        'entry_price': entry_price,
-                        'qty': qty,
-                        'target': target_price,
-                        'stop': stop_price,
-                        'max_exit_date': max_exit_date,
-                        'allocated_capital': allocated_capital,
-                    }
+                if symbol in active_positions:
+                    continue  # Already have position
+                if symbol not in all_data:
+                    continue
+                
+                df = all_data[symbol]
+                # Need lookback data for signal generation
+                lookback_start = current_dt - timedelta(days=self.lookback_days)
+                hist_data = df[(df['date'] >= lookback_start) & (df['date'] <= current_dt)]
+                
+                if len(hist_data) < self.lookback_days:
+                    continue
+                
+                # Generate signals up to previous day (to avoid lookahead bias)
+                prev_day = current_dt - pd.Timedelta(days=1)
+                hist_data = hist_data[hist_data['date'] <= prev_day]
+                
+                if len(hist_data) < self.lookback_days:
+                    continue
+                
+                signals_df = self.generate_signals(hist_data)
+                
+                if signals_df is None or signals_df.empty:
+                    continue
+                
+                # Check if latest signal is a buy
+                latest_signal = signals_df.iloc[-1]
+                if latest_signal.get('signal') != 1:
+                    continue
+                
+                # Store signal with strength for ranking
+                daily_signals.append({
+                    'symbol': symbol,
+                    'strength': latest_signal.get('signal_strength', 0),
+                    'sector': self._get_sector(symbol),
+                })
+            
+            # Step 3: Allocate capital to signals based on sector weights (like live trading)
+            allocated_signals = self._allocate_capital_to_daily_signals(daily_signals, capital_alloc)
+            
+            # Step 4: Execute trades at closing price for allocated signals
+            for sig in allocated_signals:
+                symbol = sig['symbol']
+                if not can_open_position(symbol):
+                    continue
+                
+                df = all_data[symbol]
+                entry_day_data = df[df['date'].dt.date == current_date]
+                if entry_day_data.empty:
+                    continue
+                
+                # Execute at closing price (as mentioned in requirements)
+                entry_price = entry_day_data.iloc[0]['close']
+                allocated_capital = sig.get('allocated_capital', 0)
+                
+                if entry_price <= 0 or allocated_capital <= 0:
+                    continue
+                
+                qty = int(allocated_capital / entry_price)
+                if qty <= 0:
+                    continue
+                
+                target_price = entry_price * (1 + self.target_profit_pct)
+                stop_price = entry_price * (1 - self.stop_loss_pct)
+                max_exit_date = current_date + timedelta(days=self.max_holding_days)
+                
+                active_positions[symbol] = {
+                    'entry_date': current_dt.to_pydatetime(),
+                    'entry_price': entry_price,
+                    'qty': qty,
+                    'target': target_price,
+                    'stop': stop_price,
+                    'max_exit_date': max_exit_date,
+                    'allocated_capital': allocated_capital,
+                }
         
         return trades
+    
+    def _allocate_capital_to_daily_signals(self, daily_signals: List[Dict], capital_alloc: Dict[str, float]) -> List[Dict]:
+        """
+        Allocate capital to daily signals based on sector weights.
+        Mimics live trading capital allocation logic.
+        
+        Args:
+            daily_signals: List of {symbol, strength, sector} dicts
+            capital_alloc: Pre-computed capital allocation per symbol
+            
+        Returns:
+            List of signals with 'allocated_capital' added
+        """
+        if not daily_signals:
+            return []
+        
+        pw = self.position_weights
+        if not pw or pw.get("method") != "sector_based":
+            # Equal allocation fallback
+            per_signal = self.max_capital_allocation_per_day / max(len(daily_signals), 1)
+            for s in daily_signals:
+                s['allocated_capital'] = per_signal
+            return daily_signals
+        
+        sector_alloc = pw.get("sector_allocation", {})
+        max_positions = pw.get("max_positions", len(daily_signals))
+        max_per_sector = pw.get("max_per_sector", 1)
+        
+        # Group signals by sector
+        sector_signals: Dict[str, List[Dict]] = {}
+        for sig in daily_signals:
+            sector_signals.setdefault(sig.get('sector', 'Unknown'), []).append(sig)
+        
+        # Pick top N per sector (by signal strength)
+        selected = []
+        for sector, sigs in sector_signals.items():
+            sigs.sort(key=lambda x: x.get('strength', 0), reverse=True)
+            selected.extend(sigs[:max_per_sector])
+        
+        # Sort by sector weight → strength, then cap total positions
+        selected.sort(
+            key=lambda s: (sector_alloc.get(s.get('sector', 'Unknown'), 0),
+                           s.get('strength', 0)),
+            reverse=True
+        )
+        selected = selected[:max_positions]
+        
+        # Allocate capital proportional to sector weight, capped by max_capital_allocation_per_day
+        total_weight = sum(sector_alloc.get(s.get('sector', 'Unknown'), 0) for s in selected)
+        if total_weight <= 0:
+            per_signal = self.max_capital_allocation_per_day / max(len(selected), 1)
+            for s in selected:
+                s['allocated_capital'] = per_signal
+        else:
+            for s in selected:
+                weight = sector_alloc.get(s.get('sector', 'Unknown'), 0)
+                s['allocated_capital'] = self.max_capital_allocation_per_day * (weight / total_weight)
+        
+        return selected
 
     # ── Portfolio & equity curve ──────────────────────────────────────
 
@@ -948,6 +1039,10 @@ class BacktestEngine:
         """
         Allocate capital per symbol based on sector allocation config.
         Returns: {symbol: capital_amount}
+        
+        Note: This is now only used for reference/display purposes.
+        Actual capital allocation happens daily in _allocate_capital_to_daily_signals()
+        based on signals found each day.
         """
         pw = self.position_weights
         if not pw or pw.get("method") != "sector_based":
@@ -1010,6 +1105,7 @@ class BacktestEngine:
             print(f"\n🔬 Backtest: {self.strategy.name}")
             print(f"   Period: {start_date.date()} → {end_date.date()}")
             print(f"   Capital: ₹{self.initial_capital:,.0f}")
+            print(f"   Max Daily Allocation: ₹{self.max_capital_allocation_per_day:,.0f}")
             print(f"   Symbols: {len(symbols)} total, {len(active_symbols)} active")
             print(f"   Target: {self.target_profit_pct*100:.1f}% | Stop: {self.stop_loss_pct*100:.1f}% | Max Hold: {self.max_holding_days}d")
             if self.position_weights.get("method") == "sector_based":
