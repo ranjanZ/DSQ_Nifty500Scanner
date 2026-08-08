@@ -360,10 +360,13 @@ class BacktestEngine:
         max_per_sector = self.position_weights.get('max_per_sector', 1)
         
         # Get all unique dates across all symbols
+        # OPTIMIZATION: DataFrames are already sorted by time column, so we can efficiently extract dates
+        # No need for separate sorting since 'time' and 'date' columns are synchronized
         all_dates = set()
         for sym, df in all_data.items():
             if 'date' in df.columns:
-                all_dates.update(df['date'].dt.date)
+                # Use vectorized operation for faster date extraction
+                all_dates.update(df['date'].dt.date.unique())
         sorted_dates = sorted(all_dates)
         
         if not sorted_dates:
@@ -572,46 +575,69 @@ class BacktestEngine:
         required_lookback = max(strategy_lookback, self.lookback_days)
         
         # ═══════════════════════════════════════════════════════════════
-        # OPTIMIZATION: Pre-generate all signals ONCE per symbol
+        # OPTIMIZATION: Pre-generate all signals ONCE per symbol (Parallelized)
         # ═══════════════════════════════════════════════════════════════
         if self.verbose:
-            print(f"\n🔄 Pre-generating signals for {len(symbols)} symbols...")
+            print(f"\n🔄 Pre-generating signals for {len(symbols)} symbols (parallelized)...")
         
         # Store signals as: {symbol: {date: signal_info}}
         all_signals: Dict[str, Dict] = {}
         
-        for symbol in tqdm(symbols, desc="Generating signals", disable=not self.verbose):
-            if symbol not in all_data:
-                continue
+        # Helper function for parallel signal generation
+        def _generate_symbol_signals(symbol_data_tuple):
+            """Generate signals for a single symbol."""
+            symbol, df, strategy, lookback_days, position_weights = symbol_data_tuple
             
-            df = all_data[symbol]
-            
-            # Generate signals for entire history at once
             try:
-                signals_df = self.generate_signals(df.copy())
+                # Generate signals for entire history at once
+                if len(df) < lookback_days:
+                    return None, None
+                
+                signals_df = strategy.generate_signals(df.copy())
+                
+                if signals_df is None or signals_df.empty or 'signal' not in signals_df.columns:
+                    return None, None
+                
+                # Filter only buy signals (signal == 1)
+                buy_signals = signals_df[signals_df['signal'] == 1].copy()
+                
+                if buy_signals.empty:
+                    return None, None
+                
+                # Store signals indexed by date for O(1) lookup
+                symbol_signals = {}
+                for _, row in buy_signals.iterrows():
+                    sig_date = row['date'].date() if hasattr(row['date'], 'date') else pd.Timestamp(row['date']).date()
+                    symbol_signals[sig_date] = {
+                        'symbol': symbol,
+                        'strength': row.get('signal_strength', 0),
+                    }
+                
+                return symbol, symbol_signals
             except Exception as e:
-                continue
-            
-            if signals_df is None or signals_df.empty or 'signal' not in signals_df.columns:
-                continue
-            
-            # Filter only buy signals (signal == 1)
-            buy_signals = signals_df[signals_df['signal'] == 1].copy()
-            
-            if buy_signals.empty:
-                continue
-            
-            # Store signals indexed by date for O(1) lookup
-            symbol_signals = {}
-            for _, row in buy_signals.iterrows():
-                sig_date = row['date'].date() if hasattr(row['date'], 'date') else pd.Timestamp(row['date']).date()
-                symbol_signals[sig_date] = {
-                    'symbol': symbol,
-                    'strength': row.get('signal_strength', 0),
-                    'sector': symbol_sectors.get(symbol, 'Unknown'),
-                }
-            
-            all_signals[symbol] = symbol_signals
+                return None, None
+        
+        # Prepare data for parallel processing
+        symbols_with_data = [sym for sym in symbols if sym in all_data]
+        parallel_data = [
+            (sym, all_data[sym], self.strategy, self.lookback_days, self.position_weights)
+            for sym in symbols_with_data
+        ]
+        
+        # Use joblib for parallel processing (better than multiprocessing for pandas DataFrames)
+        n_jobs = min(multiprocessing.cpu_count(), len(symbols_with_data))
+        results = Parallel(n_jobs=n_jobs, backend="loky")(
+            delayed(_generate_symbol_signals)(data) for data in tqdm(parallel_data, desc="Generating signals", disable=not self.verbose)
+        )
+        
+        # Collect results
+        for symbol, symbol_signals in results:
+            if symbol is not None and symbol_signals is not None:
+                # Add sector info after parallel processing (sectors are cached in memory)
+                sector = self._get_sector(symbol)
+                for sig_date in symbol_signals:
+                    symbol_signals[sig_date]['sector'] = sector
+                all_signals[symbol] = symbol_signals
         
         if self.verbose:
             total_signals = sum(len(sigs) for sigs in all_signals.values())
@@ -1171,7 +1197,6 @@ class BacktestEngine:
         if self.verbose:
             print(f"\n📥 Fetching data from database...")
 
-        print(DBG)
         for sym in tqdm(symbols, desc="Fetching data", disable=not self.verbose):
             df = self.fetch_data(sym, start_date, end_date)
             if df is None:

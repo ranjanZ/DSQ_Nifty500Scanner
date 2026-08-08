@@ -65,6 +65,9 @@ print("\n🔬 Loading Random Strategy...")
 strategy_params = {
     'signal_probability': 0.08,  # 8% chance
     'use_volume_filter': False,
+    'volume_threshold': 1.0,      # Required by RandomStrategy
+    'lookback_window': 20,        # Required by backtest engine
+    'min_history_candles': 30,    # Required by backtest engine
     'seed': 42
 }
 strategy = RandomStrategy(params=strategy_params)
@@ -87,9 +90,15 @@ config = {
         'target_profit_pct': 0.08,
         'stop_loss_pct': 0.04,
         'max_holding_days': 7,
+        'lookback_days': 20,               # Required by backtest engine
         'max_capital_allocation_per_day': 50000,
         'start_date': '2025-01-01',
         'end_date': '2025-12-31',
+        'watchlist': 'nifty_top_500',      # Required but not used in mock test
+        'position_weights': {              # Required but will be overridden
+            'method': 'equal_weight',
+            'max_positions': 7
+        }
     },
     'backtest_service': {
         'verbose': True,
@@ -128,6 +137,17 @@ def mock_get_sector(symbol):
     idx = hash(symbol) % len(sectors)
     return sectors[idx]
 engine._get_sector = mock_get_sector
+
+# Mock data fetching to use our in-memory mock_data instead of database
+original_fetch_data = engine.fetch_data
+def mock_fetch_data(symbol, start_date, end_date):
+    if symbol in mock_data:
+        df = mock_data[symbol].copy()
+        # Filter by date range
+        mask = (df['date'] >= pd.Timestamp(start_date)) & (df['date'] <= pd.Timestamp(end_date))
+        return df[mask].reset_index(drop=True)
+    return None
+engine.fetch_data = mock_fetch_data
 
 # Run backtest
 print("\n🚀 Running backtest...")
