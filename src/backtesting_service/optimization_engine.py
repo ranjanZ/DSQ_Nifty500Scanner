@@ -130,17 +130,12 @@ class StrategyOptimizer:
         self.verbose = verbose
         self.opt_config = load_yaml(opt_config_path)
 
-        # Resolve paths
+        # Resolve strategy info - only strategy_name required
         self.strategy_name = self.opt_config["optimization"]["strategy_name"]
-        self.strategy_folder = self.opt_config["optimization"].get(
-            "strategy_folder", f"{self.strategy_name}_strategy"
-        )
+        self.strategy_folder = f"{self.strategy_name}_strategy"
         self.strategy_config_path = os.path.join(
             project_root,
-            self.opt_config["optimization"].get(
-                "strategy_config_path",
-                f"src/strategy_service/strategies/{self.strategy_folder}/config.yaml"
-            )
+            f"src/strategy_service/strategies/{self.strategy_folder}/config.yaml"
         )
 
         # Load strategy config to get default params
