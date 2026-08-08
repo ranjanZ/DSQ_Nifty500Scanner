@@ -923,7 +923,7 @@ if __name__ == "__main__":
 
         service = LiveTradingService()
         service.initialize()
-        service.start()
-        #raw_signals=service._scan_for_signals(num_days_back=100)
+        #service.start()
+        raw_signals=service._scan_for_signals(num_days_back=100)
         #signal=service._allocate_capital_to_signals(raw_signals)
         #service._process_signals(signal)

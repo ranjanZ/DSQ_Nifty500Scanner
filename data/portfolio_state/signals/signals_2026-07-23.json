@@ -1,0 +1,45 @@
+{
+  "scans": [
+    {
+      "scan_time": "2026-07-23 23:21:50",
+      "total_stocks_scanned": 501,
+      "signals_found": 0,
+      "signals": []
+    },
+    {
+      "scan_time": "2026-07-23 23:29:31",
+      "total_stocks_scanned": 501,
+      "signals_found": 0,
+      "signals": []
+    },
+    {
+      "scan_time": "2026-07-23 23:34:27",
+      "total_stocks_scanned": 501,
+      "signals_found": 0,
+      "signals": []
+    },
+    {
+      "scan_time": "2026-07-23 23:39:13",
+      "total_stocks_scanned": 501,
+      "signals_found": 0,
+      "signals": []
+    },
+    {
+      "scan_time": "2026-07-23 23:43:57",
+      "total_stocks_scanned": 501,
+      "signals_found": 1,
+      "signals": [
+        {
+          "symbol": "NSE:JSWSTEEL-EQ",
+          "signal": 1,
+          "price": 1267.6,
+          "strength": 0.5,
+          "timestamp": "2026-07-22T05:30:00",
+          "sector": "Metals & Mining"
+        }
+      ]
+    }
+  ],
+  "last_scan_time": "2026-07-23 23:43:57",
+  "last_updated": "2026-07-23 23:43:57"
+}

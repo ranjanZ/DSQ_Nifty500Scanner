@@ -1,3 +1,3 @@
-from .support_resistance import SupportResistanceCalculator, Level
+from .support_resistance import SupportResistanceCalculator
 
-__all__ = ["SupportResistanceCalculator", "Level"]
+__all__ = ["SupportResistanceCalculator"]

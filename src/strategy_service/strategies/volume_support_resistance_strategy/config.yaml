@@ -21,7 +21,7 @@ params:
 
 # ── Data Source (DB pull config) ──
 data_source:
-  symbol: "bajajhldng_eq"       # DB table name / symbol, e.g.         # DB table name / symbol
+  symbol: "axisbank_eq"       # DB table name / symbol, e.g.         # DB table name / symbol
   db_name: "spot_db_anamika"    # Database name
   days_back: 200                # How many days of history to fetch
   num_back_signals: 20          # Only generate signals for last N candles
