@@ -10,6 +10,10 @@ backtest:
   stop_loss_pct: 0.04               # 4%
   max_holding_days: 7
   
+  # Max capital that can be allocated per day for new positions
+  # This limits daily exposure regardless of how many signals are found
+  max_capital_allocation_per_day: 50000  # ₹50,000 max per day (50% of capital)
+  
   # Watchlist options:
   # - ["nifty_top_500"] - loads all 500 stocks from config/default/stock_list.yaml (SLOW - requires DB)
   # - ["aubank_eq", "reliance_eq", "infy_eq"] - specific symbols (FAST for testing)
