@@ -1,7 +1,9 @@
+# Core Dependencies
 pyTelegramBotAPI
 pyyaml
 pandas
-psycopg2
+numpy
+psycopg2-binary
 fyers_apiv3
 pyotp
 scipy
@@ -11,3 +13,32 @@ pytz
 optuna
 matplotlib
 joblib
+scikit-learn
+
+# Backtesting Libraries
+vectorbt
+
+# MCP Server
+mcp
+
+# LangGraph Agent & LLM
+langgraph
+langchain-core
+langchain-ollama
+langchain-community
+
+# Streamlit UI
+streamlit
+plotly
+
+# Database & Async Support
+asyncpg
+aiosqlite
+
+# HTTP Client for MCP
+httpx
+sse-starlette
+
+# Additional Utilities
+python-dotenv
+requests
