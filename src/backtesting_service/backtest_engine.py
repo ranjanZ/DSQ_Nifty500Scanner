@@ -732,25 +732,23 @@ class BacktestEngine:
         
         Args:
             daily_signals: List of {symbol, strength, sector} dicts
-            capital_alloc: Pre-computed capital allocation per symbol
+            capital_alloc: Pre-computed capital allocation per symbol (now optional/unused)
             
         Returns:
             List of signals with 'allocated_capital' added
+            
+        Note: Capital allocation is now done dynamically based on:
+        - Sector allocation weights from config
+        - Max capital per day limit
+        - Number of signals per sector
         """
         if not daily_signals:
             return []
         
         pw = self.position_weights
-        if not pw or pw.get("method") != "sector_based":
-            # Equal allocation fallback
-            per_signal = self.max_capital_allocation_per_day / max(len(daily_signals), 1)
-            for s in daily_signals:
-                s['allocated_capital'] = per_signal
-            return daily_signals
-        
-        sector_alloc = pw.get("sector_allocation", {})
-        max_positions = pw.get("max_positions", len(daily_signals))
-        max_per_sector = pw.get("max_per_sector", 1)
+        sector_alloc = pw.get("sector_allocation", {}) if pw else {}
+        max_positions = pw.get("max_positions", len(daily_signals)) if pw else len(daily_signals)
+        max_per_sector = pw.get("max_per_sector", 1) if pw else 1
         
         # Group signals by sector
         sector_signals: Dict[str, List[Dict]] = {}
@@ -772,15 +770,22 @@ class BacktestEngine:
         selected = selected[:max_positions]
         
         # Allocate capital proportional to sector weight, capped by max_capital_allocation_per_day
-        total_weight = sum(sector_alloc.get(s.get('sector', 'Unknown'), 0) for s in selected)
-        if total_weight <= 0:
+        if pw and pw.get("method") == "sector_based" and sector_alloc:
+            total_weight = sum(sector_alloc.get(s.get('sector', 'Unknown'), 0) for s in selected)
+            if total_weight > 0:
+                for s in selected:
+                    weight = sector_alloc.get(s.get('sector', 'Unknown'), 0)
+                    s['allocated_capital'] = self.max_capital_allocation_per_day * (weight / total_weight)
+            else:
+                # Equal fallback if no valid weights
+                per_signal = self.max_capital_allocation_per_day / max(len(selected), 1)
+                for s in selected:
+                    s['allocated_capital'] = per_signal
+        else:
+            # Equal allocation fallback
             per_signal = self.max_capital_allocation_per_day / max(len(selected), 1)
             for s in selected:
                 s['allocated_capital'] = per_signal
-        else:
-            for s in selected:
-                weight = sector_alloc.get(s.get('sector', 'Unknown'), 0)
-                s['allocated_capital'] = self.max_capital_allocation_per_day * (weight / total_weight)
         
         return selected
 
@@ -1120,16 +1125,12 @@ class BacktestEngine:
         if symbols is None:
             symbols = self._resolve_watchlist()
 
-        # Sector-aware capital allocation
-        capital_alloc = self._allocate_capital(symbols)
-        active_symbols = list(capital_alloc.keys())
-
         if self.verbose:
             print(f"\n🔬 Backtest: {self.strategy.name}")
             print(f"   Period: {start_date.date()} → {end_date.date()}")
             print(f"   Capital: ₹{self.initial_capital:,.0f}")
             print(f"   Max Daily Allocation: ₹{self.max_capital_allocation_per_day:,.0f}")
-            print(f"   Symbols: {len(symbols)} total, {len(active_symbols)} active")
+            print(f"   Symbols: {len(symbols)} total")
             print(f"   Target: {self.target_profit_pct*100:.1f}% | Stop: {self.stop_loss_pct*100:.1f}% | Max Hold: {self.max_holding_days}d")
             if self.position_weights.get("method") == "sector_based":
                 print(f"   Allocation: Sector-based (max_pos={self.position_weights.get('max_positions')}, max_per_sector={self.position_weights.get('max_per_sector')})")
@@ -1138,11 +1139,11 @@ class BacktestEngine:
         all_trades: List[Trade] = []
         daily_prices: Dict[str, pd.DataFrame] = {}
 
-        # Fetch data for ALL symbols first with progress bar (sequential to avoid segfault)
+        # Step 1: Fetch data for ALL symbols first with progress bar (sequential to avoid segfault)
         if self.verbose:
             print(f"\n📥 Fetching data from database...")
         
-        for sym in tqdm(active_symbols, desc="Fetching data", disable=not self.verbose):
+        for sym in tqdm(symbols, desc="Fetching data", disable=not self.verbose):
             df = self.fetch_data(sym, start_date, end_date)
             if df is None:
                 if self.verbose:
@@ -1161,10 +1162,10 @@ class BacktestEngine:
                 
             daily_prices[sym] = df
         
-        # Print sector info after data fetch (capital is allocated daily based on signals)
+        # Print sector info after data fetch
         if self.verbose:
             print("\n" + "=" * 60)
-            print("📊 Data loaded for backtesting (capital allocated daily based on signals)")
+            print("📊 Data loaded for backtesting")
             print("-" * 60)
             for sym in daily_prices.keys():
                 sector = self._get_sector(sym)
@@ -1175,7 +1176,8 @@ class BacktestEngine:
             print(f"📋 Position Limits: max_pos={self.position_weights.get('max_positions', 'N/A')}, max_per_sector={self.position_weights.get('max_per_sector', 'N/A')}")
             print("=" * 60)
 
-        # Run day-by-day simulation with progress bar (mimics live trading workflow)
+        # Step 2: Run day-by-day simulation with progress bar (mimics live trading workflow)
+        # Capital allocation happens dynamically when signals are found
         if daily_prices:
             all_dates = set()
             for sym, df in daily_prices.items():
@@ -1186,6 +1188,8 @@ class BacktestEngine:
             if self.verbose:
                 print(f"\n🔄 Simulating {len(sorted_dates)} trading days...")
             
+            # Pass empty capital_alloc since allocation happens dynamically based on signals
+            capital_alloc = {}  # Not pre-computed; allocation happens in _allocate_capital_to_daily_signals()
             all_trades = self.simulate_trades_daily_with_progress(
                 daily_prices, 
                 list(daily_prices.keys()), 
