@@ -534,7 +534,10 @@ class BacktestEngine:
         Capital allocation is done per-day based on available signals,
         not pre-allocated upfront. Uses industry/sector-based allocation logic.
         
-        Optimized for large universes (500+ stocks) by avoiding multiprocessing.
+        OPTIMIZED for large universes (500+ stocks) and long time periods:
+        - Pre-generates all signals once per symbol instead of daily
+        - Uses vectorized operations where possible
+        - Caches signal results to avoid recomputation
         """
         trades = []
         
@@ -570,7 +573,55 @@ class BacktestEngine:
         min_history = getattr(self.strategy, 'params', {}).get('min_history_candles', 2)
         required_lookback = max(strategy_lookback, self.lookback_days)
         
+        # ═══════════════════════════════════════════════════════════════
+        # OPTIMIZATION: Pre-generate all signals ONCE per symbol
+        # ═══════════════════════════════════════════════════════════════
+        if self.verbose:
+            print(f"\n🔄 Pre-generating signals for {len(symbols)} symbols...")
+        
+        # Store signals as: {symbol: {date: signal_info}}
+        all_signals: Dict[str, Dict] = {}
+        
+        for symbol in tqdm(symbols, desc="Generating signals", disable=not self.verbose):
+            if symbol not in all_data:
+                continue
+            
+            df = all_data[symbol]
+            
+            # Generate signals for entire history at once
+            try:
+                signals_df = self.generate_signals(df.copy())
+            except Exception as e:
+                continue
+            
+            if signals_df is None or signals_df.empty or 'signal' not in signals_df.columns:
+                continue
+            
+            # Filter only buy signals (signal == 1)
+            buy_signals = signals_df[signals_df['signal'] == 1].copy()
+            
+            if buy_signals.empty:
+                continue
+            
+            # Store signals indexed by date for O(1) lookup
+            symbol_signals = {}
+            for _, row in buy_signals.iterrows():
+                sig_date = row['date'].date() if hasattr(row['date'], 'date') else pd.Timestamp(row['date']).date()
+                symbol_signals[sig_date] = {
+                    'symbol': symbol,
+                    'strength': row.get('signal_strength', 0),
+                    'sector': symbol_sectors.get(symbol, 'Unknown'),
+                }
+            
+            all_signals[symbol] = symbol_signals
+        
+        if self.verbose:
+            total_signals = sum(len(sigs) for sigs in all_signals.values())
+            print(f"   ✅ Generated {total_signals} buy signals across {len(all_signals)} symbols")
+        
+        # ═══════════════════════════════════════════════════════════════
         # Process each day with progress bar
+        # ═══════════════════════════════════════════════════════════════
         for current_date in tqdm(sorted_dates, desc="Simulating days", disable=not self.verbose):
             current_dt = pd.Timestamp(current_date)
             
@@ -631,58 +682,19 @@ class BacktestEngine:
             for symbol in symbols_to_remove:
                 del active_positions[symbol]
             
-            # Step 2: Scan ALL symbols for signals on this day (mimics live trading)
-            # Collect all signals for the day first (like live trading scan)
+            # Step 2: Scan for signals from PRE-GENERATED cache (O(1) lookup)
             daily_signals = []
             has_capacity = len(active_positions) < max_positions
             
             for symbol in symbols:
                 if symbol in active_positions:
                     continue  # Already have position
-                if symbol not in all_data:
+                if symbol not in all_signals:
                     continue
                 
-                df = all_data[symbol]
-                
-                # Efficient lookback window calculation
-                lookback_start = current_dt - timedelta(days=required_lookback + 30)
-                hist_data = df[(df['date'] >= lookback_start) & (df['date'] <= current_dt)]
-                
-                # Check if we have minimum required history
-                if len(hist_data) < min_history:
-                    continue
-                
-                # Generate signals up to previous day (to avoid lookahead bias)
-                prev_day = current_dt - pd.Timedelta(days=1)
-                hist_data = hist_data[hist_data['date'] <= prev_day].copy()
-                
-                if len(hist_data) < min_history:
-                    continue
-                
-                try:
-                    signals_df = self.generate_signals(hist_data)
-                except Exception as e:
-                    # Skip symbols that fail signal generation
-                    continue
-                
-                if signals_df is None or signals_df.empty:
-                    continue
-                
-                # Check if latest signal is a buy
-                latest_signal = signals_df.iloc[-1]
-                if latest_signal.get('signal') != 1:
-                    continue
-                
-                # Store signal with strength for ranking
-                sig_info = {
-                    'symbol': symbol,
-                    'strength': latest_signal.get('signal_strength', 0),
-                    'sector': symbol_sectors.get(symbol, 'Unknown'),
-                }
-                
-                # Only add to allocation list if we have capacity
-                if has_capacity:
-                    daily_signals.append(sig_info)
+                # O(1) lookup instead of regenerating signals
+                if current_date in all_signals[symbol]:
+                    daily_signals.append(all_signals[symbol][current_date])
             
             # Step 3: Allocate capital to signals based on sector weights (like live trading)
             allocated_signals = self._allocate_capital_to_daily_signals(daily_signals, capital_alloc)
