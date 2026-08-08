@@ -798,9 +798,52 @@ class BacktestEngine:
         return metrics
 
     def _resolve_watchlist(self) -> List[str]:
+        """
+        Resolve watchlist name to actual symbol list.
+        
+        Priority:
+        1. If 'nifty_top_500' in watchlist, load from config/default/stock_list.yaml
+        2. Otherwise return the watchlist as-is if it's already a list of symbols
+        """
         watchlist = self.watchlist
+        
         if "nifty_top_500" in watchlist:
-            return ["aubank_eq", "reliance_eq", "infy_eq", "hdfcbank_eq", "tcs_eq"]
+            # Load all symbols from stock_list.yaml
+            stock_list_path = os.path.join(self.project_root, "config", "default", "stock_list.yaml")
+            if os.path.exists(stock_list_path):
+                try:
+                    with open(stock_list_path, "r") as f:
+                        data = yaml.safe_load(f) or {}
+                    
+                    watchlists = data.get("watchlists", {})
+                    nifty_stocks = watchlists.get("nifty_top_500", [])
+                    
+                    # Extract symbols from fyers_symbol format
+                    symbols = []
+                    for stock in nifty_stocks:
+                        if isinstance(stock, dict):
+                            fyers_sym = stock.get("fyers_symbol", "")
+                            if fyers_sym:
+                                # Convert NSE:AUBANK-EQ to aubank_eq
+                                symbol = fyers_sym.replace("NSE:", "").replace("-EQ", "").lower() + "_eq"
+                                symbols.append(symbol)
+                    
+                    if symbols:
+                        return symbols
+                except Exception as e:
+                    if self.verbose:
+                        print(f"   ⚠️  Failed to load nifty_top_500 from stock_list.yaml: {e}")
+            
+            # Fallback if stock_list.yaml not found or empty
+            fallback_symbols = [
+                "aubank_eq", "reliance_eq", "infy_eq", "hdfcbank_eq", "tcs_eq",
+                "hcltech_eq", "wipro_eq", "lt_eq", "sunpharma_eq", "maruti_eq",
+                "hindunilvr_eq", "itc_eq", "powergrid_eq", "ntpc_eq", "adaniports_eq"
+            ]
+            if self.verbose:
+                print(f"   ⚠️  Using {len(fallback_symbols)} fallback symbols")
+            return fallback_symbols
+        
         return watchlist if isinstance(watchlist, list) else []
 
     def _save_metrics_json(self, metrics: BacktestMetrics, trades: List[Trade]):
