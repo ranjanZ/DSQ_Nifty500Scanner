@@ -313,7 +313,7 @@ class BacktestEngine:
             # Keep all data from fetch_start for strategy calculations
             # But mark where backtest period starts
             df = df[df["date"] >= fetch_start].reset_index(drop=True)
-            print(f"🎉  Successfully fetched {symbol} len:{len(df)}")
+            #print(f"🎉  Successfully fetched {symbol} len:{len(df)}")
 
             return df
         except Exception as e:
@@ -1148,7 +1148,8 @@ class BacktestEngine:
         # Step 1: Fetch data for ALL symbols first with progress bar (sequential to avoid segfault)
         if self.verbose:
             print(f"\n📥 Fetching data from database...")
-        
+
+        print(DBG)
         for sym in tqdm(symbols, desc="Fetching data", disable=not self.verbose):
             df = self.fetch_data(sym, start_date, end_date)
             if df is None:

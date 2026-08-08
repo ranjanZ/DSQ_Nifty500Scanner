@@ -1,6 +1,6 @@
 # Backtest Service Configuration - User Overrides
 backtest:
-  strategy_name: "Support_Resistance"   # Using random strategy for testing
+  strategy_name: "volume_support_resistance_strategy"   # Using random strategy for testing
 
   start_date: "2025-01-01"          # start of backtesting period
   end_date: "2025-02-01"            # end of backtesting period
