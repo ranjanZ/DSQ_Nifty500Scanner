@@ -17,6 +17,7 @@ if _src_dir.name == "src" and str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
 from strategy_service.strategy_base import TradingStrategy
+from strategy_service.utils.chart_plotter import StrategyChartPlotter
 
 
 class MovingAverageCrossoverStrategy(TradingStrategy):
@@ -94,6 +95,48 @@ class MovingAverageCrossoverStrategy(TradingStrategy):
                 df.loc[df.index[i], 'signal'] = -1
         
         return df
+    
+    def plot_signals(self, data_with_signals: pd.DataFrame, output_dir: str = "data/outputs/strategy_plots"):
+        """Generate and save strategy plot."""
+        import os
+        from datetime import datetime
+        
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Initialize plotter
+        plotter = StrategyChartPlotter(plot_dir=output_dir)
+        
+        # Define indicators to plot (SMA fast and slow)
+        indicators = []
+        if 'sma_fast' in data_with_signals.columns:
+            indicators.append({
+                "column": "sma_fast",
+                "label": f"SMA Fast ({self.params['fast_period']})",
+                "color": "#58a6ff",
+                "line_style": "-",
+                "line_width": 1.5
+            })
+        if 'sma_slow' in data_with_signals.columns and len(indicators) < 2:
+            indicators.append({
+                "column": "sma_slow",
+                "label": f"SMA Slow ({self.params['slow_period']})",
+                "color": "#f0883e",
+                "line_style": "--",
+                "line_width": 1.5
+            })
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"crossover_strategy_{timestamp}.png"
+        
+        # Plot and save
+        plotter.plot(
+            df=data_with_signals,
+            strategy_name="MA Crossover Strategy",
+            indicators=indicators,
+            filename=filename
+        )
 
 
 # ==================================================================== #
@@ -155,6 +198,10 @@ if __name__ == "__main__":
         cols_to_show = ['date', 'close', 'sma_fast', 'sma_slow']
         available_cols = [c for c in cols_to_show if c in buy_signals.columns]
         print(buy_signals[available_cols].tail().to_string(index=False))
+    
+    # Generate and save plot
+    print("\n📊 Generating plot...")
+    strategy.plot_signals(signals_df, output_dir="data/outputs/strategy_plots")
     
     print("\n" + "=" * 60)
     print("✅ MovingAverageCrossoverStrategy test completed!")

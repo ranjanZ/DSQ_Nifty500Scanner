@@ -16,6 +16,7 @@ if _src_dir.name == "src" and str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
 from strategy_service.strategy_base import TradingStrategy
+from strategy_service.utils.chart_plotter import StrategyChartPlotter
 
 
 class RSIWPatternStrategy(TradingStrategy):
@@ -195,6 +196,40 @@ class RSIWPatternStrategy(TradingStrategy):
                     df.loc[df.index[i], 'improvement'] = improvement
         
         return df
+    
+    def plot_signals(self, data_with_signals: pd.DataFrame, output_dir: str = "data/outputs/strategy_plots"):
+        """Generate and save strategy plot."""
+        import os
+        from datetime import datetime
+        
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Initialize plotter
+        plotter = StrategyChartPlotter(plot_dir=output_dir)
+        
+        # Define indicators to plot (RSI)
+        indicators = []
+        if 'rsi' in data_with_signals.columns:
+            indicators.append({
+                "column": "rsi",
+                "label": f"RSI ({self.params['rsi_period']})",
+                "color": "#58a6ff",
+                "line_style": "-",
+                "line_width": 1.5
+            })
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"rsi_w_pattern_{timestamp}.png"
+        
+        # Plot and save
+        plotter.plot(
+            df=data_with_signals,
+            strategy_name="RSI W-Pattern Strategy",
+            indicators=indicators,
+            filename=filename
+        )
 
 
 # ==================================================================== #
@@ -258,6 +293,10 @@ if __name__ == "__main__":
         cols_to_show = ['date', 'close', 'rsi', 'signal_strength']
         available_cols = [c for c in cols_to_show if c in buy_signals.columns]
         print(buy_signals[available_cols].tail().to_string(index=False))
+    
+    # Generate and save plot
+    print("\n📊 Generating plot...")
+    strategy.plot_signals(signals, output_dir="data/outputs/strategy_plots")
     
     print("\n" + "=" * 60)
     print("✅ RSIWPatternStrategy test completed!")

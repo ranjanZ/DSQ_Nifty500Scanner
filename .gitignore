@@ -4,37 +4,46 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Generated plots
-data/outputs/strategy_plots/
-
-# Environment
-.venv/
-venv/
+.Python
 env/
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
-*.swp
-*.swo
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
+venv/
+.venv/
+.ENV
+.env
+.env.local
+.env.*
+.envrc
 .coverage
-
-# IDE specific
-.vscode/
-.idea/
+.coverage.*
+.cache
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
 
 # Build artifacts
 build/
 dist/
+*.egg
+*.egg-info/
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.o
+*.obj
+
+# Logs
+*.log
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
 ```

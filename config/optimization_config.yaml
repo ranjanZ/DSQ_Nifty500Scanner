@@ -11,6 +11,11 @@ optimization:
   #   strategy_folder: "volume_support_resistance_strategy"
   #   strategy_config_path: "src/strategy_service/strategies/volume_support_resistance_strategy/config.yaml"
 
+  # ── Date Range for Backtesting ──
+  # Set the date range for the optimization backtests
+  start_date: "2023-01-01"
+  end_date: "2024-12-31"
+
   # ── Parameter Space ──
   # Each param must match a key in the strategy's config.yaml -> params
   # Types: int, float, categorical
