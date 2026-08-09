@@ -188,6 +188,10 @@ class StrategyOptimizer:
         self._interrupted = False
         self._avg_trial_time = 0.0
         self._trial_times: List[float] = []
+        
+        # Cached data for optimization (fetch once)
+        self._cached_data: Dict[str, pd.DataFrame] = {}
+        self._data_loaded = False
 
         # Setup interrupt handler
         signal.signal(signal.SIGINT, self._handle_interrupt)
@@ -298,7 +302,64 @@ class StrategyOptimizer:
 
     def _build_backtest_config(self) -> Dict:
         """Load and merge backtest configs."""
-        return self.load_backtest_config(self.project_root)
+        config = self.load_backtest_config(self.project_root)
+        
+        # Set date range from optimization config if specified
+        opt_cfg = self.opt_config.get("optimization", {})
+        if "start_date" in opt_cfg and "end_date" in opt_cfg:
+            config["backtest"]["start_date"] = opt_cfg["start_date"]
+            config["backtest"]["end_date"] = opt_cfg["end_date"]
+        
+        return config
+    
+    def load_data_for_optimization(self):
+        """Load data once for all optimization trials."""
+        if self._data_loaded:
+            return  # Already loaded
+        
+        print("\n📥 Loading data for optimization (once)...")
+        config = self._build_backtest_config()
+        bt_cfg = config.get("backtest", {})
+        
+        start_date = pd.to_datetime(bt_cfg.get("start_date", "2023-01-01"))
+        end_date = pd.to_datetime(bt_cfg.get("end_date", datetime.now().strftime("%Y-%m-%d")))
+        
+        symbols = bt_cfg.get("symbols", [])
+        
+        # Load data for each symbol
+        for symbol in symbols:
+            try:
+                strategy_lookback = max(
+                    self.default_params.get('volume_ema_period', 50),
+                    self.default_params.get('fast_period', 50),
+                    self.default_params.get('slow_period', 50),
+                    self.default_params.get('rsi_period', 30),
+                    50
+                ) + 30
+                
+                fetch_start = start_date - timedelta(days=strategy_lookback)
+                
+                from data_service.data_loader import DataLoader
+                loader = DataLoader(project_root=self.project_root)
+                
+                df = loader.fetch_stock_data(
+                    symbol=symbol,
+                    start_date=fetch_start,
+                    end_date=end_date,
+                    adjust_prices=True
+                )
+                
+                if df is not None and len(df) > 0:
+                    self._cached_data[symbol] = df
+                    print(f"   ✅ Loaded {symbol}: {len(df)} candles")
+                else:
+                    print(f"   ⚠️  No data for {symbol}")
+                    
+            except Exception as e:
+                print(f"   ⚠️  Failed to load {symbol}: {e}")
+        
+        self._data_loaded = True
+        print(f"📊 Total symbols loaded: {len(self._cached_data)}\n")
 
     def _check_constraints(self, params: Dict) -> bool:
         """Evaluate parameter constraints."""
@@ -453,6 +514,9 @@ class StrategyOptimizer:
     def run_grid_search(self) -> pd.DataFrame:
         """Exhaustive grid search over param_space."""
         import itertools
+        
+        # Load data once before starting optimization
+        self.load_data_for_optimization()
 
         # Build value lists for each param
         grid_values = {}
@@ -511,6 +575,9 @@ class StrategyOptimizer:
 
     def run_random_search(self) -> pd.DataFrame:
         """Random search over param_space."""
+        # Load data once before starting optimization
+        self.load_data_for_optimization()
+        
         if self.verbose:
             print(f"\n🎲 Random Search: {self.n_trials} trials")
 
@@ -549,6 +616,9 @@ class StrategyOptimizer:
 
     def run_fast_search(self) -> pd.DataFrame:
         """Fast random search with early stopping."""
+        # Load data once before starting optimization
+        self.load_data_for_optimization()
+        
         if self.verbose:
             print(f"\n⚡ Fast Search: max {self.n_trials} trials, patience={self.early_stop_patience}")
 
@@ -605,6 +675,9 @@ class StrategyOptimizer:
 
     def run_bayesian(self) -> pd.DataFrame:
         """Bayesian optimization via Optuna."""
+        # Load data once before starting optimization
+        self.load_data_for_optimization()
+        
         if not HAS_OPTUNA:
             print("⚠️  Optuna not installed. Falling back to random search.")
             return self.run_random_search()
@@ -630,6 +703,9 @@ class StrategyOptimizer:
 
     def run_genetic(self) -> pd.DataFrame:
         """Genetic algorithm optimization."""
+        # Load data once before starting optimization
+        self.load_data_for_optimization()
+        
         if self.verbose:
             print(f"\n🧬 Genetic Algorithm: pop={self.population_size}, gens={self.generations}")
 

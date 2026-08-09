@@ -296,4 +296,36 @@ if __name__ == "__main__":
         print(buy_signals[available_cols].tail().to_string(index=False))
     
     print("\n" + "=" * 60)
+    
+    # ------------------------------------------------------------------ #
+    #  Generate and save plot to data/outputs/strategy_plots/
+    # ------------------------------------------------------------------ #
+    from strategy_service.utils.chart_plotter import StrategyChartPlotter
+    
+    # Define the output directory for plots
+    plot_output_dir = Path(__file__).parent.parent.parent.parent.parent / "data" / "outputs" / "strategy_plots"
+    plot_output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Initialize the plotter with the correct output directory
+    plotter = StrategyChartPlotter(plot_dir=str(plot_output_dir))
+    
+    # Plot OHLCV with volume EMA overlay
+    indicators = [
+        {"column": "volume_ema", "label": "Volume EMA", "color": "#ff9f43", "line_style": "-", "line_width": 1.5}
+    ]
+    
+    plot_filename = f"volume_support_resistance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    
+    try:
+        saved_path = plotter.plot(
+            df=signals_df,
+            strategy_name=strategy.name,
+            indicators=indicators,
+            filename=plot_filename,
+            show=False,
+        )
+        print(f"✅ Plot saved to: {saved_path}")
+    except Exception as e:
+        print(f"⚠️  Error generating plot: {e}")
+    
     print("✅ VolumeSupportResistanceStrategy test completed!")

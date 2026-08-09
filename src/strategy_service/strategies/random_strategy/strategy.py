@@ -17,6 +17,7 @@ if _src_dir.name == "src" and str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
 from strategy_service.strategy_base import TradingStrategy
+from strategy_service.utils.chart_plotter import StrategyChartPlotter
 
 
 class RandomStrategy(TradingStrategy):
@@ -113,6 +114,40 @@ class RandomStrategy(TradingStrategy):
     def get_minimum_history(self) -> int:
         """Return minimum history required for this strategy."""
         return self.params['lookback_window'] + 10
+    
+    def plot_signals(self, data_with_signals: pd.DataFrame, output_dir: str = "data/outputs/strategy_plots"):
+        """Generate and save strategy plot."""
+        import os
+        from datetime import datetime
+        
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Initialize plotter
+        plotter = StrategyChartPlotter(plot_dir=output_dir)
+        
+        # Define indicators to plot
+        indicators = []
+        if 'avg_volume' in data_with_signals.columns:
+            indicators.append({
+                "column": "avg_volume",
+                "label": "Avg Volume",
+                "color": "#ff9f43",
+                "line_style": "--",
+                "line_width": 1.5
+            })
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"random_strategy_{timestamp}.png"
+        
+        # Plot and save
+        plotter.plot(
+            df=data_with_signals,
+            strategy_name="RandomStrategy",
+            indicators=indicators,
+            filename=filename
+        )
 
 
 # ==================================================================== #
@@ -169,6 +204,10 @@ if __name__ == "__main__":
         print("\nSignal details:")
         cols_to_show = ['date', 'close', 'signal_strength']
         print(buy_signals[cols_to_show].tail(10).to_string(index=False))
+    
+    # Generate and save plot
+    print("\n📊 Generating plot...")
+    strategy.plot_signals(signals, output_dir="data/outputs/strategy_plots")
     
     print("\n" + "=" * 60)
     print("✅ RandomStrategy test completed!")
