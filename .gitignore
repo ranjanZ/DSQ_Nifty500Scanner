@@ -5,20 +5,36 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Logs and temp files
-*.log
-*.tmp
+# Generated plots
+data/outputs/strategy_plots/
 
 # Environment
-.env
-.env.local
-*.env.*
+.venv/
+venv/
+env/
 
-# Editors
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# IDE specific
 .vscode/
 .idea/
 
-# Dependencies
-.venv/
-venv/
+# Build artifacts
+build/
+dist/
 ```
