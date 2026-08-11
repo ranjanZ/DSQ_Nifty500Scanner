@@ -1,21 +1,9 @@
 """
 utils/support_resistance.py
 ===========================
-Robust S/R utility with Kernel Density Estimation (Kernelization Trick).
+Robust S/R utility. 
 Returns ONLY a clean list of float prices for support and resistance.
 Merges nearby levels and draws importance-based zones.
-
-KERNELIZATION TRICK — OHLC-AWARE:
-  Instead of relying solely on pivot highs/lows, we run DUAL volume-weighted
-  Kernel Density Estimations:
-
-    • SUPPORT KDE  → samples from lows + bullish closes (close > open)
-    • RESISTANCE KDE → samples from highs + bearish closes (close < open)
-
-  This uses the FULL OHLC information to determine directionality AT the
-  kernel level, so peaks naturally emerge as support or resistance without
-  post-hoc classification.  Consolidation zones, hidden S/R, and volume
-  clusters are all captured.
 """
 
 import pandas as pd
@@ -35,23 +23,9 @@ class SupportResistanceCalculator:
             'broken_level_cooldown': 20,
             'fallback_tolerance_pct': 0.005,
             # --- FILTERING RULES ---
-            'max_distance_pct': 0.15,
-            'min_score_threshold': 3.0,
-            'min_level_distance_pct': 0.02,
-            # --- KERNELIZATION PARAMS ---
-            'use_kernelization': True,
-            'kernel_bandwidth_atr_mult': 0.5,
-            'kernel_grid_points': 500,
-            'kernel_min_prominence_pct': 0.01,
-            'kernel_weight_volume': True,
-            'kernel_blend_weight': 0.6,
-            # --- OHLC-AWARE PARAMS ---
-            'ohlc_support_weight_low': 1.0,
-            'ohlc_support_weight_bull_close': 0.9,
-            'ohlc_support_weight_bear_open': 0.4,
-            'ohlc_resist_weight_high': 1.0,
-            'ohlc_resist_weight_bear_close': 0.9,
-            'ohlc_resist_weight_bull_open': 0.4,
+            'max_distance_pct': 0.15,       # Ignore levels > 15% away from current price
+            'min_score_threshold': 3.0,     # Ignore weak levels
+            'min_level_distance_pct': 0.02, # Merge levels closer than 2% (NEW!)
         }
         if params:
             self.params.update(params)
@@ -61,6 +35,10 @@ class SupportResistanceCalculator:
     # ------------------------------------------------------------------ #
 
     def calculate(self, df: pd.DataFrame, current_idx: int, current_atr: float) -> Tuple[List[float], List[float]]:
+        """
+        Returns ONLY two lists of floats: (support_prices, resistance_prices).
+        Nearby levels are automatically merged.
+        """
         hist = df.iloc[:current_idx].copy().reset_index(drop=True)
         if len(hist) == 0:
             return [], []
@@ -83,24 +61,23 @@ class SupportResistanceCalculator:
             hist['close'].iloc[-1] * self.params['fallback_tolerance_pct']
         )
 
-        # =====================================================================
-        #  1. PIVOT-BASED LEVELS
-        # =====================================================================
         pivot_highs, high_indices = self._find_pivot_highs(hist)
         pivot_lows, low_indices = self._find_pivot_lows(hist)
-
+        
         high_volumes = hist['volume'].values[high_indices] if len(high_indices) > 0 else np.array([])
         low_volumes = hist['volume'].values[low_indices] if len(low_indices) > 0 else np.array([])
-
+        
         hist_start_idx = current_idx - len(hist)
 
         high_clusters = self._cluster_levels(pivot_highs, high_indices, high_volumes, tolerance, hist_start_idx)
         low_clusters = self._cluster_levels(pivot_lows, low_indices, low_volumes, tolerance, hist_start_idx)
 
+        # 1. Try strict clustering
         support_levels, resistance_levels = self._process_clusters(
             hist, high_clusters, low_clusters, current_idx, current_atr, tolerance, strict=True
         )
 
+        # 2. Relax rules if needed
         if not support_levels or not resistance_levels:
             sup_relax, res_relax = self._process_clusters(
                 hist, high_clusters, low_clusters, current_idx, current_atr, tolerance, strict=False
@@ -108,32 +85,24 @@ class SupportResistanceCalculator:
             if not support_levels: support_levels = sup_relax
             if not resistance_levels: resistance_levels = res_relax
 
-        # =====================================================================
-        #  2. OHLC-AWARE DUAL KERNEL DENSITY LEVELS
-        # =====================================================================
-        if self.params['use_kernelization']:
-            sup_kde, res_kde = self._ohlc_dual_kde(hist, current_atr, current_idx)
-            support_levels = self._blend_levels(support_levels, sup_kde, 'support')
-            resistance_levels = self._blend_levels(resistance_levels, res_kde, 'resistance')
-
-        # =====================================================================
-        #  3. Fallbacks
-        # =====================================================================
+        # 3. Fallback to raw pivots
         if not support_levels:
             support_levels = self._raw_pivot_fallback(pivot_lows, low_volumes, hist_start_idx, current_idx, 'support')
         if not resistance_levels:
             resistance_levels = self._raw_pivot_fallback(pivot_highs, high_volumes, hist_start_idx, current_idx, 'resistance')
 
+        # 4. Fallback to extremes
         if not support_levels:
             support_levels = self._extreme_fallback(hist, 'low')
         if not resistance_levels:
             resistance_levels = self._extreme_fallback(hist, 'high')
 
+        # Sort by strength (score) descending
         support_levels.sort(key=lambda x: x['score'], reverse=True)
         resistance_levels.sort(key=lambda x: x['score'], reverse=True)
 
         # ==================================================================== #
-        #  STRICT FILTERING
+        #  STRICT FILTERING: Extract ONLY "Good" Float Prices
         # ==================================================================== #
         current_price = float(hist['close'].iloc[-1])
         max_dist = self.params['max_distance_pct']
@@ -146,6 +115,8 @@ class SupportResistanceCalculator:
             if price > current_price * 1.02: continue
             if (current_price - price) / current_price > max_dist: continue
             if lvl['score'] < min_score: continue
+            
+            # Check if this price is too close to an already-added level
             if not any(abs(price - p) / p < min_distance for p in good_supports):
                 good_supports.append(float(price))
 
@@ -155,6 +126,8 @@ class SupportResistanceCalculator:
             if price < current_price * 0.98: continue
             if (price - current_price) / current_price > max_dist: continue
             if lvl['score'] < min_score: continue
+            
+            # Check if this price is too close to an already-added level
             if not any(abs(price - p) / p < min_distance for p in good_resistances):
                 good_resistances.append(float(price))
 
@@ -163,19 +136,25 @@ class SupportResistanceCalculator:
         # ==================================================================== #
         if not good_supports and support_levels:
             good_supports = [float(support_levels[0]['price'])]
+            
         if not good_resistances and resistance_levels:
             good_resistances = [float(resistance_levels[0]['price'])]
 
+        # Final sort: Closest to current price first
         good_supports.sort(reverse=True)
         good_resistances.sort()
 
         return good_supports[:self.params['num_levels']], good_resistances[:self.params['num_levels']]
 
     # ------------------------------------------------------------------ #
-    #  calculate_with_zones
+    #  Additional Method: Get Rich Level Data for Visualization
     # ------------------------------------------------------------------ #
-
+    
     def calculate_with_zones(self, df: pd.DataFrame, current_idx: int, current_atr: float) -> Tuple[List[dict], List[dict]]:
+        """
+        Returns level data with zone information for visualization.
+        Each level includes: price, score, touches, zone_thickness (as % of price)
+        """
         hist = df.iloc[:current_idx].copy().reset_index(drop=True)
         if len(hist) == 0:
             return [], []
@@ -203,10 +182,10 @@ class SupportResistanceCalculator:
 
         pivot_highs, high_indices = self._find_pivot_highs(hist)
         pivot_lows, low_indices = self._find_pivot_lows(hist)
-
+        
         high_volumes = hist['volume'].values[high_indices] if len(high_indices) > 0 else np.array([])
         low_volumes = hist['volume'].values[low_indices] if len(low_indices) > 0 else np.array([])
-
+        
         hist_start_idx = current_idx - len(hist)
 
         high_clusters = self._cluster_levels(pivot_highs, high_indices, high_volumes, tolerance, hist_start_idx)
@@ -223,11 +202,6 @@ class SupportResistanceCalculator:
             if not support_levels: support_levels = sup_relax
             if not resistance_levels: resistance_levels = res_relax
 
-        if self.params['use_kernelization']:
-            sup_kde, res_kde = self._ohlc_dual_kde(hist, current_atr, current_idx)
-            support_levels = self._blend_levels(support_levels, sup_kde, 'support')
-            resistance_levels = self._blend_levels(resistance_levels, res_kde, 'resistance')
-
         if not support_levels:
             support_levels = self._raw_pivot_fallback(pivot_lows, low_volumes, hist_start_idx, current_idx, 'support')
         if not resistance_levels:
@@ -238,9 +212,11 @@ class SupportResistanceCalculator:
         if not resistance_levels:
             resistance_levels = self._extreme_fallback(hist, 'high')
 
+        # Sort by strength
         support_levels.sort(key=lambda x: x['score'], reverse=True)
         resistance_levels.sort(key=lambda x: x['score'], reverse=True)
 
+        # Filter and merge nearby levels
         current_price = float(hist['close'].iloc[-1])
         max_dist = self.params['max_distance_pct']
         min_score = self.params['min_score_threshold']
@@ -250,18 +226,23 @@ class SupportResistanceCalculator:
             result = []
             for lvl in levels:
                 price = lvl['price']
-
+                
+                # Directional filter
                 if is_support and price > current_price * 1.02: continue
                 if not is_support and price < current_price * 0.98: continue
-
+                
+                # Distance filter
                 if abs(price - current_price) / current_price > max_dist: continue
-
+                
+                # Score filter
                 if lvl['score'] < min_score: continue
-
-                base_thickness = 0.3
-                score_bonus = min(lvl['score'] * 0.1, 1.0)
+                
+                # Calculate zone thickness based on score and volume
+                # Higher score = thicker zone
+                base_thickness = 0.3  # Base thickness %
+                score_bonus = min(lvl['score'] * 0.1, 1.0)  # Up to 1% bonus
                 zone_thickness_pct = base_thickness + score_bonus
-
+                
                 zone_data = {
                     'price': float(price),
                     'score': float(lvl['score']),
@@ -269,24 +250,27 @@ class SupportResistanceCalculator:
                     'avg_volume': float(lvl['avg_volume']),
                     'zone_thickness_pct': zone_thickness_pct
                 }
-
+                
+                # Merge if too close to existing level
                 is_too_close = False
                 for existing in result:
                     if abs(price - existing['price']) / existing['price'] < min_distance:
+                        # Merge: keep the one with higher score
                         if lvl['score'] > existing['score']:
                             result.remove(existing)
                             result.append(zone_data)
                         is_too_close = True
                         break
-
+                
                 if not is_too_close:
                     result.append(zone_data)
-
+            
             return result
 
         good_supports = filter_and_merge(support_levels, True)
         good_resistances = filter_and_merge(resistance_levels, False)
 
+        # Guarantee non-empty
         if not good_supports and support_levels:
             good_supports = [{
                 'price': float(support_levels[0]['price']),
@@ -295,7 +279,7 @@ class SupportResistanceCalculator:
                 'avg_volume': float(support_levels[0]['avg_volume']),
                 'zone_thickness_pct': 0.5
             }]
-
+            
         if not good_resistances and resistance_levels:
             good_resistances = [{
                 'price': float(resistance_levels[0]['price']),
@@ -305,170 +289,14 @@ class SupportResistanceCalculator:
                 'zone_thickness_pct': 0.5
             }]
 
+        # Sort
         good_supports.sort(key=lambda x: x['price'], reverse=True)
         good_resistances.sort(key=lambda x: x['price'])
 
         return good_supports[:self.params['num_levels']], good_resistances[:self.params['num_levels']]
 
     # ------------------------------------------------------------------ #
-    #  OHLC-AWARE DUAL KERNEL DENSITY  (The Core Trick)
-    # ------------------------------------------------------------------ #
-
-    def _ohlc_dual_kde(self, hist: pd.DataFrame, atr: float, current_idx: int) -> Tuple[List[dict], List[dict]]:
-        """
-        Runs TWO separate KDEs:
-          • SUPPORT KDE  : lows + bullish closes + bearish opens (prices that held up)
-          • RESISTANCE KDE: highs + bearish closes + bullish opens (prices that capped rallies)
-
-        This uses the FULL candle information (O,H,L,C) so directionality
-        is baked into the density estimation itself.
-        """
-        n = len(hist)
-        if n < 10:
-            return [], []
-
-        o = hist['open'].values
-        h = hist['high'].values
-        l = hist['low'].values
-        c = hist['close'].values
-        vol = hist['volume'].values
-
-        # Volume weights per sample
-        if self.params['kernel_weight_volume']:
-            base_w = vol
-        else:
-            base_w = np.ones(n)
-
-        # --- BUILD SUPPORT SAMPLES ---
-        # Lows always contribute to support
-        sup_samples = list(l)
-        sup_weights = list(base_w * self.params['ohlc_support_weight_low'])
-
-        # Bullish candle closes (close > open) → close near support of that candle
-        bull_mask = c > o
-        sup_samples.extend(c[bull_mask])
-        sup_weights.extend(base_w[bull_mask] * self.params['ohlc_support_weight_bull_close'])
-
-        # Bearish candle opens (open > close) → open was a higher point that failed
-        bear_mask = c < o
-        sup_samples.extend(o[bear_mask])
-        sup_weights.extend(base_w[bear_mask] * self.params['ohlc_support_weight_bear_open'])
-
-        # --- BUILD RESISTANCE SAMPLES ---
-        res_samples = list(h)
-        res_weights = list(base_w * self.params['ohlc_resist_weight_high'])
-
-        # Bearish candle closes → close near resistance
-        res_samples.extend(c[bear_mask])
-        res_weights.extend(base_w[bear_mask] * self.params['ohlc_resist_weight_bear_close'])
-
-        # Bullish candle opens → open was a lower point that got broken
-        res_samples.extend(o[bull_mask])
-        res_weights.extend(base_w[bull_mask] * self.params['ohlc_resist_weight_bull_open'])
-
-        sup_samples = np.array(sup_samples, dtype=float)
-        sup_weights = np.array(sup_weights, dtype=float)
-        res_samples = np.array(res_samples, dtype=float)
-        res_weights = np.array(res_weights, dtype=float)
-
-        # Bandwidth
-        bandwidth = max(atr * self.params['kernel_bandwidth_atr_mult'],
-                        c[-1] * 0.001)
-
-        # Price grid
-        p_min = min(l.min(), sup_samples.min(), res_samples.min()) - 2 * bandwidth
-        p_max = max(h.max(), sup_samples.max(), res_samples.max()) + 2 * bandwidth
-        grid = np.linspace(p_min, p_max, self.params['kernel_grid_points'])
-
-        # Evaluate KDEs
-        sup_density = self._gaussian_kde_vectorised(grid, sup_samples, sup_weights, bandwidth)
-        res_density = self._gaussian_kde_vectorised(grid, res_samples, res_weights, bandwidth)
-
-        # Find peaks
-        sup_peaks = self._find_peaks_1d(sup_density)
-        res_peaks = self._find_peaks_1d(res_density)
-
-        min_prom = max(sup_density.max(), res_density.max()) * self.params['kernel_min_prominence_pct']
-
-        current_price = float(c[-1])
-
-        def build_levels(peaks, density, samples, weights, role):
-            levels = []
-            for peak_idx in peaks:
-                peak_d = density[peak_idx]
-                if peak_d < min_prom:
-                    continue
-                price = float(grid[peak_idx])
-
-                # Count OHLC touches within bandwidth
-                touches = int(np.sum(np.abs(samples - price) <= bandwidth))
-                # Average volume near level
-                mask = np.abs(samples - price) <= bandwidth
-                avg_vol = float(np.mean(weights[mask])) if np.any(mask) else 1.0
-
-                norm_score = peak_d / (density.max() + 1e-12) * 10.0
-
-                levels.append({
-                    'price': price,
-                    'score': norm_score,
-                    'touches': max(touches, 1),
-                    'last_idx': current_idx - 1,
-                    'role': role,
-                    'avg_volume': avg_vol,
-                    'source': 'kernel'
-                })
-            return levels
-
-        support_levels = build_levels(sup_peaks, sup_density, sup_samples, sup_weights, 'support')
-        resistance_levels = build_levels(res_peaks, res_density, res_samples, res_weights, 'resistance')
-
-        return support_levels, resistance_levels
-
-    def _gaussian_kde_vectorised(self, grid: np.ndarray, samples: np.ndarray,
-                                  weights: np.ndarray, bandwidth: float) -> np.ndarray:
-        """Vectorised Gaussian KDE: density at each grid point."""
-        if len(samples) == 0:
-            return np.zeros_like(grid)
-        diffs = grid[:, None] - samples[None, :]   # (grid, samples)
-        kernels = np.exp(-0.5 * (diffs / bandwidth) ** 2)
-        density = np.dot(kernels, weights)
-        density /= (bandwidth * np.sqrt(2 * np.pi))
-        return density
-
-    def _find_peaks_1d(self, arr: np.ndarray) -> np.ndarray:
-        """Simple 1D local maxima finder."""
-        if len(arr) < 3:
-            return np.array([])
-        left = arr[1:-1] > arr[:-2]
-        right = arr[1:-1] > arr[2:]
-        peaks = np.where(left & right)[0] + 1
-        return peaks
-
-    def _blend_levels(self, pivot_levels: List[dict], kernel_levels: List[dict], role: str) -> List[dict]:
-        blend_w = self.params['kernel_blend_weight']
-        min_dist = self.params['min_level_distance_pct']
-
-        relevant_kernels = [k for k in kernel_levels if k['role'] == role]
-        combined = [dict(l) for l in pivot_levels]
-
-        for k in relevant_kernels:
-            merged = False
-            for c in combined:
-                if abs(k['price'] - c['price']) / c['price'] < min_dist:
-                    c['score'] = max(c['score'], c['score'] * (1 - blend_w) + k['score'] * blend_w)
-                    c['touches'] = max(c['touches'], k['touches'])
-                    c['source'] = 'blended'
-                    merged = True
-                    break
-            if not merged:
-                new_level = dict(k)
-                new_level['score'] *= blend_w
-                combined.append(new_level)
-
-        return combined
-
-    # ------------------------------------------------------------------ #
-    #  Internal Helpers
+    #  Internal Helper Methods
     # ------------------------------------------------------------------ #
 
     def _raw_pivot_fallback(self, pivots: np.ndarray, volumes: np.ndarray, 
@@ -476,7 +304,7 @@ class SupportResistanceCalculator:
         if len(pivots) == 0: return []
         p_slice = pivots[-3:] if len(pivots) > 3 else pivots
         v_slice = volumes[-3:] if len(volumes) > 3 else volumes
-        return [{'price': float(p), 'score': 1.0, 'touches': 1, 'last_idx': current_idx - 1, 'role': role, 'avg_volume': float(v), 'source': 'pivot_fallback'} for p, v in zip(p_slice, v_slice)]
+        return [{'price': float(p), 'score': 1.0, 'touches': 1, 'last_idx': current_idx - 1, 'role': role, 'avg_volume': float(v)} for p, v in zip(p_slice, v_slice)]
 
     def _extreme_fallback(self, hist: pd.DataFrame, col: str) -> List[dict]:
         if len(hist) == 0: return []
@@ -484,9 +312,9 @@ class SupportResistanceCalculator:
         avg_vol = float(hist['volume'].mean())
         role = 'support' if col == 'low' else 'resistance'
         return [
-            {'price': float(recent[col].min()), 'score': 1.0, 'touches': 1, 'last_idx': len(hist)-1, 'role': role, 'avg_volume': avg_vol, 'source': 'extreme'},
-            {'price': float(recent[col].quantile(0.10)), 'score': 0.8, 'touches': 1, 'last_idx': len(hist)-1, 'role': role, 'avg_volume': avg_vol, 'source': 'extreme'},
-            {'price': float(hist[col].min()), 'score': 0.5, 'touches': 1, 'last_idx': len(hist)-1, 'role': role, 'avg_volume': avg_vol, 'source': 'extreme'},
+            {'price': float(recent[col].min()), 'score': 1.0, 'touches': 1, 'last_idx': len(hist)-1, 'role': role, 'avg_volume': avg_vol},
+            {'price': float(recent[col].quantile(0.10)), 'score': 0.8, 'touches': 1, 'last_idx': len(hist)-1, 'role': role, 'avg_volume': avg_vol},
+            {'price': float(hist[col].min()), 'score': 0.5, 'touches': 1, 'last_idx': len(hist)-1, 'role': role, 'avg_volume': avg_vol},
         ]
 
     def _find_pivot_highs(self, hist: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
@@ -544,10 +372,10 @@ class SupportResistanceCalculator:
         first_idx = min(cluster_indices) if cluster_indices else 0
         relevant = hist.loc[hist.index >= first_idx]
         if relevant.empty: return 'neutral'
-
+            
         near_support = (relevant['low'] <= price + tol) & (relevant['low'] >= price - tol) & (relevant['close'] > price)
         near_resistance = (relevant['high'] <= price + tol) & (relevant['high'] >= price - tol) & (relevant['close'] < price)
-
+        
         if near_support.sum() > near_resistance.sum(): return 'support'
         if near_resistance.sum() > near_support.sum(): return 'resistance'
         return 'neutral'
@@ -560,18 +388,18 @@ class SupportResistanceCalculator:
         if level_hist.empty: return False
         recent = level_hist.tail(self.params['broken_level_cooldown'])
         if recent.empty: return False
-
+        
         if role == 'support': return (recent['close'] < (price - tol)).any()
         if role == 'resistance': return (recent['close'] > (price + tol)).any()
         return False
 
     def _process_clusters(self, hist: pd.DataFrame, high_clusters: List[Dict], low_clusters: List[Dict],
                           current_idx: int, atr: float, tolerance: float, strict: bool = True) -> Tuple[List[dict], List[dict]]:
-
+        
         support_levels, resistance_levels = [], []
         min_touch = self.params['min_touch_count'] if strict else 1
         median_vol = max(hist['volume'].median(), 1.0)
-
+        
         for cluster, origin in [(c, 'high') for c in high_clusters] + [(c, 'low') for c in low_clusters]:
             price, count, last_idx, indices = cluster['price'], cluster['count'], cluster['last_idx'], cluster['indices']
 
@@ -586,21 +414,22 @@ class SupportResistanceCalculator:
 
             vol_factor = cluster['avg_volume'] / median_vol
             score = count * (1 + np.log1p(max(0, vol_factor - 1)))
-
-            level = {'price': price, 'score': score, 'touches': count, 'last_idx': last_idx, 'role': role, 'avg_volume': cluster['avg_volume'], 'source': 'pivot'}
+            
+            level = {'price': price, 'score': score, 'touches': count, 'last_idx': last_idx, 'role': role, 'avg_volume': cluster['avg_volume']}
             (support_levels if role == 'support' else resistance_levels).append(level)
 
         return support_levels, resistance_levels
 
 
 # ==================================================================== #
-#  TEST RUNNER & VISUALIZATION WITH DUAL KDE
+#  TEST RUNNER & VISUALIZATION WITH ZONES
 # ==================================================================== #
 if __name__ == "__main__":
     import random
     import matplotlib.pyplot as plt
 
     def make_random_stock(seed: int, n: int = 500) -> pd.DataFrame:
+        #np.random.seed(seed)
         returns = np.random.normal(0.0005, 0.015, n)
         close = 100 * np.exp(np.cumsum(returns))
         noise = np.random.uniform(0.005, 0.015, n)
@@ -614,7 +443,7 @@ if __name__ == "__main__":
 
     calc = SupportResistanceCalculator()
 
-    print("Testing 20 random synthetic stocks with OHLC-AWARE DUAL KERNELIZATION...\n")
+    print("Testing 20 random synthetic stocks …\n")
     failures = 0
     for seed in range(20):
         df = make_random_stock(seed, n=random.randint(50, 500))
@@ -624,99 +453,71 @@ if __name__ == "__main__":
         if pd.isna(atr) or atr <= 0: atr = (df['high'].max() - df['low'].min()) * 0.01
 
         support, resistance = calc.calculate(df, current_idx=len(df), current_atr=atr)
-
+        
         assert isinstance(support, list) and all(isinstance(x, float) for x in support)
         assert isinstance(resistance, list) and all(isinstance(x, float) for x in resistance)
 
         ok = len(support) > 0 and len(resistance) > 0
-        print(f"{'✅' if ok else '❌'} Seed {seed:2d} | n={len(df):3d} | Sup:{len(support)} Res:{len(resistance)}  ->  S={support}  R={resistance}")
+        print(f"{'✅' if ok else '❌'} Seed {seed:2d} | n={len(df):3d} | Sup:{len(support)} Res:{len(resistance)}")
         if not ok: failures += 1
 
     print(f"\n{'='*50}\nResults: {20 - failures}/20 passed\n")
 
     # ==================================================================== #
-    #  VISUALIZATION WITH DUAL KDE SUBPLOTS
+    #  VISUALIZATION WITH ZONES
     # ==================================================================== #
-    print("Generating visualization with OHLC-aware dual KDE...")
+    print("Generating visualization with zones for a sample stock...")
     vis_seed = 5
     df_vis = make_random_stock(vis_seed, n=300)
     hl_vis = df_vis['high'] - df_vis['low']
     tr_vis = pd.concat([hl_vis, (df_vis['high'] - df_vis['close'].shift()).abs(), (df_vis['low'] - df_vis['close'].shift()).abs()], axis=1).max(axis=1)
     atr_vis = tr_vis.ewm(span=14, adjust=False).mean().iloc[-1]
-
+    
+    # Use calculate_with_zones to get zone thickness data
     sup_zones, res_zones = calc.calculate_with_zones(df_vis, current_idx=len(df_vis), current_atr=atr_vis)
-
-    fig = plt.figure(figsize=(20, 8))
-    gs = fig.add_gridspec(1, 3, width_ratios=[4, 1, 1])
-    ax = fig.add_subplot(gs[0])
-    ax_kde_sup = fig.add_subplot(gs[1], sharey=ax)
-    ax_kde_res = fig.add_subplot(gs[2], sharey=ax)
-
-    # Main price chart
-    ax.plot(df_vis.index, df_vis['close'], label='Close', color='#1f77b4', linewidth=1.5, zorder=5)
-    ax.plot(df_vis.index, df_vis['open'], color='gray', linewidth=0.5, alpha=0.4, label='Open')
-    ax.fill_between(df_vis.index, df_vis['low'], df_vis['high'], color='#1f77b4', alpha=0.12, label='High-Low Range', zorder=1)
-
+    
+    fig, ax = plt.subplots(figsize=(14, 7))
+    ax.plot(df_vis.index, df_vis['close'], label='Close Price', color='#1f77b4', linewidth=1.5, zorder=5)
+    ax.fill_between(df_vis.index, df_vis['low'], df_vis['high'], color='#1f77b4', alpha=0.15, label='High-Low Range', zorder=1)
+    
+    # Plot Support ZONES (shaded areas)
     for i, zone in enumerate(sup_zones):
         price = zone['price']
         thickness_pct = zone['zone_thickness_pct']
-        zl = price * (1 - thickness_pct / 2 / 100)
-        zu = price * (1 + thickness_pct / 2 / 100)
+        zone_lower = price * (1 - thickness_pct / 2 / 100)
+        zone_upper = price * (1 + thickness_pct / 2 / 100)
+        
+        # Alpha based on score (stronger = more opaque)
         alpha = min(0.3 + zone['score'] * 0.05, 0.7)
+        
         lbl = 'Support Zones' if i == 0 else None
-        ax.axhspan(zl, zu, color='green', alpha=alpha, linewidth=0, label=lbl, zorder=2)
+        ax.axhspan(zone_lower, zone_upper, color='green', alpha=alpha, linewidth=0, label=lbl, zorder=2)
         ax.axhline(price, color='darkgreen', linestyle='-', linewidth=1, alpha=0.8, zorder=3)
-        ax.text(len(df_vis) - 1, price, f' S:{price:.1f} ', color='darkgreen', 
+        ax.text(len(df_vis) - 1, price, f' S: {price:.2f} (T:{zone["touches"]}) ', color='darkgreen', 
                 va='center', ha='right', fontsize=9, fontweight='bold',
                 bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='darkgreen', alpha=0.8), zorder=4)
-
+        
+    # Plot Resistance ZONES
     for i, zone in enumerate(res_zones):
         price = zone['price']
         thickness_pct = zone['zone_thickness_pct']
-        zl = price * (1 - thickness_pct / 2 / 100)
-        zu = price * (1 + thickness_pct / 2 / 100)
+        zone_lower = price * (1 - thickness_pct / 2 / 100)
+        zone_upper = price * (1 + thickness_pct / 2 / 100)
+        
         alpha = min(0.3 + zone['score'] * 0.05, 0.7)
+        
         lbl = 'Resistance Zones' if i == 0 else None
-        ax.axhspan(zl, zu, color='red', alpha=alpha, linewidth=0, label=lbl, zorder=2)
+        ax.axhspan(zone_lower, zone_upper, color='red', alpha=alpha, linewidth=0, label=lbl, zorder=2)
         ax.axhline(price, color='darkred', linestyle='-', linewidth=1, alpha=0.8, zorder=3)
-        ax.text(len(df_vis) - 1, price, f' R:{price:.1f} ', color='darkred', 
+        ax.text(len(df_vis) - 1, price, f' R: {price:.2f} (T:{zone["touches"]}) ', color='darkred', 
                 va='center', ha='right', fontsize=9, fontweight='bold',
                 bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='darkred', alpha=0.8), zorder=4)
-
-    ax.set_title(f'OHLC-Aware Dual Kernel S/R (Seed {vis_seed})', fontsize=14)
+        
+    ax.set_title(f'Support & Resistance ZONES (Seed {vis_seed}) - Thickness based on importance', fontsize=14)
     ax.set_xlabel('Time (Candle Index)', fontsize=12)
     ax.set_ylabel('Price', fontsize=12)
-    ax.legend(loc='upper left', fontsize=9)
+    ax.legend(loc='upper left', fontsize=10)
     ax.grid(True, linestyle=':', alpha=0.6)
-
-    # --- Dual KDEs ---
-    o, h, l, c = df_vis['open'].values, df_vis['high'].values, df_vis['low'].values, df_vis['close'].values
-    vol = df_vis['volume'].values
-    bw = max(atr_vis * calc.params['kernel_bandwidth_atr_mult'], c[-1] * 0.001)
-    p_min = min(l.min(), o.min(), c.min()) - 2 * bw
-    p_max = max(h.max(), o.max(), c.max()) + 2 * bw
-    grid = np.linspace(p_min, p_max, calc.params['kernel_grid_points'])
-
-    # Support KDE
-    bull = c > o
-    sup_s = np.concatenate([l, c[bull], o[~bull]])
-    sup_w = np.concatenate([vol, vol[bull]*0.9, vol[~bull]*0.4])
-    sup_d = calc._gaussian_kde_vectorised(grid, sup_s, sup_w, bw)
-    ax_kde_sup.plot(sup_d, grid, color='green', linewidth=1.5)
-    ax_kde_sup.fill_betweenx(grid, 0, sup_d, color='green', alpha=0.2)
-    ax_kde_sup.set_title('Support KDE', fontsize=12)
-    ax_kde_sup.set_xlabel('Density', fontsize=10)
-    ax_kde_sup.grid(True, linestyle=':', alpha=0.4)
-
-    # Resistance KDE
-    res_s = np.concatenate([h, c[~bull], o[bull]])
-    res_w = np.concatenate([vol, vol[~bull]*0.9, vol[bull]*0.4])
-    res_d = calc._gaussian_kde_vectorised(grid, res_s, res_w, bw)
-    ax_kde_res.plot(res_d, grid, color='red', linewidth=1.5)
-    ax_kde_res.fill_betweenx(grid, 0, res_d, color='red', alpha=0.2)
-    ax_kde_res.set_title('Resistance KDE', fontsize=12)
-    ax_kde_res.set_xlabel('Density', fontsize=10)
-    ax_kde_res.grid(True, linestyle=':', alpha=0.4)
-
+    
     plt.tight_layout()
     plt.show()

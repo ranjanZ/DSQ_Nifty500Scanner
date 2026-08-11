@@ -1,0 +1,36 @@
+{
+  "scans": [
+    {
+      "scan_time": "2026-08-10 10:29:59",
+      "total_stocks_scanned": 501,
+      "signals_found": 1,
+      "signals": [
+        {
+          "symbol": "NSE:JSWSTEEL-EQ",
+          "signal": 1,
+          "price": 1267.6,
+          "strength": 0.5,
+          "timestamp": "2026-07-22T05:30:00",
+          "sector": "Metals & Mining"
+        }
+      ]
+    },
+    {
+      "scan_time": "2026-08-10 10:43:47",
+      "total_stocks_scanned": 501,
+      "signals_found": 1,
+      "signals": [
+        {
+          "symbol": "NSE:NLCINDIA-EQ",
+          "signal": 1,
+          "price": 290.85,
+          "strength": 0.8,
+          "timestamp": "2026-08-10T05:30:00",
+          "sector": "Power"
+        }
+      ]
+    }
+  ],
+  "last_scan_time": "2026-08-10 10:43:47",
+  "last_updated": "2026-08-10 10:43:47"
+}

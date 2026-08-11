@@ -19,7 +19,7 @@ if _src_dir.name == "src" and str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
 # Now absolute imports work regardless of how the file is loaded
-from strategy_service.utils.support_resistance import SupportResistanceCalculator
+from strategy_service.utils.support_resistance_old import SupportResistanceCalculator
 from strategy_service.strategy_base import TradingStrategy
 
 
@@ -27,6 +27,7 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
     """
     Support bounce strategy using rolling-window pivot clustering.
     Now utilizes Support/Resistance ZONES for more realistic bounce detection.
+    Includes trend filter: 13 EMA > 20 EMA OR sideways market.
     """
 
     def __init__(self, params: Dict[str, Any] = None):
@@ -44,6 +45,10 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
             'max_candle_size_atr': 2.0,
             # --- NEW OPTIMIZATION PARAM ---
             'calc_every_n_candles': 5,  # Calculate S/R every N candles to save computation
+            # --- NEW TREND / SIDEWAYS PARAMS ---
+            'fast_ema_period': 13,
+            'slow_ema_period': 20,
+            'sideways_threshold_pct': 0.5,  # |13EMA - 20EMA| / close < 0.5% => sideways
         }
 
         if params:
@@ -53,7 +58,7 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
         self.name = "VolumeSupportResistance"
         
         # Pass only the relevant params to the S/R calculator
-        sr_params = {k: v for k, v in self.params.items() if k != 'calc_every_n_candles'}
+        sr_params = {k: v for k, v in self.params.items() if k not in ('calc_every_n_candles', 'fast_ema_period', 'slow_ema_period', 'sideways_threshold_pct')}
         self.sr_calc = SupportResistanceCalculator(sr_params)
 
     # ------------------------------------------------------------------ #
@@ -89,6 +94,13 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
         df['is_green'] = df['close'] > df['open']
         df['upper_wick'] = df['high'] - df[['open', 'close']].max(axis=1)
         df['lower_wick'] = df[['open', 'close']].min(axis=1) - df['low']
+
+        # --- NEW: Trend EMAs ---
+        fast_period = self.params['fast_ema_period']
+        slow_period = self.params['slow_ema_period']
+        df['ema_fast'] = df['close'].ewm(span=fast_period, adjust=False).mean()
+        df['ema_slow'] = df['close'].ewm(span=slow_period, adjust=False).mean()
+        df['ema_diff_pct'] = ((df['ema_fast'] - df['ema_slow']).abs() / df['close']) * 100
 
         # Support / Resistance ZONES
         support_zones_list = []
@@ -153,12 +165,33 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
 
         return False, None, None
 
+    def _is_trend_favorable(self, candle: pd.Series) -> Tuple[bool, str]:
+        """
+        Check if trend condition is met: 13 EMA > 20 EMA OR market is sideways.
+        Returns: (is_favorable, reason)
+        """
+        ema_fast = candle['ema_fast']
+        ema_slow = candle['ema_slow']
+        ema_diff_pct = candle['ema_diff_pct']
+        sideways_threshold = self.params['sideways_threshold_pct']
+
+        # Condition 1: Uptrend (fast EMA above slow EMA)
+        if ema_fast > ema_slow:
+            return True, "uptrend"
+
+        # Condition 2: Sideways market (EMAs are very close)
+        if ema_diff_pct < sideways_threshold:
+            return True, "sideways"
+
+        return False, "downtrend"
+
     def generate_signals(self, data: pd.DataFrame, num_back_signals: int = None) -> pd.DataFrame:
         df = self.calculate_indicators(data)
 
         df['signal'] = 0
         df['signal_strength'] = 0.0
         df['signal_support'] = np.nan
+        df['signal_trend'] = None  # NEW: track why the signal fired
 
         volume_threshold = self.params['volume_threshold']
         start_idx = self.params['min_history_candles']
@@ -181,6 +214,11 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
             # Filter out candles that are too extended (e.g. massive news candles)
             candle_atr_ratio = current_candle['candle_size'] / atr if atr > 0 else 999
             if candle_atr_ratio > self.params['max_candle_size_atr']:
+                continue
+
+            # --- NEW: Trend / Sideways filter ---
+            trend_ok, trend_reason = self._is_trend_favorable(current_candle)
+            if not trend_ok:
                 continue
 
             # Support bounce conditions
@@ -206,6 +244,7 @@ class VolumeSupportResistanceStrategy(TradingStrategy):
                 df.loc[df.index[i], 'signal_strength'] = min(strength, 1.0)
                 df.loc[df.index[i], 'signal_support'] = sup_level
                 df.loc[df.index[i], 'volume_ratio'] = current_candle['volume'] / current_candle['volume_ema']
+                df.loc[df.index[i], 'signal_trend'] = trend_reason  # NEW: store trend context
 
         return df
 
@@ -250,7 +289,7 @@ if __name__ == "__main__":
         try:
             data = get_table_content(
                 db_name="spot_db_anamika",
-                table_name="axisbank_eq",
+                table_name="hdfcbank_eq",
                 start_date=start_date,
                 end_date=end_date,
             )
@@ -290,7 +329,7 @@ if __name__ == "__main__":
     print(f"\n📈 Generated {len(buy_signals)} buy signals in the last 100 candles.")
     if not buy_signals.empty:
         # Print relevant columns for the signals
-        cols_to_show = ['date', 'close', 'volume', 'signal_strength']
+        cols_to_show = ['date', 'close', 'volume', 'signal_strength', 'signal_trend']
         available_cols = [c for c in cols_to_show if c in buy_signals.columns]
         print("\nLast 5 Buy Signals:")
         print(buy_signals[available_cols].tail().to_string(index=False))

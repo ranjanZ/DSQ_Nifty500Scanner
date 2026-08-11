@@ -4,6 +4,10 @@ class_name: "VolumeSupportResistanceStrategy"
 
 # ── Strategy Parameters (no backtesting params) ──
 params:
+  fast_ema_period: 13
+  slow_ema_period: 20
+  sideways_threshold_pct: 0.5   # |13EMA - 20EMA| / close < 0.5% => sideways
+  
   volume_ema_period: 20
   volume_threshold: 1.3
   kde_bandwidth: 0.2
@@ -19,6 +23,8 @@ params:
   weight_decay_factor: 0.99
   max_candle_size_atr: 2.0   # Skip if candle range > 2× ATR
   calc_every_n_candles: 1    # Recalculate S/R every N candles (optimization)
+
+
 
 # ── Data Source (DB pull config) ──
 data_source:

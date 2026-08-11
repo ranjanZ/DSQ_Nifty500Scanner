@@ -113,7 +113,46 @@
       ],
       "closed_positions": [],
       "updated_at": "2026-07-23T23:43:11.830565"
+    },
+    "2026-08-10": {
+      "date": "2026-08-10",
+      "holdings": [
+        {
+          "symbol": "NSE:SUZLON-EQ",
+          "quantity": 4,
+          "average_price": 52.70000000000002,
+          "current_value": 0.0,
+          "unrealized_pnl": 0.0,
+          "entry_time": "2026-07-20T23:31:13.745878"
+        },
+        {
+          "symbol": "NSE:NESTLEIND-EQ",
+          "quantity": 1,
+          "average_price": 1490.9,
+          "current_value": 0.0,
+          "unrealized_pnl": 0.0,
+          "entry_time": "2026-07-22T16:08:50.226546"
+        },
+        {
+          "symbol": "NSE:MEDANTA-EQ",
+          "quantity": 2,
+          "average_price": 1351.25,
+          "current_value": 0.0,
+          "unrealized_pnl": 0.0,
+          "entry_time": "2026-07-22T16:08:50.226597"
+        },
+        {
+          "symbol": "NSE:YESBANK-EQ",
+          "quantity": 198,
+          "average_price": 23.25,
+          "current_value": 0.0,
+          "unrealized_pnl": 0.0,
+          "entry_time": "2026-07-22T16:08:50.226639"
+        }
+      ],
+      "closed_positions": [],
+      "updated_at": "2026-08-10T10:29:16.915410"
     }
   },
-  "latest_date": "2026-07-23"
+  "latest_date": "2026-08-10"
 }

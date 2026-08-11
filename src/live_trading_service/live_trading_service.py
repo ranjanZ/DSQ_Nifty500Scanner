@@ -916,6 +916,7 @@ if __name__ == "__main__":
         service = LiveTradingService()
         service.initialize()
         #service.start()
-        raw_signals=service._scan_for_signals(num_days_back=100)
-        #signal=service._allocate_capital_to_signals(raw_signals)
+        #service.data_service.update_all_stocks()  #update all stocks in the database
+        raw_signals=service._scan_for_signals(num_days_back=100)  #find signals for all stocks in the database
+        #signal=service._allocate_capital_to_signals(raw_signals) 
         #service._process_signals(signal)
